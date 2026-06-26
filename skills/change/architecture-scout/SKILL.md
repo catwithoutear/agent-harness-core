@@ -1,0 +1,93 @@
+---
+name: architecture-scout
+description: Use when mapping unfamiliar repository architecture, locating entry points, tracing cross-module flows, verifying source-backed boundaries, or preparing research evidence before change planning.
+---
+
+# Architecture Scout
+
+Map only enough architecture to answer the current change question. Use this
+skill before planning when subsystem ownership, entry points, call flow, or
+local precedent is unclear.
+
+## Core Rule
+
+Use generated or remembered knowledge as navigation, not proof. Source files and
+repository-owned artifacts verify the claim.
+
+## Boundaries
+
+Use this skill for:
+
+- unfamiliar subsystems, entry points, registrations, or dispatch paths;
+- cross-module flows and ownership boundaries;
+- architecture-risk assessment before `proposal.md`, `design.md`, or
+  `tasks/*.md` are finalized;
+- source-backed research for `change-planner`.
+
+Do not use it for:
+
+- a small known-file edit with clear ownership;
+- bug diagnosis from a concrete failure symptom; use `diagnose`;
+- choosing a solution between alternatives; use the owning design process and
+  `grill-with-docs` when decisions need pressure-testing;
+- promoting speculative branch-only findings into durable memory.
+
+## Research Flow
+
+1. Locate the active change with `change-workspace-operator` when one exists.
+2. Read relevant `.memory`, `.specs`, rules, and current change artifacts before
+   broad source search.
+3. Use repository-native code navigation first when available, then targeted
+   text search.
+4. Verify every generated, inferred, or remembered architecture claim against
+   source:
+   - the path exists in the current checkout;
+   - the named symbol, endpoint, command, state, or artifact exists;
+   - at least one caller, callee, registration, route, or sibling precedent
+     supports the claimed flow.
+5. Write non-trivial findings to `.changes/<change>/research.md` or the
+   repository's equivalent research artifact.
+6. Pass only verified entry points, boundaries, precedents, unknowns, and risks
+   to `change-planner`.
+
+## Output Template
+
+```text
+Architecture scout:
+- Scope:
+- Artifacts and memory read:
+- Source-verified entry points:
+- Runtime or artifact path:
+- Ownership boundary:
+- Reuse precedents:
+- Risks:
+- Unknowns:
+- Files read:
+```
+
+## Example Scout
+
+Request: "I need to add retention policy validation, but I do not know where
+that policy is enforced."
+
+Good scout:
+
+- reads current requirements and terminology first,
+- finds the command/API entry point and config parser,
+- verifies the manager or service that enforces policy,
+- identifies one sibling policy validation precedent,
+- records the boundary and open questions in `research.md`.
+
+Bad scout:
+
+- lists many files from search results without proving the execution path,
+- treats a generated architecture summary as fact,
+- writes a broad module tour that does not tell the planner where to edit.
+
+## Common Mistakes
+
+- Skipping repository memory and rediscovering known paths.
+- Treating central helper names as architectural importance without call-path
+  evidence.
+- Updating durable memory from an unmerged worktree.
+- Producing architecture prose that cannot become a task slice.

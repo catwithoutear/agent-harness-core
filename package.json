@@ -1,0 +1,30 @@
+{
+  "name": "@catwithoutear/agent-harness-core",
+  "version": "1.0.0",
+  "description": "Generic multi-client agent harness core.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "harness": "./bin/harness.js",
+    "harness-project": "./bin/harness-project.js",
+    "harness-change-doc": "./bin/harness-change-doc.js",
+    "harness-change-validate": "./bin/harness-change-validate.js"
+  },
+  "scripts": {
+    "test": "node tests/run-tests.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "agents/",
+    "bin/",
+    "harness.manifest.json",
+    "commands/",
+    "lib/",
+    "rules/",
+    "schemas/",
+    "skills/",
+    "templates/"
+  ]
+}

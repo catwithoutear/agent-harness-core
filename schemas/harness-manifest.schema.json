@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/catwithoutear/agent-harness-core/schemas/harness-manifest.schema.json",
+  "title": "Agent Harness Manifest",
+  "type": "object",
+  "required": ["name", "version", "clients", "commands", "assets"],
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "clients": { "type": "object" },
+    "commands": { "type": "object" },
+    "assets": { "type": "object" }
+  }
+}

@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { validateCurrentManifest } from "../lib/manifest/validate.js";
+
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+export async function run(test) {
+  await test("manifest validates", () => {
+    const result = validateCurrentManifest(packageRoot);
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.ok, true);
+    assert.equal(result.summary.clients, 4);
+    assert.equal(result.summary.commands, 6);
+    assert.equal(result.summary.skills, 27);
+    assert.equal(result.summary.agents, 10);
+    assert.equal(result.summary.hooks, 6);
+  });
+
+  await test("manifest uses core command names", () => {
+    const text = fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8");
+    assert.match(text, /harness-project/);
+    assert.match(text, /harness-change-doc/);
+    assert.match(text, /harness-change-validate/);
+    assert.doesNotMatch(text, /dbackup-change-/i);
+    assert.doesNotMatch(text, /quick-project/i);
+  });
+
+  await test("runtime skill sources are flat after category source", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    for (const skill of manifest.assets.skills) {
+      assert.match(skill.runtimeName, /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/);
+      assert.doesNotMatch(skill.runtimeName, /\//);
+    }
+  });
+
+  await test("slash command runtime names are namespaced", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    for (const command of manifest.assets.commands) {
+      assert.match(command.runtimeName, /^harness\/[a-z][a-z0-9-]*$/);
+      assert.equal(
+        fs.existsSync(path.join(packageRoot, command.source)),
+        true,
+        `${command.id} source missing`
+      );
+    }
+  });
+}

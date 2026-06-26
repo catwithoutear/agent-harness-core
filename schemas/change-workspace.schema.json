@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "paths": {
+    "changes_dir": ".changes",
+    "specs_dir": ".specs",
+    "archive_dir": ".changes/archive",
+    "ignored_change_dirs": [
+      "archive",
+      "templates"
+    ]
+  },
+  "change_id": {
+    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  },
+  "required_files": [
+    "proposal.md",
+    "tasks.md"
+  ],
+  "optional_files": [
+    "design.md"
+  ],
+  "plan": {
+    "required_headings": [
+      "## Goal",
+      "## Approach",
+      "## Validation"
+    ]
+  },
+  "proposal": {
+    "required_headings": [
+      "## Why",
+      "## What Changes",
+      "## Impact",
+      "## Validation",
+      "## Rollback"
+    ]
+  },
+  "delta_spec": {
+    "file_glob": "specs/**/*.md",
+    "ignored_files": [
+      "README.md",
+      "capability-template.md"
+    ],
+    "allowed_sections": [
+      "## ADDED Requirements",
+      "## MODIFIED Requirements",
+      "## REMOVED Requirements"
+    ],
+    "requirement_heading_pattern": "^### Requirement:",
+    "scenario_heading_pattern": "^#### Scenario:",
+    "require_scenario_per_requirement": true,
+    "required_headings": [
+      "## Purpose",
+      "## Traceability"
+    ],
+    "module_name_warning_pattern": null
+  },
+  "design": {
+    "required_headings_when_present": [
+      "## Detailed Design Index"
+    ]
+  },
+  "structured_proposal": {
+    "required_files": [
+      "README.md",
+      "specs/README.md"
+    ],
+    "warning_files": [
+      "requirements.md"
+    ],
+    "required_if_directory_exists": {
+      "implementation-design": [
+        "implementation-design/README.md"
+      ]
+    },
+    "warning_directories": []
+  },
+  "layout": {
+    "allowed_files_by_mode": {
+      "plan_only": [
+        "README.md",
+        "research.md",
+        "terminology.md",
+        "plan.md",
+        "tasks.md",
+        "review-log.md",
+        "timeline.md"
+      ],
+      "legacy_proposal": [
+        "README.md",
+        "requirements.md",
+        "research.md",
+        "terminology.md",
+        "proposal.md",
+        "plan.md",
+        "design.md",
+        "tasks.md",
+        "review-log.md",
+        "timeline.md"
+      ],
+      "structured_proposal": [
+        "README.md",
+        "requirements.md",
+        "research.md",
+        "terminology.md",
+        "proposal.md",
+        "plan.md",
+        "design.md",
+        "tasks.md"
+      ]
+    },
+    "allowed_directories_by_mode": {
+      "plan_only": [],
+      "legacy_proposal": [
+        "specs"
+      ],
+      "structured_proposal": [
+        "specs",
+        "implementation-design",
+        "decisions",
+        "timeline",
+        "reviews",
+        "tasks"
+      ]
+    },
+    "allowed_patterns": [
+      "specs/*.md",
+      "specs/**/*.md",
+      "implementation-design/*.md",
+      "implementation-design/**/*.md",
+      "decisions/*.md",
+      "timeline/*.md",
+      "reviews/*.md",
+      "tasks/*.md"
+    ],
+    "max_files_by_mode": {
+      "plan_only": 6,
+      "legacy_proposal": 12
+    },
+    "max_top_level_files_by_mode": {
+      "plan_only": 6,
+      "legacy_proposal": 9,
+      "structured_proposal": 9
+    },
+    "max_files_by_directory": {
+      "specs": 12,
+      "implementation-design": 30,
+      "decisions": 80,
+      "timeline": 120,
+      "reviews": 80,
+      "tasks": 120
+    },
+    "suggested_destinations": [
+      {
+        "pattern": "*.txt",
+        "destination": "research.md",
+        "reason": "free-form notes should be summarized into research.md"
+      },
+      {
+        "pattern": "*notes*",
+        "destination": "research.md",
+        "reason": "task notes should be summarized into research.md"
+      },
+      {
+        "pattern": "*review*",
+        "destination": "reviews/",
+        "reason": "review findings belong in indexed review round files"
+      },
+      {
+        "pattern": "*timeline*",
+        "destination": "timeline/",
+        "reason": "chronology belongs in indexed timeline event files"
+      }
+    ]
+  },
+  "review_log": {
+    "required_headings": [
+      "### Status",
+      "### Blocking",
+      "### Should Fix",
+      "### Fix Applied",
+      "### Re-review Result",
+      "### Deferred With Reason",
+      "### Freeze Decision"
+    ],
+    "frozen_requires_blocking_open_zero": true,
+    "max_standard_rounds": 3,
+    "max_high_risk_rounds": 5
+  },
+  "tasks": {
+    "required_headings": [
+      "## 1. Implementation",
+      "## 2. Validation"
+    ],
+    "checkbox_pattern": "^- \\[( |x)\\] ",
+    "require_checkbox_items": true
+  },
+  "archive": {
+    "directory_prefix_pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-"
+  },
+  "validation": {
+    "fail_on_missing_required_file": true,
+    "fail_on_missing_proposal_heading": true,
+    "fail_on_invalid_delta_section": true,
+    "fail_on_requirement_without_scenario": true,
+    "fail_on_invalid_task_checkbox": true,
+    "warn_on_missing_design": true
+  }
+}

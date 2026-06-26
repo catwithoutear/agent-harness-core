@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>设计到代码落地说明报告</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f5f7fa;
+      --paper: #ffffff;
+      --ink: #172033;
+      --muted: #596579;
+      --line: #d8dee9;
+      --accent: #0f766e;
+      --blue: #1d4ed8;
+      --code-bg: #eef2f7;
+      --code-ink: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 15px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 28px; }
+    aside {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 30;
+      width: min(310px, calc(100vw - 36px));
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+      backdrop-filter: blur(10px);
+    }
+    aside details { margin: 0; border: 0; padding: 0; }
+    aside summary {
+      display: flex;
+      justify-content: space-between;
+      min-height: 42px;
+      padding: 9px 13px;
+      cursor: pointer;
+      color: #334155;
+      font-weight: 700;
+      list-style: none;
+    }
+    aside summary::-webkit-details-marker { display: none; }
+    aside summary::after { content: "+"; color: var(--muted); font-size: 18px; }
+    aside details[open] summary::after { content: "-"; }
+    aside ol {
+      max-height: min(70vh, 620px);
+      overflow: auto;
+      margin: 0;
+      padding: 0 18px 16px 32px;
+    }
+    main {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .hero {
+      border-top: 6px solid var(--accent);
+      border-bottom: 1px solid var(--line);
+      padding: 32px 36px 28px;
+      background: linear-gradient(90deg, rgba(15, 118, 110, 0.09), rgba(29, 78, 216, 0.06)), var(--paper);
+    }
+    .hero h1 { margin: 0 0 10px; font-size: 32px; line-height: 1.2; letter-spacing: 0; }
+    .hero p { max-width: 960px; margin: 0; color: var(--muted); font-size: 16px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .badge {
+      display: inline-flex;
+      border: 1px solid #b9c3d3;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.82);
+      color: #334155;
+      font-size: 12px;
+    }
+    .report-section { padding: 28px 36px; border-top: 1px solid var(--line); }
+    .report-section:first-of-type { border-top: 0; }
+    h2 { margin: 0 0 14px; font-size: 22px; line-height: 1.28; letter-spacing: 0; }
+    h3 { margin: 22px 0 9px; font-size: 17px; line-height: 1.35; letter-spacing: 0; }
+    p { margin: 10px 0; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code {
+      overflow-wrap: anywhere;
+      border-radius: 4px;
+      padding: 1px 4px;
+      background: var(--code-bg);
+      color: var(--code-ink);
+      font-size: 0.92em;
+    }
+    pre {
+      overflow: auto;
+      border-radius: 8px;
+      padding: 16px;
+      background: #101827;
+      color: #e5e7eb;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    pre code {
+      display: block;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      overflow-wrap: normal;
+      white-space: pre;
+    }
+    table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 14px; }
+    th, td { border: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; }
+    th { background: #f0f4f8; color: #334155; font-weight: 650; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 16px 0; }
+    .summary-card { border: 1px solid var(--line); border-radius: 8px; padding: 15px; background: #fbfcfe; }
+    .summary-card strong { display: block; margin-bottom: 6px; color: #111827; }
+    .diagram {
+      margin: 16px 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fbfcfe;
+      overflow-x: auto;
+    }
+    .diagram.zoomable { cursor: zoom-in; position: relative; }
+    .diagram.zoomable::after {
+      content: "点击放大";
+      position: absolute;
+      right: 12px;
+      top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .trace-timeline { position: relative; margin: 18px 0; padding: 10px 0 10px 26px; }
+    .trace-timeline::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 9px;
+      border-left: 2px solid #111827;
+    }
+    .trace-phase {
+      position: relative;
+      margin: 14px 0;
+      border: 1.5px dashed #22c55e;
+      border-radius: 8px;
+      padding: 14px 16px 14px 28px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .trace-event {
+      display: grid;
+      grid-template-columns: minmax(180px, 360px) minmax(220px, 1fr);
+      gap: 12px;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .trace-node {
+      border: 1px solid #b9c3d3;
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #f8fafc;
+      color: #111827;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    .trace-node.input { background: #eff6ff; border-color: #93c5fd; }
+    .trace-node.control { background: #f5f3ff; border-color: #c4b5fd; }
+    .trace-node.exec { background: #fff7ed; border-color: #fdba74; }
+    .trace-node.result { background: #f0fdf4; border-color: #86efac; }
+    .trace-node.error { background: #fef2f2; border-color: #fca5a5; }
+    .caption { margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .status { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .implemented { background: #eaf7f3; color: #0f5d52; }
+    .partial, .inferred { background: #fff7ed; color: #8a4b10; }
+    .diverged, .missing { background: #fef2f2; color: #991b1b; }
+    .diagram-lightbox[hidden] { display: none; }
+    .diagram-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.84);
+    }
+    .diagram-lightbox-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: white; }
+    .diagram-close {
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      cursor: pointer;
+      font: inherit;
+    }
+    .diagram-lightbox-body { overflow: auto; border-radius: 8px; background: white; padding: 18px; }
+    .diagram-lightbox-body svg { width: 100%; min-width: 960px; height: auto; display: block; }
+    @media print {
+      body { background: white; }
+      .shell { max-width: none; padding: 0; }
+      aside { display: none; }
+      main { border: 0; border-radius: 0; }
+      .hero, .report-section { page-break-inside: avoid; }
+      a { color: inherit; }
+    }
+    @media (max-width: 900px) {
+      .shell { padding: 14px; }
+      aside { left: 12px; right: 12px; top: 12px; width: auto; }
+      .hero, .report-section { padding-left: 20px; padding-right: 20px; }
+      .trace-event { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside aria-label="报告目录">
+      <details>
+        <summary>目录</summary>
+        <ol>
+          <li><a href="#title">标题信息</a></li>
+          <li><a href="#summary">执行摘要</a></li>
+          <li><a href="#evidence">证据索引</a></li>
+          <li><a href="#architecture">架构总览</a></li>
+          <li><a href="#layout">代码布局</a></li>
+          <li><a href="#flows">运行流程</a></li>
+          <li><a href="#traceability">设计到代码追踪</a></li>
+          <li><a href="#io">子系统输入输出合约</a></li>
+          <li><a href="#patterns">设计模式与实现理由</a></li>
+          <li><a href="#gaps">偏差、缺口与风险</a></li>
+          <li><a href="#maintenance">阅读与维护路径</a></li>
+          <li><a href="#appendix">附录</a></li>
+        </ol>
+      </details>
+    </aside>
+    <main>
+      <header id="title" class="hero">
+        <h1>{{REPORT_TITLE}}</h1>
+        <p>{{REPORT_SUBTITLE}}</p>
+        <div class="meta">
+          <span class="badge">设计来源：{{DESIGN_SOURCE}}</span>
+          <span class="badge">代码来源：{{CODE_SOURCE}}</span>
+          <span class="badge">生成时间：{{GENERATED_AT}}</span>
+          <span class="badge">验证状态：{{VALIDATION_STATUS}}</span>
+        </div>
+      </header>
+      <section id="summary" class="report-section"><h2>执行摘要</h2><div class="summary-grid">{{SUMMARY_CARDS}}</div></section>
+      <section id="evidence" class="report-section"><h2>证据索引</h2>{{EVIDENCE_INDEX}}</section>
+      <section id="architecture" class="report-section"><h2>架构总览</h2>{{ARCHITECTURE_OVERVIEW}}</section>
+      <section id="layout" class="report-section"><h2>代码布局</h2>{{CODE_LAYOUT}}</section>
+      <section id="flows" class="report-section"><h2>运行流程</h2>{{RUNTIME_FLOWS}}</section>
+      <section id="traceability" class="report-section"><h2>设计到代码追踪</h2>{{TRACEABILITY_TABLE}}</section>
+      <section id="io" class="report-section"><h2>子系统输入输出合约</h2>{{IO_CONTRACTS}}</section>
+      <section id="patterns" class="report-section"><h2>设计模式与实现理由</h2>{{PATTERN_RATIONALE}}</section>
+      <section id="gaps" class="report-section"><h2>偏差、缺口与风险</h2>{{GAPS_AND_RISKS}}</section>
+      <section id="maintenance" class="report-section"><h2>阅读与维护路径</h2>{{MAINTENANCE_PATH}}</section>
+      <section id="appendix" class="report-section"><h2>附录</h2>{{APPENDIX}}</section>
+    </main>
+  </div>
+  <div class="diagram-lightbox" id="diagramLightbox" hidden><div class="diagram-lightbox-header"><h2 id="diagramLightboxTitle">图示</h2><button class="diagram-close" type="button" id="diagramLightboxClose">关闭</button></div><div class="diagram-lightbox-body" id="diagramLightboxBody"></div></div>
+  <script>
+    (() => {
+      const lightbox = document.getElementById("diagramLightbox");
+      const body = document.getElementById("diagramLightboxBody");
+      const title = document.getElementById("diagramLightboxTitle");
+      const close = document.getElementById("diagramLightboxClose");
+      function openDiagram(diagram) {
+        const source = diagram.querySelector("svg") || diagram.querySelector(".trace-timeline");
+        if (!source) return;
+        body.replaceChildren(source.cloneNode(true));
+        title.textContent = diagram.dataset.title || "图示";
+        lightbox.hidden = false;
+      }
+      function closeDiagram() {
+        lightbox.hidden = true;
+        body.replaceChildren();
+      }
+      document.querySelectorAll(".diagram.zoomable").forEach((diagram) => {
+        diagram.addEventListener("click", () => openDiagram(diagram));
+        diagram.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openDiagram(diagram);
+          }
+        });
+      });
+      close.addEventListener("click", closeDiagram);
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) closeDiagram();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !lightbox.hidden) closeDiagram();
+      });
+    })();
+  </script>
+</body>
+</html>
