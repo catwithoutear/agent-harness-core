@@ -35,7 +35,7 @@ skill-only installation path.
 npx @catwithoutear/agent-harness-core harness-project \
   --target /path/to/repo \
   --clients codex,claude,opencode,omp \
-  --content rules,skills,subagents,hooks
+  --content rules,templates,skills,subagents,hooks
 ```
 
 The default projection mode is a real materialized copy. Use
@@ -48,7 +48,7 @@ Use `--dry-run --json` before writing into a target repository:
 npx @catwithoutear/agent-harness-core harness-project \
   --target /path/to/repo \
   --clients codex \
-  --content rules,skills,subagents,hooks \
+  --content rules,templates,skills,subagents,hooks \
   --dry-run --json
 ```
 
@@ -58,9 +58,23 @@ Verify an installed projection:
 npx @catwithoutear/agent-harness-core harness-project \
   --target /path/to/repo \
   --clients codex \
-  --content rules,skills,subagents,hooks \
+  --content rules,templates,skills,subagents,hooks \
   --verify --json
 ```
+
+## Change Workspace Design Packs
+
+When the implementation-design trigger rule applies, create the detailed design
+topology pack before deriving task slices:
+
+```bash
+harness-change-doc --repo-root /path/to/repo add-implementation-design <change-id>
+```
+
+The generated `implementation-design/` pack separates `Subsystem` capability or
+runtime boundaries from `Module` code organization boundaries, then captures
+code topology, file/class mapping, runtime flow, error model, implementation
+order, constraints, and traceability.
 
 ## Self-Host The Core For Codex
 
@@ -71,7 +85,7 @@ source assets. That is useful when developing the harness with the same harness.
 node bin/harness-project.js \
   --target . \
   --clients codex \
-  --content rules,skills,subagents,hooks \
+  --content rules,templates,skills,subagents,hooks \
   --conflict overwrite \
   --json
 ```
@@ -82,13 +96,13 @@ Then verify:
 node bin/harness-project.js \
   --target . \
   --clients codex \
-  --content rules,skills,subagents,hooks \
+  --content rules,templates,skills,subagents,hooks \
   --verify --json
 ```
 
 The self-hosted projection creates runtime files such as `.agents/skills/`,
-`.codex/agents/`, `.codex/hooks/`, `.rules/`, and
-`.harness/projection-state.json`. Edit the source directories and manifest,
+`.codex/agents/`, `.codex/hooks/`, `.changes/templates/`, `.memory/`, `.rules/`,
+and `.harness/projection-state.json`. Edit the source directories and manifest,
 then re-run the projector; do not hand-edit projected runtime files.
 
 ## Slash Commands
@@ -141,7 +155,7 @@ Recommended pre-handoff checks after changing source assets:
 ```bash
 npm test
 node bin/harness.js manifest --json
-node bin/harness-project.js --target . --clients codex --content rules,skills,subagents,hooks --verify --json
+node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --verify --json
 git diff --check
 ```
 

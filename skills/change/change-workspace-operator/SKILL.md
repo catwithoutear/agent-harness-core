@@ -23,6 +23,7 @@ directory or when the command output may be shown to another agent.
 | Locate artifacts | `harness-change-doc --repo-root <repo> locate <change-id> --artifact <artifact> --json` |
 | Read artifacts | `harness-change-doc --repo-root <repo> read <change-id> --artifact <artifact>` |
 | Add terminology | `harness-change-doc --repo-root <repo> add-terminology <change-id> --tags terminology --description "..."` |
+| Add implementation design pack | `harness-change-doc --repo-root <repo> add-implementation-design <change-id> --description "..."` |
 | Add review round | `harness-change-doc --repo-root <repo> add-review <change-id> --target <name> --round <n> --description "..."` |
 | Add decision record | `harness-change-doc --repo-root <repo> add-decision <change-id> --slug <topic>` |
 | Add timeline event | `harness-change-doc --repo-root <repo> add-timeline <change-id> --slug <event>` |
@@ -41,6 +42,14 @@ optimize for the wrong workspace.
 ## Example Flows
 
 - New task term: run `add-terminology`, fill the table, then validate the change.
+- New implementation design pack: run `add-implementation-design`, then fill the
+  required topology documents. Keep `Subsystem` as the capability/runtime
+  boundary and `Module` as the code organization boundary. The tool creates all
+  standard paths for stable indexing, but the pack README's minimum/N/A rule
+  still applies: core documents are `01`, `02`, and `06`; fill `03`, `04`, `05`,
+  and `07` when their risk surfaces exist, otherwise mark sections `N/A` with a
+  reason. For small localized work below the trigger threshold, keep a no-design
+  reason in the plan instead of creating the pack.
 - New review round: only for a gate, council, re-review, freeze decision, or
   other review event that changes the decision state. Run `add-review`, write
   concise findings and the decision, then ensure `reviews/README.md` makes the
@@ -90,6 +99,8 @@ history in the directory README, and keep README summaries high-signal.
 Use tool-created files for artifacts with schema, tags, and indexes:
 
 - `terminology.md`,
+- `implementation-design/README.md` and standard implementation-design detail
+  files created by `add-implementation-design`,
 - `reviews/*.md`,
 - `decisions/*.md`,
 - `timeline/*.md`,

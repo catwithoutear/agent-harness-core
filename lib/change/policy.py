@@ -176,6 +176,7 @@ COMMANDS = {
     "policy": "harness-change-doc policy --json",
     "index": "harness-change-doc index",
     "memory_index": "harness-change-doc memory-index --json",
+    "add_implementation_design": "harness-change-doc add-implementation-design",
     "add_review": "harness-change-doc add-review",
     "migrate": "harness-change-doc migrate --dry-run",
     "memory_retrofit": "harness-change-doc memory-retrofit --dry-run",

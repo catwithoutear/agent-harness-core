@@ -23,9 +23,14 @@ Input: `$ARGUMENTS`
    unclear, call the focused evidence skill before planning:
    `architecture-scout`, `diagnose`, `prototype-spike`, or
    `verification-first`.
-5. Produce bounded task slices. Each slice must have scope, changed surfaces,
-   prerequisites, validation, rollback, and review owner.
-6. Keep unrelated future work out of the executable plan. Record it as a
+5. Apply the implementation-design trigger rule before task slicing. Require an
+   `implementation-design/` topology pack when work crosses subsystem
+   boundaries, touches 2+ modules with dependency risk, adds lifecycle/failure
+   semantics, or needs dependency/file/class/test-seam constraints. Otherwise
+   record the no-design reason.
+6. Produce bounded task slices. Each slice must have scope, subsystem, module,
+   changed surfaces, prerequisites, validation, rollback, and review owner.
+7. Keep unrelated future work out of the executable plan. Record it as a
    deferred note only when it affects current decisions.
 
 ## Output

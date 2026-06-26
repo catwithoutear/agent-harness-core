@@ -26,12 +26,13 @@ honest final verification statement.
 
 1. Observe the current state before planning.
 2. Build a compact context packet from verified sources.
-3. Plan one bounded slice with validation and rollback.
-4. Implement only the slice.
-5. Run a behavior-preserving simplify pass for non-trivial code edits.
-6. Review the slice against the packet and plan.
-7. Verify with commands or source evidence.
-8. Persist the result in the owning artifact or handoff.
+3. Apply the implementation-design trigger rule before task slicing.
+4. Plan one bounded slice with validation and rollback.
+5. Implement only the slice.
+6. Run a behavior-preserving simplify pass for non-trivial code edits.
+7. Review the slice against the packet and plan.
+8. Verify with commands or source evidence.
+9. Persist the result in the owning artifact or handoff.
 
 ## Evidence Skills
 
@@ -50,6 +51,22 @@ role:
 Write non-trivial findings into the owning `.changes` artifact. These skills
 produce evidence for `change-planner`, `review-packet-gate`, and handoff; they
 do not replace task slicing, review, or implementation.
+
+## Implementation-Design Trigger Rule
+
+Create or require an `implementation-design/` topology pack before task slicing
+when any of these are true:
+
+- the change crosses subsystem boundaries;
+- the change touches two or more modules with dependency-order risk;
+- the design introduces lifecycle, state transition, concurrency, failure,
+  rollback, migration, or idempotency semantics;
+- implementation needs explicit dependency bans, file/class ownership, or test
+  seam mapping to keep agents from improvising structure.
+
+For localized work that does not meet those triggers, record an explicit
+no-design reason in the plan or task slice and continue with the lightweight
+path. Do not create a seven-file pack just to fill empty tables.
 
 ## Fast Path Examples
 
@@ -83,6 +100,7 @@ Review packet:
 
 - scope reviewed,
 - intended behavior and design source,
+- owning subsystem and module when implementation-design exists,
 - diff or artifact paths,
 - validation already run,
 - findings and residual risks.
@@ -121,5 +139,7 @@ or missing basic context.
 - Expanding the slice while implementing.
 - Skipping the simplify pass after meaningful code edits.
 - Treating warnings as harmless without deciding whether they block freeze.
+- Coding from a design that has prose but no topology, file/class mapping,
+  lifecycle/failure flow, implementation order, or constraints.
 - Ending after code review without running the planned verification.
 - Writing process artifacts that do not identify the current repo state.

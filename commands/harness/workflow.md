@@ -26,13 +26,19 @@ Input: `$ARGUMENTS`
    - `diagnose` for symptoms, failures, regressions, or unclear root cause.
    - `prototype-spike` for proposal/design feasibility risks.
    - `verification-first` for validation choice and evidence reporting.
-7. Plan one bounded implementation slice. State rollback and validation.
-8. Implement only the agreed slice when the user asked for implementation.
-9. After meaningful code edits, run `simplify` or explicitly explain why it does
+7. Apply the implementation-design trigger rule before task slicing. Require an
+   `implementation-design/` topology pack when work crosses subsystem
+   boundaries, touches 2+ modules with dependency risk, adds lifecycle/failure
+   semantics, or needs dependency/file/class/test-seam constraints. Otherwise
+   record the no-design reason.
+8. Plan one bounded implementation slice. State scope, subsystem, module,
+   changed surfaces, prerequisites, validation, rollback, and review owner.
+9. Implement only the agreed slice when the user asked for implementation.
+10. After meaningful code edits, run `simplify` or explicitly explain why it does
    not apply.
-10. Review the slice with a review packet and gate decision.
-11. Verify with repository-owned commands or source evidence.
-12. Persist only high-signal results in the owning artifact. Use `reviews/` and
+11. Review the slice with a review packet and gate decision.
+12. Verify with repository-owned commands or source evidence.
+13. Persist only high-signal results in the owning artifact. Use `reviews/` and
    `timeline/` sparingly; do not create process logs for routine steps.
 
 ## Output

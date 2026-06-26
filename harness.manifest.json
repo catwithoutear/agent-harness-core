@@ -682,8 +682,72 @@
         "id": "change-workspace-readme",
         "kind": "change",
         "source": "templates/changes/README.md",
-        "target": ".changes/<assetId>/README.md",
+        "target": ".changes/templates/README.md",
         "description": "Generic change workspace index template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-readme",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/README.md",
+        "target": ".changes/templates/implementation-design/README.md",
+        "description": "Detailed implementation design index template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-problem",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/01-problem.md",
+        "target": ".changes/templates/implementation-design/01-problem.md",
+        "description": "Implementation design problem and boundary template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-code-topology",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/02-code-topology.md",
+        "target": ".changes/templates/implementation-design/02-code-topology.md",
+        "description": "Implementation design subsystem and module topology template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-class-design",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/03-class-design.md",
+        "target": ".changes/templates/implementation-design/03-class-design.md",
+        "description": "Implementation design class and interface template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-runtime-flow",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/04-runtime-flow.md",
+        "target": ".changes/templates/implementation-design/04-runtime-flow.md",
+        "description": "Implementation design runtime flow template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-error-model",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/05-error-model.md",
+        "target": ".changes/templates/implementation-design/05-error-model.md",
+        "description": "Implementation design error model template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-plan",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/06-implementation-plan.md",
+        "target": ".changes/templates/implementation-design/06-implementation-plan.md",
+        "description": "Implementation design plan and traceability template.",
+        "clients": ["codex", "claude", "opencode", "omp"]
+      },
+      {
+        "id": "implementation-design-constraints",
+        "kind": "change",
+        "source": "templates/changes/implementation-design/07-constraints.md",
+        "target": ".changes/templates/implementation-design/07-constraints.md",
+        "description": "Implementation design constraints and self-check template.",
         "clients": ["codex", "claude", "opencode", "omp"]
       },
       {

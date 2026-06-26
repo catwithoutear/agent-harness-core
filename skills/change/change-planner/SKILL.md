@@ -19,6 +19,9 @@ Use this skill for:
 
 - deriving `tasks.md` or `tasks/*.md` slices from `requirements.md`,
   `proposal.md`, `design.md`, `specs/`, or `implementation-design/`;
+- checking whether detailed implementation design is concrete enough to guide
+  coding through subsystem/module topology, file/class mapping, runtime flow,
+  error model, traceability, and coding constraints;
 - refining a broad plan into implementation slices with validation gates;
 - replanning after design review or code review changes the task order;
 - checking whether a plan is ready for implementation delegation.
@@ -50,6 +53,22 @@ If any item is missing, read the workspace through `change-workspace-operator`
 commands before planning. If the selected behavior or contract is still
 ambiguous, return `NEEDS_USER_DECISION` instead of inventing tasks.
 
+## Implementation-Design Trigger Rule
+
+Before task slicing, decide whether the change needs an
+`implementation-design/` topology pack. Require it when any of these are true:
+
+- the change crosses subsystem boundaries;
+- the change touches two or more modules with dependency-order risk;
+- the design introduces lifecycle, state transition, concurrency, failure,
+  rollback, migration, or idempotency semantics;
+- implementation needs explicit dependency bans, file/class ownership, or test
+  seam mapping to keep agents from improvising structure.
+
+For localized work that does not meet those triggers, write an explicit
+no-design reason in the slice and keep the lightweight path. Do not generate a
+seven-file pack only to leave empty tables.
+
 ## Planning Flow
 
 1. Locate and read the active change through `harness-change-doc` or the
@@ -72,8 +91,9 @@ ambiguous, return `NEEDS_USER_DECISION` instead of inventing tasks.
    validation path.
 5. Order slices by dependency, risk, and reviewability. Prefer small,
    independently reviewable slices over file-based batching.
-6. For each slice, record source-design traceability, implementation steps,
-   validation, rollback/revert notes, and open decisions.
+6. For each slice, record source-design traceability, subsystem, module,
+   concrete files/classes, implementation steps, validation, rollback/revert
+   notes, and open decisions.
 7. Write or update task artifacts only through the change workspace's regulated
    creation path. For this harness, use `harness-change-doc add-task-slice`
    before hand-editing task content.
@@ -91,6 +111,9 @@ ambiguous, return `NEEDS_USER_DECISION` instead of inventing tasks.
   unavailable, write the gap and the substitute evidence.
 - Preserve traceability: every task should point back to the design artifact,
   requirement, spec scenario, review finding, or user decision that created it.
+- Preserve topology: when `implementation-design/` exists, each task should name
+  the owning subsystem and module. If there is only one subsystem, say so
+  explicitly instead of inventing extra boundaries.
 - Preserve evidence lineage: when a task depends on architecture scouting,
   diagnosis, a prototype spike, or validation-first analysis, name that record
   in the slice.
@@ -108,12 +131,17 @@ template:
 - Source design: <artifact/section or explicit no-design reason>
 - Goal: <observable behavior or artifact outcome>
 - Non-goals: <excluded behavior, cleanup, or future work>
-- Files/modules: <likely touchpoints and why>
+- Scope: <one behavior, contract, migration, test, documentation, or rollout concern>
+- Subsystem: <capability/runtime boundary, or explicit single-subsystem note>
+- Module: <code organization boundary>
+- Changed surfaces: <files/classes/config/docs/tests and why>
+- Prerequisites: <dependencies, migrations, decisions, or none>
 - Steps:
   1. <small implementation or document step>
   2. <next step>
 - Validation: <commands, tests, review checks, or documented gap>
 - Review packet: <what evidence the reviewer needs>
+- Review owner: <role, reviewer type, or N/A reason>
 - Rollback: <revert path, feature flag, migration rollback, or N/A reason>
 - Open decisions: <none, or owner/user decision required>
 ```
@@ -129,7 +157,9 @@ End with exactly one gate decision:
 - `READY_WITH_NOTES`: implementable, with documented non-blocking gaps or known
   validation limits.
 - `NOT_READY`: tasks are missing core behavior, traceability, validation, or
-  dependency ordering.
+  dependency ordering. Also use `NOT_READY` when implementation depends on a
+  detailed design that lacks code topology, file/class mapping, runtime/failure
+  flow, or coding constraints.
 - `NEEDS_USER_DECISION`: implementation depends on a user/owner choice that the
   artifacts do not answer.
 
@@ -144,13 +174,18 @@ list merely repeats the design headings without implementation steps.
 - Source design: design.md "Timeout contract"; specs/auth-timeout.md scenario 2
 - Goal: protected operation fails with timeout error after the configured limit
 - Non-goals: changing authentication policy or retry backoff
-- Files/modules: request handler for timeout check; config reader for limit
+- Scope: one request-timeout behavior and its validation
+- Subsystem: protected request execution
+- Module: request handler and config reader
+- Changed surfaces: request handler for timeout check; config reader for limit; timeout tests
+- Prerequisites: timeout setting is already defined
 - Steps:
   1. Read configured timeout at operation start.
   2. Thread deadline through the protected call path.
   3. Return the documented timeout error when deadline expires.
 - Validation: unit test for expired deadline; integration smoke for successful path
 - Review packet: config default, error mapping, timeout test output
+- Review owner: reviewer for behavior and validation evidence
 - Rollback: revert handler/config changes; no persisted migration
 - Open decisions: none
 ```

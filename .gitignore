@@ -1,7 +1,9 @@
 # Local runtime projection created by harness-project self-hosting.
 .agents/
 .codex/
+.changes/templates/
 .harness/
+.memory/
 .rules/
 
 # Source files that common developer-global ignore rules may otherwise hide.

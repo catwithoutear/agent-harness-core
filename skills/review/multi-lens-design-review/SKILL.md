@@ -41,6 +41,9 @@ Use these lens families as needed:
 
 - `boundary_contracts`: module ownership, APIs, data contracts, dependency
   direction, compatibility, and non-goals.
+- `topology_readiness`: subsystem boundaries, module boundaries, directory/file
+  mapping, class responsibility tables, lifecycle diagrams, sequence diagrams,
+  and dependency constraints that must guide implementation.
 - `control_lifecycle`: state transitions, lifecycle ownership, retry,
   idempotency, concurrency, cleanup, and feedback loops.
 - `failure_recovery`: failure modes, rollback, partial failure, migration,
@@ -93,11 +96,27 @@ Decision: `NOT_READY` if the design never states who owns retry exhaustion and
 rollback. Decision: `READY_WITH_NOTES` if rollback is explicitly deferred with
 owner, risk, and a validation follow-up.
 
+Target: an implementation-design pack required by the workflow trigger rule.
+
+Selected lenses:
+
+- `topology_readiness` because implementation agents need subsystem/module
+  boundaries, file/class mappings, and coding constraints.
+- `control_lifecycle` because the design has long-lived objects and state
+  transitions.
+
+Decision: `NOT_READY` if the design has a class diagram but no responsibility
+table, no runtime/failure flow, or no requirement-to-file/test traceability.
+Decision: `READY_WITH_NOTES` if one subsystem intentionally collapses into one
+module and that simplification is explicit.
+
 ## Common Mistakes
 
 - Freezing a design because it is well written but not implementable.
 - Treating missing code anchors as a prose-quality issue rather than a
   readiness issue.
+- Treating a class diagram as sufficient detailed design when it cannot map to
+  files, tests, implementation steps, and dependency constraints.
 - Running every lens and burying the real blocker.
 - Rewriting the design during a review-only pass.
 - Losing accepted deferrals during synthesis.

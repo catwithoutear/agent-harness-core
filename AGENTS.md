@@ -9,8 +9,9 @@ project-agnostic and reusable across target repositories.
   capability contract.
 - Treat `skills/`, `agents/roles/`, `rules/`, `hooks/intents/`, `commands/`,
   `templates/`, `lib/`, and `schemas/` as source.
-- Treat `.agents/`, `.codex/`, `.rules/`, and `.harness/` as projected runtime
-  output when they exist. Do not hand-edit projected files.
+- Treat `.agents/`, `.codex/`, `.changes/templates/`, `.memory/`, `.rules/`,
+  and `.harness/` as projected runtime output when they exist. Do not hand-edit
+  projected files.
 - For non-trivial work, use the evidence-gated workflow: observe, gather
   source-verified context, plan, review the plan when risk warrants it,
   implement a bounded slice, review, verify, then hand off.
@@ -35,6 +36,10 @@ project-agnostic and reusable across target repositories.
 - Use `harness-change-doc` and `harness-change-validate` for regulated change
   workspace state when a task needs durable planning, review, or handoff
   records.
+- When the implementation-design trigger rule applies, use `harness-change-doc
+  add-implementation-design` to create the standard topology pack. Keep
+  `Subsystem` for capability/runtime boundaries and `Module` for code
+  organization boundaries.
 - Keep README material user-facing and stable. Put detailed procedure in skills,
   rules, or implementation docs.
 
@@ -46,7 +51,7 @@ Install this repository's own Codex runtime projection from source assets:
 node bin/harness-project.js \
   --target . \
   --clients codex \
-  --content rules,skills,subagents,hooks \
+  --content rules,templates,skills,subagents,hooks \
   --conflict overwrite \
   --json
 ```
@@ -57,7 +62,7 @@ Verify the projection:
 node bin/harness-project.js \
   --target . \
   --clients codex \
-  --content rules,skills,subagents,hooks \
+  --content rules,templates,skills,subagents,hooks \
   --verify --json
 ```
 
@@ -68,6 +73,6 @@ Run these checks before handoff after changing source assets:
 ```bash
 npm test
 node bin/harness.js manifest --json
-node bin/harness-project.js --target . --clients codex --content rules,skills,subagents,hooks --verify --json
+node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --verify --json
 git diff --check
 ```

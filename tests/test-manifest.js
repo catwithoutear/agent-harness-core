@@ -16,6 +16,7 @@ export async function run(test) {
     assert.equal(result.summary.skills, 27);
     assert.equal(result.summary.agents, 10);
     assert.equal(result.summary.hooks, 6);
+    assert.equal(result.summary.templates, 10);
   });
 
   await test("manifest uses core command names", () => {
@@ -50,4 +51,16 @@ export async function run(test) {
       );
     }
   });
+
+  await test("install documentation includes templates in full projection", () => {
+    const required = "--content rules,templates,skills,subagents,hooks";
+    const readme = fs.readFileSync(path.join(packageRoot, "README.md"), "utf8");
+    const agents = fs.readFileSync(path.join(packageRoot, "AGENTS.md"), "utf8");
+    assert.equal(occurrences(readme, required), 6);
+    assert.equal(occurrences(agents, required), 3);
+  });
+}
+
+function occurrences(text, value) {
+  return text.split(value).length - 1;
 }

@@ -150,6 +150,70 @@ export async function run(test) {
     });
   });
 
+  await test("projection includes change workspace templates", () => {
+    withTempTarget((target) => {
+      const dryRun = capture(() =>
+        runHarnessProject(["--target", target, "--dry-run", "--json", "--clients", "codex", "--content", "templates"])
+      );
+      assert.equal(dryRun.status, 0, dryRun.stderr);
+      const dryRunPayload = JSON.parse(dryRun.stdout);
+      const targets = dryRunPayload.records.map((record) => record.target);
+      assert.equal(dryRunPayload.summary.templates, 10);
+      assert(targets.some((entry) => entry.endsWith(".changes/templates/README.md")));
+      assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/README.md")));
+      assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/07-constraints.md")));
+      for (const record of dryRunPayload.records) {
+        if (record.content_kind === "templates" && record.asset_id.startsWith("change-")) {
+          assert(
+            record.target.includes(`${path.sep}.changes${path.sep}templates${path.sep}`),
+            `${record.asset_id} target should stay under .changes/templates/: ${record.target}`
+          );
+        }
+      }
+
+      const project = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "codex",
+          "--content",
+          "templates",
+          "--json"
+        ])
+      );
+      assert.equal(project.status, 0, project.stdout + project.stderr);
+      assert.equal(fs.existsSync(path.join(target, ".changes", "templates", "README.md")), true);
+      assert.equal(fs.existsSync(path.join(target, ".changes", "change-workspace-readme", "README.md")), false);
+      const templatePath = path.join(target, ".changes", "templates", "implementation-design", "README.md");
+      assert.equal(fs.existsSync(templatePath), true);
+      assert.match(fs.readFileSync(templatePath, "utf8"), /Subsystem/);
+      assert.match(fs.readFileSync(templatePath, "utf8"), /Minimum Use \/ N\/A Rule/);
+
+      const verify = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--verify",
+          "--mode",
+          "copy",
+          "--clients",
+          "codex",
+          "--content",
+          "templates",
+          "--json"
+        ])
+      );
+      assert.equal(verify.status, 0, verify.stdout + verify.stderr);
+      const verifyPayload = JSON.parse(verify.stdout);
+      assert.equal(verifyPayload.errors.length, 0);
+    });
+  });
+
   await test("default projection materializes files instead of symlinking", () => {
     withTempTarget((target) => {
       const project = capture(() =>

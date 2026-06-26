@@ -10,6 +10,7 @@ import policy
 
 
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 
 
 def read_text(path: Path) -> str:
@@ -334,6 +335,94 @@ def command_add_terminology(args) -> int:
     return 0
 
 
+IMPLEMENTATION_DESIGN_DOCS = [
+    {
+        "file": "01-problem.md",
+        "description": "Detailed design problem, goals, non-goals, and boundaries.",
+    },
+    {
+        "file": "02-code-topology.md",
+        "description": "Subsystem and module topology, dependency direction, and forbidden dependencies.",
+    },
+    {
+        "file": "03-class-design.md",
+        "description": "Class/interface design, responsibility table, ownership, lifecycle, and test seams.",
+    },
+    {
+        "file": "04-runtime-flow.md",
+        "description": "Object lifecycle, normal flow, failure flow, rollback flow, and state transitions.",
+    },
+    {
+        "file": "05-error-model.md",
+        "description": "Error contract, retry, rollback, idempotency, and observability model.",
+    },
+    {
+        "file": "06-implementation-plan.md",
+        "description": "Smallest verifiable implementation steps mapped to subsystems, modules, files, and tests.",
+    },
+    {
+        "file": "07-constraints.md",
+        "description": "Design constraints, anti-pattern checks, and readiness self-review.",
+    },
+]
+
+
+def command_add_implementation_design(args) -> int:
+    root = Path(args.repo_root).resolve()
+    target = ensure_change_exists(root, args.task)
+    if target is None:
+        return 2
+    if not is_structured_change_workspace(target):
+        print(
+            f"ERROR: add-implementation-design requires a structured change workspace with README.md and specs/README.md: {target}",
+            file=sys.stderr,
+        )
+        print("GUIDE: create or migrate the structured workspace before adding implementation-design.", file=sys.stderr)
+        return 1
+
+    directory = target / "implementation-design"
+    tags = split_csv(args.tags) if args.tags else ["design", "implementation"]
+    description = args.description or "Detailed implementation design pack."
+    created: list[Path] = []
+    skipped: list[Path] = []
+
+    index_body = front_matter("implementation-design-index", args.status, tags, description)
+    index_body += implementation_design_template_body("README.md")
+    write_design_file(directory / "README.md", index_body, args.force, created, skipped)
+
+    for doc in IMPLEMENTATION_DESIGN_DOCS:
+        body = front_matter("implementation-design-detail", args.status, tags, doc["description"])
+        body += implementation_design_template_body(doc["file"])
+        write_design_file(directory / doc["file"], body, args.force, created, skipped)
+
+    for path in created:
+        print(path)
+    for path in skipped:
+        print(f"SKIP existing: {path}")
+    return 0
+
+
+def is_structured_change_workspace(target: Path) -> bool:
+    return (target / "README.md").exists() and (target / "specs" / "README.md").exists()
+
+
+def implementation_design_template_body(file_name: str) -> str:
+    template_path = PACKAGE_ROOT / "templates" / "changes" / "implementation-design" / file_name
+    return strip_front_matter(read_text(template_path))
+
+
+def strip_front_matter(text: str) -> str:
+    return re.sub(r"^---\n[\s\S]*?\n---\n+", "", text)
+
+
+def write_design_file(path: Path, body: str, force: bool, created: list[Path], skipped: list[Path]) -> None:
+    if path.exists() and not force:
+        skipped.append(path)
+        return
+    write_text(path, body)
+    created.append(path)
+
+
 def command_add_decision(args) -> int:
     return add_child_document(
         args,
@@ -367,7 +456,15 @@ def command_add_task_slice(args) -> int:
         filename_builder=lambda directory_path: f"slice-{next_number(directory_path, r'slice-(\d+)'):03d}-{kebab_slug(args.slug)}.md",
         order_builder=lambda path: path.stem.split("-", 2)[1],
         title=f"Slice: {args.slug}",
-        sections=["## Objective", "## Scope", "## Steps", "- [ ] ", "## Validation", "- [ ] "],
+        sections=[
+            "## Objective",
+            "## Scope\n\n- Source design:\n- Goal:\n- Non-goals:\n- Scope:\n- Subsystem:\n- Module:\n- Changed surfaces:\n- Prerequisites:",
+            "## Steps\n\n- [ ] ",
+            "## Validation\n\n- [ ] ",
+            "## Review\n\n- Review packet:\n- Review owner:",
+            "## Rollback\n\n- ",
+            "## Open Decisions\n\n- None",
+        ],
     )
 
 
@@ -606,6 +703,14 @@ def build_parser():
     terminology_parser.add_argument("--description")
     terminology_parser.add_argument("--force", action="store_true")
     terminology_parser.set_defaults(func=command_add_terminology)
+
+    implementation_design_parser = subparsers.add_parser("add-implementation-design")
+    implementation_design_parser.add_argument("task")
+    implementation_design_parser.add_argument("--status", default="draft")
+    implementation_design_parser.add_argument("--tags", default="design,implementation")
+    implementation_design_parser.add_argument("--description")
+    implementation_design_parser.add_argument("--force", action="store_true")
+    implementation_design_parser.set_defaults(func=command_add_implementation_design)
 
     decision_parser = subparsers.add_parser("add-decision")
     decision_parser.add_argument("task")
