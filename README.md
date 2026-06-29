@@ -62,6 +62,64 @@ npx @catwithoutear/agent-harness-core harness-project \
   --verify --json
 ```
 
+## AI Installation Prompts
+
+Copy one of these prompts into an AI coding agent when you want it to install
+the core harness. Replace placeholders before running commands.
+
+### Project Scope
+
+```text
+Install Agent Harness Core into this repository.
+
+Use a real copy install, not symlinks. First inspect the current git status and
+do not overwrite unrelated user changes. Then run a dry-run:
+
+node <agent-harness-core>/bin/harness-project.js \
+  --target <repo> \
+  --clients codex,claude,opencode,omp \
+  --scope project \
+  --content rules,templates,skills,subagents,hooks,commands \
+  --mode copy \
+  --conflict backup \
+  --dry-run --json
+
+Explain the planned targets, conflicts, and unsupported-client warnings. If the
+plan is acceptable, run the same command without --dry-run. Then verify by
+replacing --dry-run --json with --verify --json.
+
+Keep generated runtime files as projection outputs. Edit source assets and
+rerun the projector instead of hand-editing projected files.
+```
+
+### User Global Scope
+
+```text
+Install Agent Harness Core into my user-global agent environment.
+
+Confirm this is intended because global assets affect every repository for this
+user. Do not project repository rules or templates globally. Use a real copy
+install, not symlinks. Use <state-target> only for projection state; do not
+choose an unrelated repository unless it is acceptable to write
+.harness/projection-state.json there.
+
+First run:
+
+node <agent-harness-core>/bin/harness-project.js \
+  --target <state-target> \
+  --clients codex,claude,opencode,omp \
+  --scope global \
+  --content skills,subagents,hooks,commands \
+  --mode copy \
+  --conflict backup \
+  --dry-run --json
+
+For Codex, command prompts project to ~/.codex/prompts/ and are deprecated
+personal shortcuts; prefer skills for shared reusable behavior. If the dry-run
+is acceptable, run the same command without --dry-run. Then verify by replacing
+--dry-run --json with --verify --json.
+```
+
 ## Change Workspace Design Packs
 
 When the implementation-design trigger rule applies, create the detailed design
