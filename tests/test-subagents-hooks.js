@@ -25,7 +25,9 @@ export async function run(test) {
       assert.equal(result.status, 0, result.stdout + result.stderr);
       const codex = fs.readFileSync(path.join(target, ".codex", "agents", "reviewer.toml"), "utf8");
       const claude = fs.readFileSync(path.join(target, ".claude", "agents", "reviewer.md"), "utf8");
-      assert.match(codex, /prompt = '''/);
+      assert.match(codex, /name = "reviewer"/);
+      assert.match(codex, /developer_instructions = '''/);
+      assert.doesNotMatch(codex, /^prompt =/m);
       assert.match(codex, /# Reviewer/);
       assert.match(claude, /name: reviewer/);
       assert.match(claude, /# Reviewer/);
