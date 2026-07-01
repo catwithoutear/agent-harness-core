@@ -150,6 +150,70 @@ export async function run(test) {
     });
   });
 
+  await test("projected simplification assets preserve scope and coverage contracts", () => {
+    withTempTarget((target) => {
+      const project = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "codex,claude,opencode,omp",
+          "--content",
+          "skills,subagents",
+          "--json"
+        ])
+      );
+      assert.equal(project.status, 0, project.stdout + project.stderr);
+
+      const simplifyPath = path.join(target, ".agents", "skills", "simplify", "SKILL.md");
+      const grillDiffPath = path.join(target, ".agents", "skills", "grill-diff", "SKILL.md");
+      const simplifierAgentPath = path.join(target, ".codex", "agents", "code-simplifier.toml");
+      assert.equal(fs.existsSync(simplifyPath), true);
+      assert.equal(fs.existsSync(grillDiffPath), true);
+      assert.equal(fs.existsSync(simplifierAgentPath), true);
+
+      const simplify = fs.readFileSync(simplifyPath, "utf8");
+      assert.match(simplify, /Scope Packet/);
+      assert.match(simplify, /merge-base/);
+      assert.match(simplify, /git log <base>\.\.HEAD/);
+      assert.match(simplify, /edit_authorized/);
+      assert.match(simplify, /requested_mode=apply/);
+      assert.match(simplify, /requested_mode=opportunities/);
+      assert.match(simplify, /Pass the Scope Packet to `code-simplifier`/);
+      assert.match(simplify, /Do not treat an empty current diff as an empty review/);
+
+      const grillDiff = fs.readFileSync(grillDiffPath, "utf8");
+      assert.match(grillDiff, /Read-only by default/);
+      assert.match(grillDiff, /ordinary PR\/MR review/);
+      assert.match(grillDiff, /step through/);
+
+      const simplifierAgent = fs.readFileSync(simplifierAgentPath, "utf8");
+      assert.match(simplifierAgent, /developer_instructions/);
+      assert.match(simplifierAgent, /edit_authorized=true/);
+      assert.match(simplifierAgent, /requested_mode=opportunities/);
+      assert.match(simplifierAgent, /NEEDS_AUTHORIZATION/);
+      assert.match(simplifierAgent, /Unit Inventory/);
+      assert.match(simplifierAgent, /every class, function, method, and key block/);
+      assert.match(simplifierAgent, /coverage complete/);
+
+      for (const projected of [
+        path.join(target, ".claude", "agents", "code-simplifier.md"),
+        path.join(target, ".opencode", "agents", "code-simplifier.md"),
+        path.join(target, ".omp", "agents", "code-simplifier.md")
+      ]) {
+        assert.equal(fs.existsSync(projected), true, `${projected} missing`);
+        const text = fs.readFileSync(projected, "utf8");
+        assert.match(text, /edit_authorized=true/);
+        assert.match(text, /NEEDS_AUTHORIZATION/);
+        assert.match(text, /EvidenceRef is/);
+      }
+    });
+  });
+
   await test("projection includes change workspace templates", () => {
     withTempTarget((target) => {
       const dryRun = capture(() =>

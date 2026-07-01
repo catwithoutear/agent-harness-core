@@ -2,9 +2,24 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseFrontMatter } from "../lib/change/markdown.js";
 import { runHarnessProject } from "../lib/project/projector.js";
 
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
 export async function run(test) {
+  await test("subagent manifest descriptions match role frontmatter", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    for (const agent of manifest.assets.agents) {
+      const rolePath = path.join(packageRoot, agent.source);
+      assert.equal(fs.existsSync(rolePath), true, `${agent.id} source missing`);
+      const meta = parseFrontMatter(rolePath);
+      assert.equal(meta.name, agent.runtimeName, `${agent.id} runtime name drifted`);
+      assert.equal(meta.description, agent.description, `${agent.id} description drifted`);
+    }
+  });
+
   await test("subagent projection renders client-native files", () => {
     withTempTarget((target) => {
       const result = capture(() =>

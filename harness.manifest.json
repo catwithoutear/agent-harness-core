@@ -283,10 +283,10 @@
         "audience": "model",
         "source": "skills/workflow/simplify",
         "runtimeName": "simplify",
-        "description": "Use when authorized code changes were made and a behavior-preserving simplification pass should inspect recently modified code, dispatch code-simplifier, and improve clarity before final verification.",
-        "triggers": ["after code edit", "post-implementation cleanup", "simplify changed code", "code-simplifier", "clarity pass"],
+        "description": "Use when authorized code changes need a behavior-preserving simplification pass across the current task scope, including uncommitted diffs and task commits, before final verification.",
+        "triggers": ["after code edit", "post-implementation cleanup", "simplify changed code", "code-simplifier", "clarity pass", "deep simplification", "unit-by-unit cleanup"],
         "negativeTriggers": ["docs-only edit", "format-only edit", "generated output", "one-line mechanical edit", "review-only request", "externally authored diff without edit permission"],
-        "requires": ["recent code diff", "behavior invariants", "relevant validation target"],
+        "requires": ["task scope packet", "behavior invariants", "relevant validation target"],
         "priority": 90,
         "clients": ["codex", "claude", "opencode", "omp"]
       },
@@ -439,10 +439,10 @@
         "audience": "user",
         "source": "skills/review/grill-diff",
         "runtimeName": "grill-diff",
-        "description": "Use when reviewing local code changes chunk by chunk, validating a diff interactively, explaining every modified hunk, or the user asks to grill my diff, do a chunk review, or question each change.",
-        "triggers": ["grill my diff", "chunk review", "review each hunk", "question each change", "interactive diff review"],
-        "negativeTriggers": ["large broad diff", "pure formatting", "design-only discussion", "already merged code"],
-        "requires": ["current code diff", "source context around changed chunks"],
+        "description": "Use when the user explicitly asks to grill, chunk-review, review each hunk or change, question each change, or step through a local diff or task commit range interactively.",
+        "triggers": ["grill my diff", "chunk review", "review each hunk", "review each change", "question each change", "interactive diff review", "step through task commit range"],
+        "negativeTriggers": ["large broad diff", "pure formatting", "design-only discussion", "already merged code", "ordinary PR/MR review", "findings-first review", "review packet or gate review", "broad risk-ordered review"],
+        "requires": ["task scope packet", "source context around changed chunks"],
         "priority": 80,
         "clients": ["codex", "claude", "opencode", "omp"]
       },
@@ -629,7 +629,7 @@
         "kind": "specialist",
         "source": "agents/roles/code-simplifier.md",
         "runtimeName": "code-simplifier",
-        "description": "Simplify recently modified code for clarity while preserving behavior and tests.",
+        "description": "Use when a simplification Scope Packet asks for apply or opportunities mode across explicit coverage modes.",
         "clients": ["codex", "claude", "opencode", "omp"]
       }
     ],

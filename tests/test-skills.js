@@ -293,7 +293,7 @@ export async function run(test) {
 
     const codeSimplifier = fs.readFileSync(path.join(packageRoot, "agents", "roles", "code-simplifier.md"), "utf8");
     assert.match(codeSimplifier, /Round 1/);
-    assert.match(codeSimplifier, /Code paths explored/);
+    assert.match(codeSimplifier, /Unit Inventory/);
     assert.match(codeSimplifier, /behavior-preserving simplification changes/);
 
     const workflowControl = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
@@ -318,5 +318,110 @@ export async function run(test) {
     assert(byId["technical-doc-refinement"].triggers.includes("release notes"));
     assert(byId.simplify.negativeTriggers.includes("review-only request"));
     assert(byId.simplify.negativeTriggers.includes("externally authored diff without edit permission"));
+  });
+
+  await test("simplification review resolves task scope before inspecting code", () => {
+    const simplify = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"), "utf8");
+    for (const required of [
+      "Scope Packet",
+      "git diff --cached",
+      "git log <base>..HEAD",
+      "git diff <base>..HEAD",
+      "merge-base",
+      "MR target",
+      "upstream tracking branch",
+      "repository default branch",
+      "candidate bases",
+      "included commits",
+      "edit_authorized",
+      "requested_mode=apply",
+      "requested_mode=opportunities",
+      "behavior_invariants",
+      "validation_target",
+      "Pass the Scope Packet to `code-simplifier`",
+      "active `.changes/<task>/`",
+      "quick",
+      "standard",
+      "deep",
+      "Use a deep pass only when",
+      "user explicitly asks",
+      "unit-by-unit cleanup",
+      "simplification/refactor task",
+      "authorized slice is itself de-redundancy",
+      "effective logic diff lines <= 40",
+      "changed units <= 3",
+      "Do not treat an empty current diff as an empty review"
+    ]) {
+      assert.match(simplify, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const codeSimplifier = fs.readFileSync(path.join(packageRoot, "agents", "roles", "code-simplifier.md"), "utf8");
+    for (const required of [
+      "Scope Packet",
+      "edit_authorized=true",
+      "requested_mode",
+      "requested_mode=apply",
+      "requested_mode=opportunities",
+      "behavior_invariants",
+      "validation_target",
+      "NEEDS_AUTHORIZATION",
+      "NEEDS_DECISION",
+      "NO_SAFE_SIMPLIFICATION",
+      "VALIDATION_FAILED",
+      "opportunities-only",
+      "Do not stage, commit, push, publish",
+      "external systems",
+      "active `.changes/<task>/`",
+      "Unit Inventory",
+      "every class, function, method, and key block",
+      "trivial units",
+      "essential",
+      "optional",
+      "redundant",
+      "keep",
+      "simplify",
+      "replace",
+      "remove",
+      "coverage complete",
+      "EvidenceRef is",
+      "reviewer",
+      "grill-diff"
+    ]) {
+      assert.match(codeSimplifier, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const grillDiff = fs.readFileSync(path.join(packageRoot, "skills", "review", "grill-diff", "SKILL.md"), "utf8");
+    for (const required of [
+      "Scope Packet",
+      "user explicitly asks",
+      "review each hunk or change",
+      "step through",
+      "current uncommitted diff",
+      "task commit range",
+      "already submitted commits",
+      "Read-only by default",
+      "Do not edit, stage, commit, push",
+      "ordinary PR/MR review",
+      "findings-first review",
+      "review packet",
+      "gate review",
+      "broad risk-ordered review",
+      "necessity",
+      "Do not rely on `git diff` alone"
+    ]) {
+      assert.match(grillDiff, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const manifestJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const byId = Object.fromEntries(manifestJson.assets.skills.map((skill) => [skill.id, skill]));
+    assert(byId.simplify.triggers.includes("deep simplification"));
+    assert(byId.simplify.requires.includes("task scope packet"));
+    assert(byId["grill-diff"].requires.includes("task scope packet"));
+    assert(byId["grill-diff"].triggers.includes("step through task commit range"));
+    assert(!byId["grill-diff"].triggers.includes("review task commit range"));
+    assert(byId["grill-diff"].negativeTriggers.includes("ordinary PR/MR review"));
+    assert(byId["grill-diff"].negativeTriggers.includes("findings-first review"));
+    assert(byId["grill-diff"].negativeTriggers.includes("review packet or gate review"));
+    assert(byId["grill-diff"].negativeTriggers.includes("broad risk-ordered review"));
   });
 }
