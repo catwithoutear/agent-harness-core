@@ -42,6 +42,12 @@ project-agnostic and reusable across target repositories.
   organization boundaries.
 - Keep README material user-facing and stable. Put detailed procedure in skills,
   rules, or implementation docs.
+- When changing semantic content in `README.md` or `README_CN.md`, check the
+  paired file and keep both synchronized in the same change when meaning,
+  commands, sections, installation guidance, warnings, behavior claims, or
+  user-facing instructions change. Formatting-only, typo-only,
+  punctuation-only, or line-wrap-only edits do not require paired changes unless
+  they affect meaning.
 
 ## Codex Self-Hosting
 

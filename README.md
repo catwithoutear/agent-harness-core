@@ -2,6 +2,8 @@
 
 Generic multi-client agent harness core for repository-aware AI workflows.
 
+Chinese translation: [README_CN.md](README_CN.md).
+
 This package provides reusable workflow contracts, change workspace tooling,
 memory contracts, skills, subagents, hooks, slash command prompts, and client
 projection utilities. It is the project-agnostic core layer: product,
@@ -118,6 +120,28 @@ For Codex, command prompts project to ~/.codex/prompts/ and are deprecated
 personal shortcuts; prefer skills for shared reusable behavior. If the dry-run
 is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
+```
+
+## User-Global Agent Constitution
+
+The reusable user-global instruction template lives at
+`templates/user-global/AGENTS.md`.
+
+This template is documentation-only. It is not listed in
+`harness.manifest.json`, is not projected by `harness-project`, and does not
+write to any user-global `AGENTS.md` automatically.
+
+Use it only when the user explicitly asks to install or update global agent
+instructions:
+
+```text
+Install the Agent Harness Core user-global constitution into my user-global
+agent instructions.
+
+Read templates/user-global/AGENTS.md first. Compare it with my existing
+user-global AGENTS.md or equivalent global instruction file. Propose the exact
+merge, explain conflicts or duplicated rules, and wait for confirmation before
+writing any global file.
 ```
 
 ## Change Workspace Design Packs

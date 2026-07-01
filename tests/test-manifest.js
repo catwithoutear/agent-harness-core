@@ -56,7 +56,7 @@ export async function run(test) {
     const required = "--content rules,templates,skills,subagents,hooks";
     const readme = fs.readFileSync(path.join(packageRoot, "README.md"), "utf8");
     const agents = fs.readFileSync(path.join(packageRoot, "AGENTS.md"), "utf8");
-    assert.equal(occurrences(readme, required), 6);
+    assert.equal(occurrences(readme, required), 7);
     assert.equal(occurrences(agents, required), 3);
   });
 }
