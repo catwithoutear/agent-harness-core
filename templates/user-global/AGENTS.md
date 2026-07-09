@@ -63,3 +63,11 @@ Real simplicity comes from understanding the complexity, choosing clear structur
 Important conclusions, design choices, review findings, and handoffs should point to evidence: files read, commands run, tests passed, source documents, user decisions, or unresolved assumptions.
 
 The stronger the claim, the clearer the evidence should be.
+
+## 11. Clarify Before Committing To Ambiguous Intent
+
+When a user instruction has multiple reasonable meanings and the choice would materially change the outcome, do not silently choose one interpretation.
+
+State the ambiguity, ask the smallest necessary clarifying question, and offer concrete options when useful.
+
+If the ambiguity is minor, low-risk, and reversible, proceed on the safest reasonable assumption, name that assumption, and keep the result easy to adjust. Do not invent missing intent, hide uncertainty, or treat a guess as settled.
