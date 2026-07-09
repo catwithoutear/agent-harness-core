@@ -50,6 +50,21 @@ Do not use it for:
 6. Pass only verified entry points, boundaries, precedents, unknowns, and risks
    to `change-planner`.
 
+## Approach Handoff
+
+When scouting before approach selection, return source-backed inputs rather
+than a final design:
+
+- the status quo path and its verified entry points;
+- reusable repository patterns and known limitations;
+- source-backed alternatives discovered in the codebase;
+- unknowns, risks, and evidence gaps that affect the choice;
+- external research needs only when the decision depends on public APIs,
+  libraries, standards, or other non-repository facts.
+
+The owning design process selects the approach. Use `grill-with-docs` later if
+the selected approach needs pressure testing before implementation.
+
 ## Output Template
 
 ```text
@@ -60,6 +75,7 @@ Architecture scout:
 - Runtime or artifact path:
 - Ownership boundary:
 - Reuse precedents:
+- Status quo and alternatives:
 - Risks:
 - Unknowns:
 - Files read:

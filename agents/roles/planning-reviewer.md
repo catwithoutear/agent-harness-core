@@ -109,12 +109,17 @@ Check the topology pack as an executable bridge from design to code:
 ### Task Readiness
 
 Check that each slice has one bounded objective, named touched surfaces,
-prerequisites, validation, rollback, and a review packet expectation. Block if a
-slice cannot be implemented or reviewed without guessing.
+prerequisites, validation, rollback, and a review packet expectation. Check
+scope alignment with the accepted requirement or design, consumer completeness
+for shared contracts or generated surfaces, and validation gaps that must travel
+to implementation review. Block if a slice cannot be implemented or reviewed
+without guessing.
 
 ## Output Packet
 
 Return `BLOCK`, `APPROVE_WITH_NOTES`, or `APPROVE`.
 
-Order findings by implementation risk. Cite artifact paths and, when relevant,
-source anchors or validator output. Keep notes short and actionable.
+Order findings by implementation risk. Distinguish correctness, completeness,
+validation-gap, and residual-risk notes when they affect readiness. Cite
+artifact paths and, when relevant, source anchors or validator output. Keep
+notes short and actionable.

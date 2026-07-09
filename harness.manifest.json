@@ -467,6 +467,14 @@
         "triggers": [
           "grill with docs",
           "stress-test against docs",
+          "challenge draft",
+          "challenge proposal",
+          "challenge design",
+          "challenge detailed design",
+          "challenge plan",
+          "poke holes in planning artifact",
+          "devil's advocate planning artifact",
+          "challenge selected approach before implementation",
           "terminology decision",
           "implementation direction",
           "artifact-backed questioning"

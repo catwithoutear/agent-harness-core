@@ -47,6 +47,9 @@ export async function run(test) {
     assert.match(text, /\bNOT_READY\b/);
     assert.match(text, /\bNEEDS_USER_DECISION\b/);
     assert.match(text, /\bNEEDS_COUNCIL\b/);
+    assert.match(text, /scope-alignment evidence/);
+    assert.match(text, /consumer completeness findings/);
+    assert.match(text, /validation-gap findings/);
     assert.doesNotMatch(text, /\bBLOCK\b/);
     assert.doesNotMatch(text, /\bAPPROVE\b/);
   });
@@ -73,7 +76,9 @@ export async function run(test) {
       "migration input",
       "README.md",
       "locate",
-      "read"
+      "read",
+      "confirmed, disputed, and unverifiable",
+      "scoping confidence"
     ]) {
       assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
@@ -172,6 +177,10 @@ export async function run(test) {
     const architectureScout = fs.readFileSync(path.join(packageRoot, "skills", "change", "architecture-scout", "SKILL.md"), "utf8");
     assert.match(architectureScout, /source-backed research/);
     assert.match(architectureScout, /change-planner/);
+    assert.match(architectureScout, /## Approach Handoff/);
+    assert.match(architectureScout, /status quo path/);
+    assert.match(architectureScout, /source-backed alternatives/);
+    assert.match(architectureScout, /external research needs only when/);
 
     const diagnose = fs.readFileSync(path.join(packageRoot, "skills", "change", "diagnose", "SKILL.md"), "utf8");
     assert.match(diagnose, /Hypothesis Table/);
@@ -261,6 +270,13 @@ export async function run(test) {
     assert.match(text, /review-only/);
     assert.match(text, /do not rewrite the document/i);
     assert.match(text, /multi-lens-design-review/);
+    assert.match(text, /## Scope Packet/);
+    assert.match(text, /confirmed source facts/);
+    assert.match(text, /disputed claims/);
+    assert.match(text, /unverifiable claims/);
+    assert.match(text, /## Approach Selection/);
+    assert.match(text, /status quo and reusable repository patterns/);
+    assert.match(text, /1-3 viable alternatives/);
   });
 
   await test("skill-only distribution docs distinguish full harness install", () => {
@@ -324,6 +340,15 @@ export async function run(test) {
 
     const grillWithDocs = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "grill-with-docs", "SKILL.md"), "utf8");
     assert.match(grillWithDocs, /repository-owned artifact/);
+    assert.match(grillWithDocs, /Planning Artifact Challenge Pass/);
+    assert.match(grillWithDocs, /draft, proposal, plan, design, detailed\s+design/);
+    assert.match(grillWithDocs, /multi-lens-design-review/);
+    assert.match(grillWithDocs, /architecture-scout/);
+    assert.match(grillWithDocs, /design-doc-refiner/);
+    assert.match(grillWithDocs, /Extract explicit and implicit assumptions/);
+    assert.match(grillWithDocs, /Verify factual claims against artifacts or source/);
+    assert.match(grillWithDocs, /Run a pre-mortem/);
+    assert.match(grillWithDocs, /Do not create a new task structure, generate a design, or declare a formal\s+freeze\/readiness gate/);
     assert.doesNotMatch(grillWithDocs, /CONTEXT\.md/);
     assert.doesNotMatch(grillWithDocs, /\bADR\b/);
 
@@ -358,6 +383,14 @@ export async function run(test) {
     const byId = Object.fromEntries(manifestJson.assets.skills.map((skill) => [skill.id, skill]));
     assert(byId["technical-doc-refinement"].triggers.includes("PR description"));
     assert(byId["technical-doc-refinement"].triggers.includes("release notes"));
+    assert(byId["grill-with-docs"].triggers.includes("challenge draft"));
+    assert(byId["grill-with-docs"].triggers.includes("challenge proposal"));
+    assert(byId["grill-with-docs"].triggers.includes("challenge design"));
+    assert(byId["grill-with-docs"].triggers.includes("challenge detailed design"));
+    assert(byId["grill-with-docs"].triggers.includes("challenge plan"));
+    assert(byId["grill-with-docs"].triggers.includes("poke holes in planning artifact"));
+    assert(byId["grill-with-docs"].triggers.includes("devil's advocate planning artifact"));
+    assert(byId["grill-with-docs"].triggers.includes("challenge selected approach before implementation"));
     assert(byId.simplify.negativeTriggers.includes("review-only request"));
     assert(byId.simplify.negativeTriggers.includes("externally authored diff without edit permission"));
   });

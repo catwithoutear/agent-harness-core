@@ -34,6 +34,36 @@ preserve the gap as an ambiguity instead of inventing detail.
 7. Do not choose between unresolved product, ownership, or policy alternatives
    without evidence or user input.
 
+## Scope Packet
+
+Before choosing an approach, preserve the confidence of claims that affect the
+design:
+
+- confirmed source facts with artifact or source references;
+- disputed claims where repository evidence conflicts with the request;
+- unverifiable claims that must remain assumptions or questions;
+- outcome expectations, non-goals, constraints, code landscape, risk areas, and
+  scoping confidence.
+
+Do not turn disputed or unverifiable claims into implementation tasks. Keep
+them visible in the refined document or ambiguity table until evidence or the
+user resolves them.
+
+## Approach Selection
+
+When more than one credible approach exists, include a short approach-selection
+pass before writing implementation tasks:
+
+- success criteria for the selected direction;
+- the status quo and reusable repository patterns;
+- 1-3 viable alternatives with tradeoffs;
+- the recommended approach and why it wins for this task;
+- any research boundary, with external research used only when the decision
+  depends on public APIs, libraries, standards, or other non-repository facts.
+
+This is not a challenge pass. Use `grill-with-docs` when the selected approach
+needs evidence-backed pressure testing before coding.
+
 ## Refinement Rules
 
 - Convert vague claims into concrete implementation statements.

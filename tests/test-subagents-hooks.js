@@ -49,6 +49,10 @@ export async function run(test) {
     assert.match(role, /phase-appropriate evidence/);
     assert.match(role, /Document integrity/i);
     assert.match(role, /planned validation/i);
+    assert.match(role, /scope alignment/i);
+    assert.match(role, /consumer completeness/i);
+    assert.match(role, /validation gaps/i);
+    assert.match(role, /validation-gap/i);
     assert.match(role, /Return `BLOCK`, `APPROVE_WITH_NOTES`, or `APPROVE`/);
   });
 
@@ -76,8 +80,14 @@ export async function run(test) {
       assert.match(codex, /developer_instructions = '''/);
       assert.doesNotMatch(codex, /^prompt =/m);
       assert.match(codex, /# Reviewer/);
+      assert.match(codex, /scope-alignment/);
+      assert.match(codex, /consumer-completeness/);
+      assert.match(codex, /validation-gap/);
       assert.match(claude, /name: reviewer/);
       assert.match(claude, /# Reviewer/);
+      assert.match(claude, /scope-alignment/);
+      assert.match(claude, /consumer-completeness/);
+      assert.match(claude, /validation-gap/);
     });
   });
 

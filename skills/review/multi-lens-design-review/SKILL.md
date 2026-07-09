@@ -31,7 +31,7 @@ when multiple plausible targets would change the review.
 4. Select only lenses justified by the artifact shape and risk.
 5. Dispatch independent passes only for separable design risks.
 6. Synthesize one readiness report with blockers, should-fix notes, accepted
-   deferrals, and residual unknowns.
+   deferrals, validation gaps, and residual unknowns.
 7. Do not declare a design ready while blocking ambiguity, contradiction, or
    missing implementation contract remains.
 
@@ -65,6 +65,8 @@ readiness claim.
 - Mark inferred concerns as `Needs Confirmation` unless source or artifact
   evidence proves the risk.
 - Separate "missing from design" from "intentionally deferred."
+- Preserve accepted deferrals and validation gaps in the final verdict so they
+  travel into implementation tasks and review packets.
 - When code already exists, cite code only to confirm design feasibility or
   implementation mismatch; the primary review target remains the design.
 

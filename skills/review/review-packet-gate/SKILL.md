@@ -17,11 +17,28 @@ Require:
 - relevant design or requirement,
 - diff or artifact paths,
 - validation already run,
+- scope-alignment evidence for the accepted requirement or design,
+- changed contracts, consumers, or adjacent surfaces that must be complete,
+- validation gaps and whether each gap is a finding or accepted residual risk,
 - known residual risks.
 
 Reject the packet as `NOT_READY` when the scope, intended behavior, source
 artifact, or validation expectation is missing. Do not review a vague summary as
 if it were the diff.
+
+## Completeness Checks
+
+For implementation review, distinguish:
+
+- correctness findings: the changed behavior is wrong, unsafe, or regresses;
+- scope-alignment findings: the implementation does not match the accepted
+  requirement, design, or task slice;
+- consumer completeness findings: shared contracts, importers, callers,
+  projections, generated outputs, or paired documentation were not updated;
+- validation-gap findings: required evidence is missing or weaker than the
+  review gate claims;
+- accepted residual risks: gaps explicitly carried forward with owner, reason,
+  and follow-up path.
 
 ## Decision
 

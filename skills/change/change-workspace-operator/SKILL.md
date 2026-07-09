@@ -60,6 +60,11 @@ canonical change workspace.
 ## Example Flows
 
 - New task term: run `add-terminology`, fill the table, then validate the change.
+- Scope packet before design: record confirmed, disputed, and unverifiable
+  claims in `requirements.md`, `research.md`, `proposal.md`, or `design.md`
+  with source references, outcome expectations, constraints, code landscape,
+  risk areas, and scoping confidence. Do not create a new template unless the
+  existing owning artifact cannot hold the evidence.
 - Multi-worktree assignment: create the task slice first, then use
   `assign-slice` to write or update `execution-map.md`. The map owns scheduling
   fields; task slices own implementation details and evidence.
