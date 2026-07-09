@@ -17,6 +17,25 @@ organization boundaries. A small task with one subsystem may fold the subsystem
 notes into the module topology, but larger or cross-service work should keep
 both explicit.
 
+## Readiness Trace
+
+Before implementation starts, the pack should show this trace for every
+material design item:
+
+```text
+requirement or source fact
+  -> design decision and rejected alternatives
+  -> subsystem or module boundary
+  -> source anchor
+  -> implementation step
+  -> verification plan or phase-appropriate evidence
+```
+
+Prefer stable source anchors such as `relative/path:Symbol`. Use line numbers
+only as supporting evidence. For symbol-less files such as config, Markdown, or
+data fixtures, use `relative/path` plus the smallest stable heading, key, or
+field name.
+
 ## Detailed Design Index
 
 | File | Purpose | Required content |
@@ -53,4 +72,13 @@ that does not make every detail document substantively required.
 - Code topology identifies subsystem and module boundaries when they differ.
 - File/class mappings are concrete enough to guide implementation.
 - Runtime, failure, rollback, and validation paths are documented.
-- Each implementation step has traceability to a requirement or design item.
+- Each implementation step has traceability to a requirement, source fact, or
+  design item.
+- Contract surfaces and affected source anchors are explicit, or marked
+  `N/A - <reason>`.
+- Verification is phase-correct: design documents require a verification plan,
+  planned test seam, or available pre-implementation evidence, not executed
+  implementation proof.
+- Document integrity is checked with available mechanical signals: front matter,
+  generated file set, README/index tables, Mermaid fences, links, and validation
+  output supplied by the parent agent or tool.

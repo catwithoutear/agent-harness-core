@@ -9,12 +9,12 @@ description: "Smallest verifiable implementation steps mapped to subsystems, mod
 
 ## Implementation Order
 
-| Step | Subsystem | Module | Files/classes | Behavior | Validation | Rollback |
+| Step | Subsystem | Module | Source anchors | Behavior | Validation | Rollback |
 |---|---|---|---|---|---|---|
 
 ## Design-to-Code Traceability
 
-| Requirement or design item | Subsystem | Module | File/class | Test or validation | Step |
+| Requirement / source fact / design item | Subsystem | Module | Source anchor | Verification plan / evidence | Step |
 |---|---|---|---|---|---|
 
 ## Coding Guardrails
@@ -23,3 +23,5 @@ description: "Smallest verifiable implementation steps mapped to subsystems, mod
   modules, and validation target.
 - When implementation deviates from this design, record the reason and whether
   topology, class design, or tasks must change.
+- Do not treat design-stage validation plans as executed implementation proof.
+  Mark planned checks separately from already-run evidence.

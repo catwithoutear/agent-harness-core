@@ -21,10 +21,15 @@ classDiagram
 
 ## Responsibility Table
 
-| Class or interface | File | Type | Single responsibility | Forbidden responsibility | Dependencies | Lifecycle | Thread safety | Error model | Test seam |
+| Class or interface | Source anchor | Type | Single responsibility | Forbidden responsibility | Dependencies | Lifecycle | Thread safety | Error model | Test seam |
 |---|---|---|---|---|---|---|---|---|---|
 
 ## Interface Drafts
 
 Keep drafts at declaration level. Include ownership, copy/move rules, const
 behavior, and error return style when the language makes those explicit.
+
+## Rejected Alternatives
+
+| Alternative class/interface shape | Why rejected | Tradeoff kept |
+|---|---|---|

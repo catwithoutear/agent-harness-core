@@ -14,15 +14,23 @@ Input: `$ARGUMENTS`
 ## Required Behavior
 
 1. Activate `handoff-checkpoint` when it is installed.
-2. Read the active change README, current task slices, latest authoritative
-   review round, high-signal timeline events, and current git status.
-3. Include exact files changed, commands run, validation results, blockers,
+2. Resolve and report `state_root`, `code_root`, and `active_change` with the
+   same root contract used during execution. If resolution is ambiguous, state
+   that before summarizing any `.changes` artifacts.
+3. Read the active change README, current task slices, latest authoritative
+   review round, high-signal timeline events, `execution-map.md` when present,
+   and current git status.
+4. For each relevant execution-map row, include slice, topology, status,
+   branch, `Worktree`, dependencies, owner, and `Last Evidence`. Treat
+   `Worktree` as a local execution coordinate; on another checkout or machine it
+   is advisory until reassigned through `assign-slice`.
+5. Include exact files changed, commands run, validation results, blockers,
    residual risks, and next checkpoint.
-4. Distinguish confirmed current facts from stale memory or unverified
+6. Distinguish confirmed current facts from stale memory or unverified
    assumptions.
-5. If the handoff changes interpretation, state whether a `timeline/` event or
+7. If the handoff changes interpretation, state whether a `timeline/` event or
    `reviews/` record is warranted. Do not create one for routine status.
-6. Keep the handoff compact enough for the next agent to act without rereading
+8. Keep the handoff compact enough for the next agent to act without rereading
    the whole history.
 
 ## Output

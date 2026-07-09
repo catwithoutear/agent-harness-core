@@ -15,7 +15,7 @@ of leaving tables or notes blank.
 
 ## Error Categories
 
-| Error | Source | Caller-visible result | Retry | Rollback | Evidence |
+| Error | Source | Caller-visible result | Retry | Rollback | Verification plan / evidence |
 |---|---|---|---|---|---|
 
 ## Idempotency

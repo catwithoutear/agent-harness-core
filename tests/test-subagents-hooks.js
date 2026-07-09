@@ -20,6 +20,38 @@ export async function run(test) {
     }
   });
 
+  await test("planning reviewer covers implementation design readiness without edit authority", () => {
+    const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "planning-reviewer.md"), "utf8");
+    assert.match(role, /## Review Principles/);
+    assert.match(role, /every reviewed code change point, design\s+decision, and implementation approach/);
+    assert.match(role, /smallest design/);
+    assert.match(role, /Necessity:/);
+    assert.match(role, /directly serve the current\s+requirement/);
+    assert.match(role, /Reuse:/);
+    assert.match(role, /helper, shared module, base class/);
+    assert.match(role, /Repository patterns:/);
+    assert.match(role, /error handling, logging, resource management/);
+    assert.match(role, /Further simplification:/);
+    assert.match(role, /reduce branches, state, abstraction layers/);
+    assert.match(role, /unnecessary abstractions/);
+    assert.match(role, /speculative\s+generality/);
+    assert.match(role, /duplicate local\s+mechanisms/);
+    assert.match(role, /under-designed/);
+    assert.match(role, /proportionate to risk/);
+    assert.match(role, /Do not only say "simplify" or\s+"reuse existing code/);
+    assert.match(role, /why the current design is\s+necessary/);
+    assert.match(role, /## Authority/);
+    assert.match(role, /Read only/);
+    assert.match(role, /Do not edit/);
+    assert.match(role, /implementation-design/);
+    assert.match(role, /source anchors/i);
+    assert.match(role, /relative\/path:Symbol/);
+    assert.match(role, /phase-appropriate evidence/);
+    assert.match(role, /Document integrity/i);
+    assert.match(role, /planned validation/i);
+    assert.match(role, /Return `BLOCK`, `APPROVE_WITH_NOTES`, or `APPROVE`/);
+  });
+
   await test("subagent projection renders client-native files", () => {
     withTempTarget((target) => {
       const result = capture(() =>
@@ -76,13 +108,23 @@ export async function run(test) {
       assert.equal(hook.client, "codex");
       assert.match(hook.body, /git status as candidates only/);
       assert.match(hook.body, /Active change:\s+unresolved/);
-      assert.match(hook.body, /harness-change-validate --repo-root <repo> --change <change>/);
+      assert.match(hook.body, /state_root/);
+      assert.match(hook.body, /code_root/);
+      assert.match(hook.body, /harness-change-doc --state-root <state-root> --code-root <code-root> resolve/);
+      assert.match(hook.body, /harness-change-validate --state-root <state-root> --change <change>/);
+      assert.match(hook.body, /linked worktree/i);
+      assert.match(hook.body, /--worktrees/);
 
       const activeGuardPath = path.join(target, ".codex", "hooks", "active-change-guard.json");
       assert.equal(fs.existsSync(activeGuardPath), true);
       const activeGuard = JSON.parse(fs.readFileSync(activeGuardPath, "utf8"));
       assert.match(activeGuard.body, /Git status is not an activation signal/);
       assert.match(activeGuard.body, /candidate workspaces/);
+      assert.match(activeGuard.body, /state_root/);
+      assert.match(activeGuard.body, /code_root/);
+      assert.match(activeGuard.body, /execution-map/);
+      assert.match(activeGuard.body, /Worktree.*local execution coordinate/);
+      assert.doesNotMatch(activeGuard.body, /branch-local-state.*(?:supported|implemented)/i);
     });
   });
 }

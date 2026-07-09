@@ -40,8 +40,12 @@ Do not use it as the primary tool for:
 Start with a compact context packet:
 
 - active change id or path;
+- resolved `state_root` and `code_root`, or an explicit reason root resolution
+  is blocked;
 - current change phase and freeze state;
 - source artifacts to derive from, with any known gaps;
+- current `execution-map.md` state when the change uses multiple worktrees or
+  slice assignment is already underway;
 - evidence produced by `architecture-scout`, `diagnose`, `prototype-spike`, or
   `verification-first`, when those skills were needed;
 - selected design direction or explicit no-design reason;
@@ -76,8 +80,8 @@ seven-file pack only to leave empty tables.
    over guessing paths by hand.
 2. Read the controlling artifacts in this order when present:
    `requirements.md`, `proposal.md`, `terminology.md`, `design.md`, `specs/`,
-   `implementation-design/`, existing `tasks/`, `reviews/`, and recent
-   `timeline/` entries.
+   `implementation-design/`, existing `tasks/`, `execution-map.md`,
+   `reviews/`, and recent `timeline/` entries.
    Treat architecture scout notes, diagnosis records, spike results, and
    validation plans as source evidence, not as tasks by themselves.
 3. Classify the planning mode:
@@ -90,15 +94,19 @@ seven-file pack only to leave empty tables.
    migration, test, documentation, or rollout concern to concrete files and a
    validation path.
 5. Order slices by dependency, risk, and reviewability. Prefer small,
-   independently reviewable slices over file-based batching.
+   independently reviewable slices over file-based batching. For multi-worktree
+   execution, make the task order dependency-ordered and record intended
+   `parallel`, `stacked`, or `standalone` topology in the execution map.
 6. For each slice, record source-design traceability, subsystem, module,
    concrete files/classes, implementation steps, validation, rollback/revert
    notes, and open decisions.
 7. Write or update task artifacts only through the change workspace's regulated
    creation path. For this harness, use `harness-change-doc add-task-slice`
    before hand-editing task content.
-8. Run `harness-change-validate --change <id>` or the repository equivalent.
-   Treat warnings as decisions to resolve or explicitly accept before freeze.
+8. Run `harness-change-validate --state-root <state-root> --change <id>` or the
+   repository equivalent. Add `--worktrees` when an execution map participates
+   in the plan. Treat warnings as decisions to resolve or explicitly accept
+   before freeze.
 
 ## Slice Rules
 
@@ -119,6 +127,18 @@ seven-file pack only to leave empty tables.
   in the slice.
 - Mark dependencies and blocked decisions instead of silently reordering around
   them.
+- Use `execution-map.md` for slice assignment state. Do not duplicate branch,
+  worktree, owner, or status rows into task-slice front matter.
+- Treat `Worktree` as a local execution coordinate, not a portable promise.
+  Cross-checkout handoffs should keep the path as advisory until reassigned.
+- Use change-relative `Last Evidence` pointers for `blocked`, `ready`, `merged`,
+  and `superseded` rows. Put detailed evidence in the task slice, review,
+  decision, or handoff artifact.
+- For `topology=stacked`, depend on the existing `stacked-branch-workflow` skill
+  for git stack operations. Do not plan new change-tool commands that rebase,
+  push, or create worktrees.
+- V1 supports shared-state execution only. Do not plan branch-local-state as
+  implemented behavior.
 
 ## Task Template
 
@@ -136,6 +156,8 @@ template:
 - Module: <code organization boundary>
 - Changed surfaces: <files/classes/config/docs/tests and why>
 - Prerequisites: <dependencies, migrations, decisions, or none>
+- Execution-map row: <planned/claimed/active/blocked/ready/merged/superseded,
+  topology, branch/worktree if assigned, Last Evidence if gated>
 - Steps:
   1. <small implementation or document step>
   2. <next step>

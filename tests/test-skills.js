@@ -55,8 +55,14 @@ export async function run(test) {
     const text = fs.readFileSync(path.join(packageRoot, "skills", "change", "change-workspace-operator", "SKILL.md"), "utf8");
     for (const required of [
       "--repo-root",
+      "--state-root",
+      "--code-root",
       "harness-change-doc",
       "harness-change-validate",
+      "resolve",
+      "execution-map",
+      "assign-slice",
+      "--worktrees",
       "--inventory",
       "--suggest-cleanup",
       "--strict-layout",
@@ -71,6 +77,42 @@ export async function run(test) {
     ]) {
       assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
+  });
+
+  await test("worktree workflow assets document shared-state execution map contract", () => {
+    const workflow = fs.readFileSync(path.join(packageRoot, "commands", "harness", "workflow.md"), "utf8");
+    const handoff = fs.readFileSync(path.join(packageRoot, "commands", "harness", "handoff.md"), "utf8");
+    const workspace = fs.readFileSync(path.join(packageRoot, "skills", "change", "change-workspace-operator", "SKILL.md"), "utf8");
+    const planner = fs.readFileSync(path.join(packageRoot, "skills", "change", "change-planner", "SKILL.md"), "utf8");
+    const checkpoint = fs.readFileSync(path.join(packageRoot, "skills", "operations", "handoff-checkpoint", "SKILL.md"), "utf8");
+
+    for (const [name, text] of [
+      ["workflow", workflow],
+      ["handoff", handoff],
+      ["change-workspace-operator", workspace],
+      ["change-planner", planner],
+      ["handoff-checkpoint", checkpoint]
+    ]) {
+      for (const required of ["state_root", "code_root", "execution-map", "Worktree", "Last Evidence"]) {
+        assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${name} missing ${required}`);
+      }
+      assert.doesNotMatch(text, /branch-local-state.*(?:supported|implemented)/i, `${name} presents branch-local-state as supported`);
+    }
+
+    for (const required of [
+      "harness-change-doc --state-root <state-root> --code-root <code-root> resolve",
+      "harness-change-doc --state-root <state-root> execution-map <change> --json",
+      "harness-change-doc --state-root <state-root> assign-slice <change>",
+      "harness-change-validate --state-root <state-root> --change <change> --worktrees",
+      "stacked-branch-workflow"
+    ]) {
+      assert.match(workspace, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    assert.match(workflow, /Resolve `state_root`, `code_root`, and `active_change`/);
+    assert.match(handoff, /local execution coordinate/);
+    assert.match(planner, /dependency-ordered/);
+    assert.match(checkpoint, /stale Worktree path/);
   });
 
   await test("change planner turns design artifacts into regulated task slices", () => {

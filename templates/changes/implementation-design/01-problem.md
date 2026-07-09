@@ -15,5 +15,10 @@ description: "Detailed design problem, goals, non-goals, and boundaries."
 
 ## Source Artifacts
 
-| Source | Decision or fact |
-|---|---|
+| Source | Anchor | Decision or fact | Used by |
+|---|---|---|---|
+
+## Rejected Alternatives
+
+| Alternative | Why rejected | Tradeoff kept |
+|---|---|---|

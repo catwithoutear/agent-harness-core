@@ -64,6 +64,37 @@ npx @catwithoutear/agent-harness-core harness-project \
   --verify --json
 ```
 
+## Optional Third-Party Skills
+
+Core workflow skills are installed by default when `--content skills` is used.
+Utility skills under `skills/third-party/` are opt-in because they wrap external
+tools or broad productivity workflows rather than the core control loop.
+
+Install all optional third-party skills:
+
+```bash
+npx @catwithoutear/agent-harness-core harness-project \
+  --target /path/to/repo \
+  --clients codex \
+  --content skills \
+  --skill-categories third-party
+```
+
+Install only selected third-party skills:
+
+```bash
+npx @catwithoutear/agent-harness-core harness-project \
+  --target /path/to/repo \
+  --clients codex \
+  --content skills \
+  --skills glab,redmine
+```
+
+Use `--include-optional-skills` only when the target should receive every
+default and optional skill in one projection. New third-party skills must stay
+project-agnostic and declare `enabledByDefault: false` in
+`harness.manifest.json`.
+
 ## AI Installation Prompts
 
 Copy one of these prompts into an AI coding agent when you want it to install

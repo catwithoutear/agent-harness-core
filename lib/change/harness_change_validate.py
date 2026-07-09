@@ -6,7 +6,9 @@ import re
 import sys
 from pathlib import Path
 
+import execution_map
 import policy
+import root_resolution
 
 
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
@@ -625,6 +627,8 @@ def status_artifacts(change_dir: Path, schema: dict, mode: str):
         optional.append("specs/")
     if (change_dir / "implementation-design").exists() and "implementation-design/" not in optional:
         optional.append("implementation-design/")
+    if (change_dir / "execution-map.md").exists() and "execution-map.md" not in optional:
+        optional.append("execution-map.md")
 
     artifacts = []
     seen = set()
@@ -799,7 +803,7 @@ def validate_layout(change_dir: Path, schema: dict, mode: str, errors: list, war
     validate_layout_limits(change_dir, schema, mode, errors, warns, strict_layout)
 
 
-def validate_change(change_dir: Path, schema: dict, strict_layout: bool = False):
+def validate_change(change_dir: Path, schema: dict, strict_layout: bool = False, worktrees: bool = False):
     errors = []
     warns = []
     mode = detect_mode(change_dir)
@@ -826,6 +830,10 @@ def validate_change(change_dir: Path, schema: dict, strict_layout: bool = False)
     validate_v2_workspace(change_dir, errors, warns)
     validate_legacy_top_level_artifacts(change_dir, errors, warns, strict_layout)
     validate_layout(change_dir, schema, mode, errors, warns, strict_layout)
+    if worktrees:
+        worktree_errors, worktree_warnings = execution_map.validate_execution_map_worktrees(change_dir)
+        errors.extend(worktree_errors)
+        warns.extend(worktree_warnings)
 
     return mode, errors, warns
 
@@ -882,13 +890,14 @@ def build_status_report(
     strict_layout: bool = False,
     include_inventory: bool = False,
     include_suggestions: bool = False,
+    worktrees: bool = False,
 ):
     changes = []
     all_errors = []
     all_warns = []
 
     for target in targets:
-        mode, errors, warns = validate_change(target, schema, strict_layout=strict_layout)
+        mode, errors, warns = validate_change(target, schema, strict_layout=strict_layout, worktrees=worktrees)
         artifacts = status_artifacts(target, schema, mode)
         missing_required = [
             artifact["path"]
@@ -914,6 +923,7 @@ def build_status_report(
                     include_suggestions=include_suggestions,
                 )
             )
+        change_report["execution_map"] = execution_map.execution_map_summary(target, worktrees_checked=worktrees)
         changes.append(change_report)
         all_errors.extend(errors)
         all_warns.extend(warns)
@@ -1170,7 +1180,9 @@ def print_memory_text(report, strict_memory: bool = False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--repo-root", required=True)
+    parser.add_argument("--repo-root")
+    parser.add_argument("--state-root")
+    parser.add_argument("--code-root")
     parser.add_argument("--change")
     parser.add_argument("--all-active", action="store_true")
     parser.add_argument("--memory", action="store_true")
@@ -1180,13 +1192,25 @@ def main():
     parser.add_argument("--suggest-cleanup", action="store_true")
     parser.add_argument("--strict-layout", action="store_true")
     parser.add_argument("--strict-memory", action="store_true")
+    parser.add_argument("--worktrees", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    repo_root = Path(args.repo_root).resolve()
+    root_context = root_resolution.resolve_change_context(
+        state_root=args.state_root,
+        repo_root=args.repo_root,
+        code_root=args.code_root,
+        change_id=args.change,
+    )
+    if root_context.get("unresolved_reason"):
+        print(root_resolution.error_text(root_context), file=sys.stderr)
+        return 2
+    repo_root = Path(root_context["state_root"])
     if args.schema:
         requested_schema = Path(args.schema)
         schema_path = requested_schema if requested_schema.is_absolute() else repo_root / requested_schema
+    elif (repo_root / ".rules" / "change-doc-schema.json").exists():
+        schema_path = repo_root / ".rules" / "change-doc-schema.json"
     else:
         schema_path = PACKAGE_ROOT / "schemas" / "change-workspace.schema.json"
     if not schema_path.exists():
@@ -1239,6 +1263,7 @@ def main():
             strict_layout=args.strict_layout,
             include_inventory=include_inventory,
             include_suggestions=args.suggest_cleanup,
+            worktrees=args.worktrees,
         )
         if args.json:
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -1252,7 +1277,7 @@ def main():
     all_warns = []
 
     for target in targets:
-        mode, errors, warns = validate_change(target, schema, strict_layout=args.strict_layout)
+        mode, errors, warns = validate_change(target, schema, strict_layout=args.strict_layout, worktrees=args.worktrees)
         all_errors.extend(errors)
         all_warns.extend(warns)
         action = next_action(errors, warns)

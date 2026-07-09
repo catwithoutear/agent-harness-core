@@ -24,6 +24,10 @@ project-agnostic and reusable across target repositories.
   repository's overlay, memory, rules, or skills.
 - Do not rely on native client recursive discovery. Source skills may be
   categorized, but runtime skill projection must remain flat.
+- Keep third-party utility skills under `skills/third-party/`, mark them
+  `enabledByDefault: false` in `harness.manifest.json`, and project them only
+  through `--skills`, `--skill-categories third-party`, or
+  `--include-optional-skills`.
 - Do not add compatibility aliases for removed command names unless an approved
   design explicitly changes that boundary.
 

@@ -13,7 +13,7 @@ export async function run(test) {
     assert.equal(result.ok, true);
     assert.equal(result.summary.clients, 4);
     assert.equal(result.summary.commands, 6);
-    assert.equal(result.summary.skills, 27);
+    assert.equal(result.summary.skills, 48);
     assert.equal(result.summary.agents, 10);
     assert.equal(result.summary.hooks, 6);
     assert.equal(result.summary.templates, 10);
@@ -36,6 +36,22 @@ export async function run(test) {
       assert.match(skill.runtimeName, /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/);
       assert.doesNotMatch(skill.runtimeName, /\//);
     }
+  });
+
+  await test("third-party skills are optional manifest assets", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    const thirdParty = manifest.assets.skills.filter((skill) => skill.category === "third-party");
+    assert.equal(thirdParty.length, 21);
+    for (const skill of thirdParty) {
+      assert.equal(skill.enabledByDefault, false, `${skill.id} should be opt-in`);
+      assert.match(skill.source, /^skills\/third-party\//);
+    }
+    assert(thirdParty.some((skill) => skill.id === "glab"));
+    assert(thirdParty.some((skill) => skill.id === "redmine"));
+    assert(thirdParty.some((skill) => skill.id === "mermaid-diagrams"));
+    assert(!manifest.assets.skills.some((skill) => skill.id === "pretty-mermaid"));
   });
 
   await test("slash command runtime names are namespaced", () => {

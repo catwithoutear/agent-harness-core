@@ -6,7 +6,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+import execution_map
 import policy
+import root_resolution
 
 
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
@@ -198,6 +200,23 @@ def kebab_slug(value: str) -> str:
     return slug or "item"
 
 
+def root_context_from_args(args, task: str | None = None) -> dict:
+    return root_resolution.resolve_change_context(
+        state_root=getattr(args, "state_root", None),
+        repo_root=getattr(args, "repo_root", None),
+        code_root=getattr(args, "code_root", None),
+        change_id=task or getattr(args, "task", None) or getattr(args, "change", None),
+    )
+
+
+def resolve_root_or_error(args, task: str | None = None):
+    context = root_context_from_args(args, task)
+    if context.get("unresolved_reason"):
+        print(root_resolution.error_text(context), file=sys.stderr)
+        return None, context
+    return Path(context["state_root"]), context
+
+
 def ensure_change_exists(root: Path, task: str):
     target = change_dir(root, task)
     if not target.exists():
@@ -212,7 +231,9 @@ def command_policy(args) -> int:
 
 
 def command_index(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = change_dir(root, args.task)
     if not target.exists():
         print(f"ERROR: change not found: {target}", file=sys.stderr)
@@ -274,7 +295,9 @@ def is_indexed_child(target: Path, rel_path: str) -> bool:
 
 
 def command_add_review(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -311,7 +334,9 @@ def command_add_review(args) -> int:
 
 
 def command_add_terminology(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -368,7 +393,9 @@ IMPLEMENTATION_DESIGN_DOCS = [
 
 
 def command_add_implementation_design(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -469,7 +496,9 @@ def command_add_task_slice(args) -> int:
 
 
 def add_child_document(args, directory: str, artifact: str, filename_builder, order_builder, title: str, sections):
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -492,7 +521,9 @@ def add_child_document(args, directory: str, artifact: str, filename_builder, or
 
 
 def command_list(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -506,7 +537,9 @@ def command_list(args) -> int:
 
 
 def command_locate(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -528,7 +561,9 @@ def command_locate(args) -> int:
 
 
 def command_read(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = ensure_change_exists(root, args.task)
     if target is None:
         return 2
@@ -557,7 +592,9 @@ def split_csv(value: str):
 
 
 def command_migrate(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
     target = change_dir(root, args.task)
     if not target.exists():
         print(f"ERROR: change not found: {target}", file=sys.stderr)
@@ -596,7 +633,9 @@ def command_migrate(args) -> int:
 
 
 def command_memory_index(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args)
+    if root is None:
+        return 2
     memory_root = root / ".memory"
     tags = parse_tag_registry(memory_root / "INDEX.md", "Memory Tag Registry")
     entries = []
@@ -630,7 +669,9 @@ def command_memory_index(args) -> int:
 
 
 def command_memory_retrofit(args) -> int:
-    root = Path(args.repo_root).resolve()
+    root, _context = resolve_root_or_error(args)
+    if root is None:
+        return 2
     memory_root = root / ".memory"
     candidates = []
     if memory_root.exists():
@@ -661,14 +702,70 @@ def command_memory_retrofit(args) -> int:
     return 0
 
 
+def command_resolve(args) -> int:
+    context = root_context_from_args(args, getattr(args, "change", None))
+    if args.json:
+        if context.get("unresolved_reason") == "conflicting-explicit-roots":
+            print(root_resolution.error_text(context), file=sys.stderr)
+            return 2
+        print(json.dumps(context, ensure_ascii=False, indent=2))
+        return 0
+    if context.get("unresolved_reason"):
+        print(root_resolution.error_text(context), file=sys.stderr)
+        return 2
+    print(f"STATE_ROOT: {context['state_root']}")
+    print(f"CODE_ROOT: {context['code_root']}")
+    return 0
+
+
+def command_execution_map(args) -> int:
+    root, context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
+    target = ensure_change_exists(root, args.task)
+    if target is None:
+        return 2
+    if not args.json:
+        print("ERROR: execution-map requires --json", file=sys.stderr)
+        return 2
+    print(json.dumps(execution_map.execution_map_payload(target, context), ensure_ascii=False, indent=2))
+    return 0
+
+
+def command_assign_slice(args) -> int:
+    root, context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
+    target = ensure_change_exists(root, args.task)
+    if target is None:
+        return 2
+    try:
+        result = execution_map.assign_slice(target, args, context, Path.cwd())
+    except execution_map.ExecutionMapError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(result["path"])
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--repo-root", default=".")
+    parser.add_argument("--repo-root")
+    parser.add_argument("--state-root")
+    parser.add_argument("--code-root")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     policy_parser = subparsers.add_parser("policy")
     policy_parser.add_argument("--json", action="store_true", required=True)
     policy_parser.set_defaults(func=command_policy)
+
+    resolve_parser = subparsers.add_parser("resolve")
+    resolve_parser.add_argument("--change")
+    resolve_parser.add_argument("--json", action="store_true")
+    resolve_parser.set_defaults(func=command_resolve)
 
     index_parser = subparsers.add_parser("index")
     index_parser.add_argument("task")
@@ -695,6 +792,25 @@ def build_parser():
     read_parser.add_argument("--tag")
     read_parser.add_argument("--paths-only", action="store_true")
     read_parser.set_defaults(func=command_read)
+
+    execution_map_parser = subparsers.add_parser("execution-map")
+    execution_map_parser.add_argument("task")
+    execution_map_parser.add_argument("--json", action="store_true", required=True)
+    execution_map_parser.set_defaults(func=command_execution_map)
+
+    assign_slice_parser = subparsers.add_parser("assign-slice")
+    assign_slice_parser.add_argument("task")
+    assign_slice_parser.add_argument("--slice", required=True)
+    assign_slice_parser.add_argument("--status", default="planned")
+    assign_slice_parser.add_argument("--topology", default="standalone")
+    assign_slice_parser.add_argument("--branch")
+    assign_slice_parser.add_argument("--worktree")
+    assign_slice_parser.add_argument("--base")
+    assign_slice_parser.add_argument("--depends-on")
+    assign_slice_parser.add_argument("--owner")
+    assign_slice_parser.add_argument("--last-evidence")
+    assign_slice_parser.add_argument("--json", action="store_true")
+    assign_slice_parser.set_defaults(func=command_assign_slice)
 
     terminology_parser = subparsers.add_parser("add-terminology")
     terminology_parser.add_argument("task")
@@ -769,6 +885,10 @@ def build_parser():
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    global_context = root_context_from_args(args)
+    if global_context.get("unresolved_reason") == "conflicting-explicit-roots":
+        print(root_resolution.error_text(global_context), file=sys.stderr)
+        return 2
     return args.func(args)
 
 

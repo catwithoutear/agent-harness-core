@@ -29,3 +29,11 @@ flowchart LR
 
 | Rule | Allowed | Forbidden | Rationale |
 |---|---|---|---|
+
+## Source Anchors
+
+Use `relative/path:Symbol` when possible. For symbol-less config or docs, use
+`relative/path` plus the smallest stable heading, key, or field name.
+
+| Boundary | Source anchor | Notes |
+|---|---|---|

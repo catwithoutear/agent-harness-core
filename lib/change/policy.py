@@ -26,6 +26,7 @@ GLOBAL_TAGS = {
     "implementation",
     "review",
     "validation",
+    "execution-map",
     "compatibility",
     "migration",
     "rollback",
@@ -57,6 +58,7 @@ ARTIFACTS = {
     "design": ArtifactPolicy("design", naming="design.md"),
     "plan": ArtifactPolicy("plan", naming="plan.md"),
     "tasks": ArtifactPolicy("tasks", naming="tasks.md"),
+    "execution-map": ArtifactPolicy("execution-map", naming="execution-map.md"),
     "specs-index": ArtifactPolicy("specs-index", naming="specs/README.md"),
     "decision-record": ArtifactPolicy(
         "decision-record",
@@ -174,6 +176,9 @@ TAG_REGISTRIES = {
 
 COMMANDS = {
     "policy": "harness-change-doc policy --json",
+    "resolve": "harness-change-doc resolve --json",
+    "execution_map": "harness-change-doc execution-map <change> --json",
+    "assign_slice": "harness-change-doc assign-slice <change> --slice <slice>",
     "index": "harness-change-doc index",
     "memory_index": "harness-change-doc memory-index --json",
     "add_implementation_design": "harness-change-doc add-implementation-design",

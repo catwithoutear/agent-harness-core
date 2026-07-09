@@ -150,6 +150,115 @@ export async function run(test) {
     });
   });
 
+  await test("copy projection verify fails when recorded source hash is stale", () => {
+    withTempTarget((target) => {
+      const project = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "codex",
+          "--content",
+          "skills",
+          "--skills",
+          "handoff-checkpoint",
+          "--json"
+        ])
+      );
+      assert.equal(project.status, 0, project.stdout + project.stderr);
+
+      const statePath = path.join(target, ".harness", "projection-state.json");
+      const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+      const skillRecord = state.records.find((record) => record.asset_id === "handoff-checkpoint");
+      assert(skillRecord, "handoff-checkpoint projection state missing");
+      skillRecord.source_hash = "stale-source-hash";
+      fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+
+      const verify = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--verify",
+          "--mode",
+          "copy",
+          "--clients",
+          "codex",
+          "--content",
+          "skills",
+          "--skills",
+          "handoff-checkpoint",
+          "--json"
+        ])
+      );
+      assert.equal(verify.status, 1, verify.stdout + verify.stderr);
+      const payload = JSON.parse(verify.stdout);
+      assert(payload.errors.some((error) => error.includes("source hash mismatch")));
+    });
+  });
+
+  await test("third-party skills are opt-in", () => {
+    withTempTarget((target) => {
+      const defaultRun = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--dry-run",
+          "--json",
+          "--clients",
+          "codex",
+          "--content",
+          "skills"
+        ])
+      );
+      assert.equal(defaultRun.status, 0, defaultRun.stderr);
+      const defaultPayload = JSON.parse(defaultRun.stdout);
+      assert.equal(defaultPayload.summary.skills, 27);
+      assert(!defaultPayload.records.some((record) => record.asset_id === "glab"));
+      assert(!defaultPayload.records.some((record) => record.source.includes("skills/third-party")));
+
+      const categoryRun = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--dry-run",
+          "--json",
+          "--clients",
+          "codex",
+          "--content",
+          "skills",
+          "--skill-categories",
+          "third-party"
+        ])
+      );
+      assert.equal(categoryRun.status, 0, categoryRun.stderr);
+      const categoryPayload = JSON.parse(categoryRun.stdout);
+      assert.equal(categoryPayload.summary.skills, 21);
+      assert(categoryPayload.records.every((record) => record.source.includes("skills/third-party")));
+
+      const selectedRun = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--dry-run",
+          "--json",
+          "--clients",
+          "codex",
+          "--content",
+          "skills",
+          "--skills",
+          "glab,redmine"
+        ])
+      );
+      assert.equal(selectedRun.status, 0, selectedRun.stderr);
+      const selectedPayload = JSON.parse(selectedRun.stdout);
+      assert.deepEqual(selectedPayload.records.map((record) => record.asset_id).sort(), ["glab", "redmine"]);
+    });
+  });
+
   await test("projected simplification assets preserve scope and coverage contracts", () => {
     withTempTarget((target) => {
       const project = capture(() =>

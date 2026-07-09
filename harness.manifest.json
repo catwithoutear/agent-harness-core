@@ -5,17 +5,35 @@
     "codex": {
       "targets": {
         "project": {
-          "skills": [".agents/skills/<runtimeName>/"],
-          "agents": [".codex/agents/<runtimeName>.toml"],
-          "config": [".codex/"],
-          "hooks": [".codex/hooks/<assetId>.json"]
+          "skills": [
+            ".agents/skills/<runtimeName>/"
+          ],
+          "agents": [
+            ".codex/agents/<runtimeName>.toml"
+          ],
+          "config": [
+            ".codex/"
+          ],
+          "hooks": [
+            ".codex/hooks/<assetId>.json"
+          ]
         },
         "global": {
-          "skills": ["~/.agents/skills/<runtimeName>/"],
-          "agents": ["~/.codex/agents/<runtimeName>.toml"],
-          "commands": ["~/.codex/prompts/<assetId>.md"],
-          "config": ["~/.codex/"],
-          "hooks": ["~/.codex/hooks/<assetId>.json"]
+          "skills": [
+            "~/.agents/skills/<runtimeName>/"
+          ],
+          "agents": [
+            "~/.codex/agents/<runtimeName>.toml"
+          ],
+          "commands": [
+            "~/.codex/prompts/<assetId>.md"
+          ],
+          "config": [
+            "~/.codex/"
+          ],
+          "hooks": [
+            "~/.codex/hooks/<assetId>.json"
+          ]
         }
       },
       "capabilities": {
@@ -39,18 +57,38 @@
     "claude": {
       "targets": {
         "project": {
-          "skills": [".claude/skills/<runtimeName>/"],
-          "agents": [".claude/agents/<runtimeName>.md"],
-          "commands": [".claude/commands/<runtimeName>.md"],
-          "config": [".claude/"],
-          "hooks": [".claude/hooks/<assetId>.json"]
+          "skills": [
+            ".claude/skills/<runtimeName>/"
+          ],
+          "agents": [
+            ".claude/agents/<runtimeName>.md"
+          ],
+          "commands": [
+            ".claude/commands/<runtimeName>.md"
+          ],
+          "config": [
+            ".claude/"
+          ],
+          "hooks": [
+            ".claude/hooks/<assetId>.json"
+          ]
         },
         "global": {
-          "skills": ["~/.claude/skills/<runtimeName>/"],
-          "agents": ["~/.claude/agents/<runtimeName>.md"],
-          "commands": ["~/.claude/commands/<runtimeName>.md"],
-          "config": ["~/.claude/"],
-          "hooks": ["~/.claude/hooks/<assetId>.json"]
+          "skills": [
+            "~/.claude/skills/<runtimeName>/"
+          ],
+          "agents": [
+            "~/.claude/agents/<runtimeName>.md"
+          ],
+          "commands": [
+            "~/.claude/commands/<runtimeName>.md"
+          ],
+          "config": [
+            "~/.claude/"
+          ],
+          "hooks": [
+            "~/.claude/hooks/<assetId>.json"
+          ]
         }
       },
       "capabilities": {
@@ -74,16 +112,32 @@
     "opencode": {
       "targets": {
         "project": {
-          "skills": [".opencode/skills/<runtimeName>/"],
-          "agents": [".opencode/agents/<runtimeName>.md"],
-          "config": ["opencode.json"],
-          "hooks": [".opencode/hooks/<assetId>.json"]
+          "skills": [
+            ".opencode/skills/<runtimeName>/"
+          ],
+          "agents": [
+            ".opencode/agents/<runtimeName>.md"
+          ],
+          "config": [
+            "opencode.json"
+          ],
+          "hooks": [
+            ".opencode/hooks/<assetId>.json"
+          ]
         },
         "global": {
-          "skills": ["~/.config/opencode/skills/<runtimeName>/"],
-          "agents": ["~/.config/opencode/agents/<runtimeName>.md"],
-          "config": ["~/.config/opencode/opencode.json"],
-          "hooks": ["~/.config/opencode/hooks/<assetId>.json"]
+          "skills": [
+            "~/.config/opencode/skills/<runtimeName>/"
+          ],
+          "agents": [
+            "~/.config/opencode/agents/<runtimeName>.md"
+          ],
+          "config": [
+            "~/.config/opencode/opencode.json"
+          ],
+          "hooks": [
+            "~/.config/opencode/hooks/<assetId>.json"
+          ]
         }
       },
       "capabilities": {
@@ -107,16 +161,32 @@
     "omp": {
       "targets": {
         "project": {
-          "skills": [".omp/skills/<runtimeName>/"],
-          "agents": [".omp/agents/<runtimeName>.md"],
-          "commands": [".omp/commands/<assetId>.md"],
-          "config": [".omp/"]
+          "skills": [
+            ".omp/skills/<runtimeName>/"
+          ],
+          "agents": [
+            ".omp/agents/<runtimeName>.md"
+          ],
+          "commands": [
+            ".omp/commands/<assetId>.md"
+          ],
+          "config": [
+            ".omp/"
+          ]
         },
         "global": {
-          "skills": ["~/.omp/skills/<runtimeName>/"],
-          "agents": ["~/.omp/agents/<runtimeName>.md"],
-          "commands": ["~/.omp/agent/commands/<assetId>.md"],
-          "config": ["~/.omp/"]
+          "skills": [
+            "~/.omp/skills/<runtimeName>/"
+          ],
+          "agents": [
+            "~/.omp/agents/<runtimeName>.md"
+          ],
+          "commands": [
+            "~/.omp/agent/commands/<assetId>.md"
+          ],
+          "config": [
+            "~/.omp/"
+          ]
         }
       },
       "capabilities": {
@@ -151,7 +221,12 @@
         "source": "rules/loop-contract.md",
         "target": ".rules/loop-contract.md",
         "description": "Loop contract for recurring agent workflows.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       }
     ],
     "commands": [
@@ -160,42 +235,72 @@
         "source": "commands/harness/route.md",
         "runtimeName": "harness/route",
         "description": "Slash prompt for choosing the smallest correct harness skill, command, agent, hook, or projection path.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "harness-workflow",
         "source": "commands/harness/workflow.md",
         "runtimeName": "harness/workflow",
         "description": "Slash prompt for running the evidence-gated core workflow loop.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "harness-plan",
         "source": "commands/harness/plan.md",
         "runtimeName": "harness/plan",
         "description": "Slash prompt for turning settled design artifacts into bounded task slices and validation gates.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "harness-verify",
         "source": "commands/harness/verify.md",
         "runtimeName": "harness/verify",
         "description": "Slash prompt for selecting, running, and reporting the smallest credible validation loop.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "harness-review",
         "source": "commands/harness/review.md",
         "runtimeName": "harness/review",
         "description": "Slash prompt for evidence-first design, plan, diff, skill, subagent, or change-packet review.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "harness-handoff",
         "source": "commands/harness/handoff.md",
         "runtimeName": "harness/handoff",
         "description": "Slash prompt for producing a compact handoff packet for another agent or future session.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       }
     ],
     "skills": [
@@ -206,11 +311,27 @@
         "source": "skills/entry/ask-harness",
         "runtimeName": "ask-harness",
         "description": "Use when choosing a harness skill, command, prompt, client projection, core-vs-overlay path, or manifest route for agent workflow work.",
-        "triggers": ["which harness skill", "ask harness", "skill routing", "core vs overlay", "client projection route"],
-        "negativeTriggers": ["project domain implementation without harness routing question", "direct code task with an obvious owner"],
-        "requires": ["harness.manifest.json when available"],
+        "triggers": [
+          "which harness skill",
+          "ask harness",
+          "skill routing",
+          "core vs overlay",
+          "client projection route"
+        ],
+        "negativeTriggers": [
+          "project domain implementation without harness routing question",
+          "direct code task with an obvious owner"
+        ],
+        "requires": [
+          "harness.manifest.json when available"
+        ],
         "priority": 100,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "workflow-control",
@@ -219,11 +340,28 @@
         "source": "skills/workflow/workflow-control",
         "runtimeName": "workflow-control",
         "description": "Use when agent work needs an evidence-gated workflow, active change coordination, implementation slicing, council escalation, or handoff discipline.",
-        "triggers": ["artifact workflow", "evidence gate", "control loop", "active change coordination", "implementation slice", "council escalation"],
-        "negativeTriggers": ["single trivial command"],
-        "requires": ["active change or explicit no-change reason", "current repository state"],
+        "triggers": [
+          "artifact workflow",
+          "evidence gate",
+          "control loop",
+          "active change coordination",
+          "implementation slice",
+          "council escalation"
+        ],
+        "negativeTriggers": [
+          "single trivial command"
+        ],
+        "requires": [
+          "active change or explicit no-change reason",
+          "current repository state"
+        ],
         "priority": 90,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "stacked-branch-workflow",
@@ -232,11 +370,31 @@
         "source": "skills/workflow/stacked-branch-workflow",
         "runtimeName": "stacked-branch-workflow",
         "description": "Use when planning, splitting, inspecting, rebasing, cascading, merging, or force-pushing stacked branches, stacked MR/PR chains, dependent branches, or large changes needing reviewable branch boundaries.",
-        "triggers": ["stacked branches", "branch stack", "stacked MR", "stacked PR", "dependent branches", "cascade rebase", "force push stack"],
-        "negativeTriggers": ["single trivial commit", "code correctness review", "repository validation policy"],
-        "requires": ["current git status", "base branch and remote state before mutating refs"],
+        "triggers": [
+          "stacked branches",
+          "branch stack",
+          "stacked MR",
+          "stacked PR",
+          "dependent branches",
+          "cascade rebase",
+          "force push stack"
+        ],
+        "negativeTriggers": [
+          "single trivial commit",
+          "code correctness review",
+          "repository validation policy"
+        ],
+        "requires": [
+          "current git status",
+          "base branch and remote state before mutating refs"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "workflow-packaging-auditor",
@@ -245,11 +403,29 @@
         "source": "skills/workflow/workflow-packaging-auditor",
         "runtimeName": "workflow-packaging-auditor",
         "description": "Use when auditing recent work history to identify repeated workflows worth packaging as skills, custom subagents, hooks, scripts, or automations.",
-        "triggers": ["workflow audit", "repeated manual workflow", "package as skill", "create automation", "custom subagent candidate", "hook candidate"],
-        "negativeTriggers": ["one-off task with no recurrence evidence", "direct implementation request"],
-        "requires": ["recent work evidence", "existing skills, agents, hooks, scripts, or automations inventory"],
+        "triggers": [
+          "workflow audit",
+          "repeated manual workflow",
+          "package as skill",
+          "create automation",
+          "custom subagent candidate",
+          "hook candidate"
+        ],
+        "negativeTriggers": [
+          "one-off task with no recurrence evidence",
+          "direct implementation request"
+        ],
+        "requires": [
+          "recent work evidence",
+          "existing skills, agents, hooks, scripts, or automations inventory"
+        ],
         "priority": 75,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "grill-me",
@@ -258,11 +434,28 @@
         "source": "skills/workflow/grill-me",
         "runtimeName": "grill-me",
         "description": "Use when the user wants an interactive grill session for a plan, design, proposal, or decision tree, including prompts like grill me, stress-test my plan, or ask me one question at a time.",
-        "triggers": ["grill me", "stress-test my plan", "ask me one question", "interactive design questioning", "decision tree"],
-        "negativeTriggers": ["code diff walkthrough", "document polish", "review after implementation"],
-        "requires": ["plan, design, proposal, or decision under discussion"],
+        "triggers": [
+          "grill me",
+          "stress-test my plan",
+          "ask me one question",
+          "interactive design questioning",
+          "decision tree"
+        ],
+        "negativeTriggers": [
+          "code diff walkthrough",
+          "document polish",
+          "review after implementation"
+        ],
+        "requires": [
+          "plan, design, proposal, or decision under discussion"
+        ],
         "priority": 85,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "grill-with-docs",
@@ -271,11 +464,29 @@
         "source": "skills/workflow/grill-with-docs",
         "runtimeName": "grill-with-docs",
         "description": "Use when stress-testing a plan, proposal, design, terminology choice, or implementation direction against repository artifacts, specs, memory, and source before coding.",
-        "triggers": ["grill with docs", "stress-test against docs", "terminology decision", "implementation direction", "artifact-backed questioning"],
-        "negativeTriggers": ["pure document polish", "code review after implementation", "user-only interview with no repository evidence"],
-        "requires": ["target planning artifact", "repository-owned docs or source evidence"],
+        "triggers": [
+          "grill with docs",
+          "stress-test against docs",
+          "terminology decision",
+          "implementation direction",
+          "artifact-backed questioning"
+        ],
+        "negativeTriggers": [
+          "pure document polish",
+          "code review after implementation",
+          "user-only interview with no repository evidence"
+        ],
+        "requires": [
+          "target planning artifact",
+          "repository-owned docs or source evidence"
+        ],
         "priority": 85,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "simplify",
@@ -284,11 +495,35 @@
         "source": "skills/workflow/simplify",
         "runtimeName": "simplify",
         "description": "Use when authorized code changes need a behavior-preserving simplification pass across the current task scope, including uncommitted diffs and task commits, before final verification.",
-        "triggers": ["after code edit", "post-implementation cleanup", "simplify changed code", "code-simplifier", "clarity pass", "deep simplification", "unit-by-unit cleanup"],
-        "negativeTriggers": ["docs-only edit", "format-only edit", "generated output", "one-line mechanical edit", "review-only request", "externally authored diff without edit permission"],
-        "requires": ["task scope packet", "behavior invariants", "relevant validation target"],
+        "triggers": [
+          "after code edit",
+          "post-implementation cleanup",
+          "simplify changed code",
+          "code-simplifier",
+          "clarity pass",
+          "deep simplification",
+          "unit-by-unit cleanup"
+        ],
+        "negativeTriggers": [
+          "docs-only edit",
+          "format-only edit",
+          "generated output",
+          "one-line mechanical edit",
+          "review-only request",
+          "externally authored diff without edit permission"
+        ],
+        "requires": [
+          "task scope packet",
+          "behavior invariants",
+          "relevant validation target"
+        ],
         "priority": 90,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "change-workspace-operator",
@@ -297,11 +532,29 @@
         "source": "skills/change/change-workspace-operator",
         "runtimeName": "change-workspace-operator",
         "description": "Use when creating, locating, validating, or updating regulated .changes workspaces, terminology.md, task docs, reviews, timelines, or change indexes.",
-        "triggers": ["change workspace", ".changes", "artifact validation", "terminology.md", "review round", "timeline event", "change index"],
-        "negativeTriggers": ["unregulated notes outside a repository"],
-        "requires": ["harness-change-doc", "harness-change-validate"],
+        "triggers": [
+          "change workspace",
+          ".changes",
+          "artifact validation",
+          "terminology.md",
+          "review round",
+          "timeline event",
+          "change index"
+        ],
+        "negativeTriggers": [
+          "unregulated notes outside a repository"
+        ],
+        "requires": [
+          "harness-change-doc",
+          "harness-change-validate"
+        ],
         "priority": 90,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "change-planner",
@@ -310,11 +563,31 @@
         "source": "skills/change/change-planner",
         "runtimeName": "change-planner",
         "description": "Use when turning settled requirements, proposals, designs, specs, or implementation-design artifacts into concrete .changes tasks, task slices, validation steps, and reviewable implementation plans.",
-        "triggers": ["design to tasks", "change plan", "task slicing", "implementation plan", "tasks.md", "validation plan"],
-        "negativeTriggers": ["creating change docs without planning", "unresolved design", "implementation after tasks are frozen"],
-        "requires": ["active change workspace", "settled design or explicit no-design reason", "validation target"],
+        "triggers": [
+          "design to tasks",
+          "change plan",
+          "task slicing",
+          "implementation plan",
+          "tasks.md",
+          "validation plan"
+        ],
+        "negativeTriggers": [
+          "creating change docs without planning",
+          "unresolved design",
+          "implementation after tasks are frozen"
+        ],
+        "requires": [
+          "active change workspace",
+          "settled design or explicit no-design reason",
+          "validation target"
+        ],
         "priority": 85,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "architecture-scout",
@@ -323,11 +596,31 @@
         "source": "skills/change/architecture-scout",
         "runtimeName": "architecture-scout",
         "description": "Use when mapping unfamiliar repository architecture, locating entry points, tracing cross-module flows, verifying source-backed boundaries, or preparing research evidence before change planning.",
-        "triggers": ["architecture scout", "unfamiliar subsystem", "entry point", "call flow", "ownership boundary", "source-backed research"],
-        "negativeTriggers": ["small known-file edit", "concrete failure symptom", "solution choice between alternatives"],
-        "requires": ["active change or explicit no-change reason", "current source checkout", "repository-owned docs or memory when available"],
+        "triggers": [
+          "architecture scout",
+          "unfamiliar subsystem",
+          "entry point",
+          "call flow",
+          "ownership boundary",
+          "source-backed research"
+        ],
+        "negativeTriggers": [
+          "small known-file edit",
+          "concrete failure symptom",
+          "solution choice between alternatives"
+        ],
+        "requires": [
+          "active change or explicit no-change reason",
+          "current source checkout",
+          "repository-owned docs or memory when available"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "diagnose",
@@ -336,11 +629,33 @@
         "source": "skills/change/diagnose",
         "runtimeName": "diagnose",
         "description": "Use when diagnosing a bug, failed test, production symptom, log anomaly, regression, reproducer gap, or unclear root cause before proposing or editing code.",
-        "triggers": ["diagnose bug", "failed test", "production symptom", "log anomaly", "regression", "root cause", "reproducer gap"],
-        "negativeTriggers": ["ordinary code review", "broad architecture orientation", "root cause already proven", "validation reporting only"],
-        "requires": ["observable symptom", "current source checkout", "feedback loop or reason unavailable"],
+        "triggers": [
+          "diagnose bug",
+          "failed test",
+          "production symptom",
+          "log anomaly",
+          "regression",
+          "root cause",
+          "reproducer gap"
+        ],
+        "negativeTriggers": [
+          "ordinary code review",
+          "broad architecture orientation",
+          "root cause already proven",
+          "validation reporting only"
+        ],
+        "requires": [
+          "observable symptom",
+          "current source checkout",
+          "feedback loop or reason unavailable"
+        ],
         "priority": 85,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "prototype-spike",
@@ -349,11 +664,33 @@
         "source": "skills/change/prototype-spike",
         "runtimeName": "prototype-spike",
         "description": "Use when a proposal or design has unresolved feasibility risk that needs a bounded experiment, throwaway prototype, API probe, parser trial, or proof of concept before implementation.",
-        "triggers": ["prototype spike", "proof of concept", "feasibility risk", "API probe", "parser trial", "design assumption", "proposal uncertainty"],
-        "negativeTriggers": ["source reading is sufficient", "normal implementation", "production shortcut", "post-freeze change without replan"],
-        "requires": ["single spike question", "discard or absorb decision", "timebox or scope"],
+        "triggers": [
+          "prototype spike",
+          "proof of concept",
+          "feasibility risk",
+          "API probe",
+          "parser trial",
+          "design assumption",
+          "proposal uncertainty"
+        ],
+        "negativeTriggers": [
+          "source reading is sufficient",
+          "normal implementation",
+          "production shortcut",
+          "post-freeze change without replan"
+        ],
+        "requires": [
+          "single spike question",
+          "discard or absorb decision",
+          "timebox or scope"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "verification-first",
@@ -362,11 +699,32 @@
         "source": "skills/change/verification-first",
         "runtimeName": "verification-first",
         "description": "Use when choosing, writing, running, or reporting the smallest credible validation loop for a change, including tests, builds, artifact checks, command evidence, or verification gaps.",
-        "triggers": ["verification first", "validation plan", "test selection", "build evidence", "artifact check", "verification gap", "not run"],
-        "negativeTriggers": ["unknown failure diagnosis", "proof by broad build only", "formatting check as behavior proof"],
-        "requires": ["change shape", "risk to falsify", "available validation commands or gap reason"],
+        "triggers": [
+          "verification first",
+          "validation plan",
+          "test selection",
+          "build evidence",
+          "artifact check",
+          "verification gap",
+          "not run"
+        ],
+        "negativeTriggers": [
+          "unknown failure diagnosis",
+          "proof by broad build only",
+          "formatting check as behavior proof"
+        ],
+        "requires": [
+          "change shape",
+          "risk to falsify",
+          "available validation commands or gap reason"
+        ],
         "priority": 90,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "memory-context-contract",
@@ -375,11 +733,27 @@
         "source": "skills/knowledge/memory-context-contract",
         "runtimeName": "memory-context-contract",
         "description": "Use when .memory, project vocabulary, source-verified context, durable knowledge, or context packet requirements may affect a repository task.",
-        "triggers": [".memory", "context packet", "verified knowledge", "project vocabulary", "durable knowledge", "memory promotion"],
-        "negativeTriggers": ["one-off answer with no repository context"],
-        "requires": [".memory/INDEX.md when available"],
+        "triggers": [
+          ".memory",
+          "context packet",
+          "verified knowledge",
+          "project vocabulary",
+          "durable knowledge",
+          "memory promotion"
+        ],
+        "negativeTriggers": [
+          "one-off answer with no repository context"
+        ],
+        "requires": [
+          ".memory/INDEX.md when available"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "design-doc-refiner",
@@ -388,11 +762,28 @@
         "source": "skills/knowledge/design-doc-refiner",
         "runtimeName": "design-doc-refiner",
         "description": "Use when turning rough technical notes, issue analysis, or draft designs into implementation-ready design documents with contracts, risks, tests, and task slices.",
-        "triggers": ["design doc refinement", "implementation-ready design", "rough design notes", "design rewrite", "task slices"],
-        "negativeTriggers": ["proofreading only", "implementation without design rewrite"],
-        "requires": ["source notes or draft design", "references/output-contract.md"],
+        "triggers": [
+          "design doc refinement",
+          "implementation-ready design",
+          "rough design notes",
+          "design rewrite",
+          "task slices"
+        ],
+        "negativeTriggers": [
+          "proofreading only",
+          "implementation without design rewrite"
+        ],
+        "requires": [
+          "source notes or draft design",
+          "references/output-contract.md"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "design-code-explainer",
@@ -401,11 +792,30 @@
         "source": "skills/knowledge/design-code-explainer",
         "runtimeName": "design-code-explainer",
         "description": "Use when mapping implementation code back to design artifacts, producing architecture/layout/I-O traceability, or generating Markdown/HTML/PDF handoff reports.",
-        "triggers": ["design-code mapping", "implementation handoff", "traceability report", "architecture walkthrough", "HTML report", "PDF report"],
-        "negativeTriggers": ["code review findings only", "design refinement before implementation"],
-        "requires": ["design source", "implementation source", "references/report-contract.md for reports"],
+        "triggers": [
+          "design-code mapping",
+          "implementation handoff",
+          "traceability report",
+          "architecture walkthrough",
+          "HTML report",
+          "PDF report"
+        ],
+        "negativeTriggers": [
+          "code review findings only",
+          "design refinement before implementation"
+        ],
+        "requires": [
+          "design source",
+          "implementation source",
+          "references/report-contract.md for reports"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "technical-doc-refinement",
@@ -414,11 +824,33 @@
         "source": "skills/knowledge/technical-doc-refinement",
         "runtimeName": "technical-doc-refinement",
         "description": "Use when refining technical prose, PR/MR descriptions, release notes, runbooks, specs, reports, or architecture notes for clarity, precise terminology, anti-AI tone, and progressive structure.",
-        "triggers": ["technical doc refinement", "PR description", "MR description", "release notes", "runbook", "technical report", "remove AI tone", "precise terminology"],
-        "negativeTriggers": ["implementation-ready design rewrite", "task decomposition", "non-technical marketing rewrite", "personal voice matching"],
-        "requires": ["target text or document", "intended audience"],
+        "triggers": [
+          "technical doc refinement",
+          "PR description",
+          "MR description",
+          "release notes",
+          "runbook",
+          "technical report",
+          "remove AI tone",
+          "precise terminology"
+        ],
+        "negativeTriggers": [
+          "implementation-ready design rewrite",
+          "task decomposition",
+          "non-technical marketing rewrite",
+          "personal voice matching"
+        ],
+        "requires": [
+          "target text or document",
+          "intended audience"
+        ],
         "priority": 75,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "review-packet-gate",
@@ -427,11 +859,28 @@
         "source": "skills/review/review-packet-gate",
         "runtimeName": "review-packet-gate",
         "description": "Use when preparing or judging review packets, gate decisions, re-review evidence, finding disposition, or readiness of a plan or implementation.",
-        "triggers": ["review packet", "gate decision", "re-review", "findings", "READY_WITH_NOTES", "NOT_READY"],
-        "negativeTriggers": ["casual opinion without evidence"],
-        "requires": ["diff or artifact under review", "expected validation evidence"],
+        "triggers": [
+          "review packet",
+          "gate decision",
+          "re-review",
+          "findings",
+          "READY_WITH_NOTES",
+          "NOT_READY"
+        ],
+        "negativeTriggers": [
+          "casual opinion without evidence"
+        ],
+        "requires": [
+          "diff or artifact under review",
+          "expected validation evidence"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "grill-diff",
@@ -440,11 +889,36 @@
         "source": "skills/review/grill-diff",
         "runtimeName": "grill-diff",
         "description": "Use when the user explicitly asks to grill, chunk-review, review each hunk or change, question each change, or step through a local diff or task commit range interactively.",
-        "triggers": ["grill my diff", "chunk review", "review each hunk", "review each change", "question each change", "interactive diff review", "step through task commit range"],
-        "negativeTriggers": ["large broad diff", "pure formatting", "design-only discussion", "already merged code", "ordinary PR/MR review", "findings-first review", "review packet or gate review", "broad risk-ordered review"],
-        "requires": ["task scope packet", "source context around changed chunks"],
+        "triggers": [
+          "grill my diff",
+          "chunk review",
+          "review each hunk",
+          "review each change",
+          "question each change",
+          "interactive diff review",
+          "step through task commit range"
+        ],
+        "negativeTriggers": [
+          "large broad diff",
+          "pure formatting",
+          "design-only discussion",
+          "already merged code",
+          "ordinary PR/MR review",
+          "findings-first review",
+          "review packet or gate review",
+          "broad risk-ordered review"
+        ],
+        "requires": [
+          "task scope packet",
+          "source context around changed chunks"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "skill-judge",
@@ -453,11 +927,28 @@
         "source": "skills/review/skill-judge",
         "runtimeName": "skill-judge",
         "description": "Use when evaluating SKILL.md packages, trigger descriptions, progressive disclosure, bundled resources, validation, or skill quality before migration or release.",
-        "triggers": ["skill judge", "skill quality review", "SKILL.md evaluation", "progressive disclosure", "skill migration readiness"],
-        "negativeTriggers": ["ordinary skill authoring", "subagent prompt review"],
-        "requires": ["target skill directory", "references/rubric.md"],
+        "triggers": [
+          "skill judge",
+          "skill quality review",
+          "SKILL.md evaluation",
+          "progressive disclosure",
+          "skill migration readiness"
+        ],
+        "negativeTriggers": [
+          "ordinary skill authoring",
+          "subagent prompt review"
+        ],
+        "requires": [
+          "target skill directory",
+          "references/rubric.md"
+        ],
         "priority": 75,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "multi-lens-design-review",
@@ -466,11 +957,28 @@
         "source": "skills/review/multi-lens-design-review",
         "runtimeName": "multi-lens-design-review",
         "description": "Use when reviewing requirements, proposals, design docs, implementation plans, task sets, or artifact chains through multiple design-risk lenses before readiness or freeze.",
-        "triggers": ["multi-lens design review", "design readiness", "freeze readiness", "artifact chain review", "design-risk lenses"],
-        "negativeTriggers": ["single-pass document rewrite", "implementation review without design artifacts"],
-        "requires": ["design or planning artifact", "review-only boundary unless edits requested"],
+        "triggers": [
+          "multi-lens design review",
+          "design readiness",
+          "freeze readiness",
+          "artifact chain review",
+          "design-risk lenses"
+        ],
+        "negativeTriggers": [
+          "single-pass document rewrite",
+          "implementation review without design artifacts"
+        ],
+        "requires": [
+          "design or planning artifact",
+          "review-only boundary unless edits requested"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "multi-lens-review",
@@ -479,11 +987,28 @@
         "source": "skills/review/multi-lens-review",
         "runtimeName": "multi-lens-review",
         "description": "Use when a review needs multiple independent lenses, fresh outside-voice passes, confidence calibration, false-positive suppression, or synthesis after the baseline review method is selected.",
-        "triggers": ["multi-lens review", "outside-voice review", "fresh-agent review", "confidence calibration", "reviewer synthesis"],
-        "negativeTriggers": ["ordinary baseline review", "review method not yet selected"],
-        "requires": ["baseline review method", "review packet or target diff"],
+        "triggers": [
+          "multi-lens review",
+          "outside-voice review",
+          "fresh-agent review",
+          "confidence calibration",
+          "reviewer synthesis"
+        ],
+        "negativeTriggers": [
+          "ordinary baseline review",
+          "review method not yet selected"
+        ],
+        "requires": [
+          "baseline review method",
+          "review packet or target diff"
+        ],
         "priority": 80,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "skill-authoring-governance",
@@ -492,11 +1017,26 @@
         "source": "skills/review/skill-authoring-governance",
         "runtimeName": "skill-authoring-governance",
         "description": "Use when creating, editing, auditing, packaging, or routing harness skills and their manifest metadata.",
-        "triggers": ["create skill", "update skill", "skill manifest", "skill routing"],
-        "negativeTriggers": ["ordinary code change without skill edits"],
-        "requires": ["target skill directory", "harness.manifest.json when packaged"],
+        "triggers": [
+          "create skill",
+          "update skill",
+          "skill manifest",
+          "skill routing"
+        ],
+        "negativeTriggers": [
+          "ordinary code change without skill edits"
+        ],
+        "requires": [
+          "target skill directory",
+          "harness.manifest.json when packaged"
+        ],
         "priority": 70,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "subagent-projection-review",
@@ -505,11 +1045,28 @@
         "source": "skills/review/subagent-projection-review",
         "runtimeName": "subagent-projection-review",
         "description": "Use when reviewing canonical subagent roles, client projections, authority boundaries, packet contracts, or projection metadata drift.",
-        "triggers": ["subagent projection", "agent role", "client projection", "authority boundary", "packet contract", "metadata drift"],
-        "negativeTriggers": ["task delegation with no prompt changes"],
-        "requires": ["canonical role source", "rendered client projection when available"],
+        "triggers": [
+          "subagent projection",
+          "agent role",
+          "client projection",
+          "authority boundary",
+          "packet contract",
+          "metadata drift"
+        ],
+        "negativeTriggers": [
+          "task delegation with no prompt changes"
+        ],
+        "requires": [
+          "canonical role source",
+          "rendered client projection when available"
+        ],
         "priority": 70,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "subagent-judge",
@@ -518,11 +1075,29 @@
         "source": "skills/review/subagent-judge",
         "runtimeName": "subagent-judge",
         "description": "Use when evaluating custom subagent prompt quality, role clarity, dispatch fit, authority boundaries, output contracts, validation behavior, or cross-client projections.",
-        "triggers": ["subagent judge", "agent prompt review", "authority boundary", "cross-client projection", "output contract", "dispatch fit"],
-        "negativeTriggers": ["ordinary task delegation", "code review without agent prompt changes"],
-        "requires": ["target subagent prompt", "references/rubric.md"],
+        "triggers": [
+          "subagent judge",
+          "agent prompt review",
+          "authority boundary",
+          "cross-client projection",
+          "output contract",
+          "dispatch fit"
+        ],
+        "negativeTriggers": [
+          "ordinary task delegation",
+          "code review without agent prompt changes"
+        ],
+        "requires": [
+          "target subagent prompt",
+          "references/rubric.md"
+        ],
         "priority": 70,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "handoff-checkpoint",
@@ -531,11 +1106,29 @@
         "source": "skills/operations/handoff-checkpoint",
         "runtimeName": "handoff-checkpoint",
         "description": "Use when continuing work later, compacting context, handing work to another agent, or recording current state before stopping.",
-        "triggers": ["handoff", "checkpoint", "continue later", "context compact", "pre-compact", "resume work"],
-        "negativeTriggers": ["final answer with no continuation"],
-        "requires": ["current git status", "validation evidence", "remaining task list"],
+        "triggers": [
+          "handoff",
+          "checkpoint",
+          "continue later",
+          "context compact",
+          "pre-compact",
+          "resume work"
+        ],
+        "negativeTriggers": [
+          "final answer with no continuation"
+        ],
+        "requires": [
+          "current git status",
+          "validation evidence",
+          "remaining task list"
+        ],
         "priority": 70,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "skill-cleaner",
@@ -544,11 +1137,667 @@
         "source": "skills/operations/skill-cleaner",
         "runtimeName": "skill-cleaner",
         "description": "Use when auditing Codex, Hermes, OpenCode, or OMP skills for loaded roots, duplicates, unused skills, prompt-budget cost, compact descriptions, or cleanup candidates.",
-        "triggers": ["skill audit", "duplicate skills", "unused skills", "prompt budget", "cleanup candidates", "skill roots"],
-        "negativeTriggers": ["ordinary skill authoring", "deleting skills without user approval"],
-        "requires": ["python3", "skills roots or client config paths"],
+        "triggers": [
+          "skill audit",
+          "duplicate skills",
+          "unused skills",
+          "prompt budget",
+          "cleanup candidates",
+          "skill roots"
+        ],
+        "negativeTriggers": [
+          "ordinary skill authoring",
+          "deleting skills without user approval"
+        ],
+        "requires": [
+          "python3",
+          "skills roots or client config paths"
+        ],
         "priority": 70,
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "agent-browser",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/agent-browser",
+        "runtimeName": "agent-browser",
+        "description": "Use when automating browser interactions, snapshots, screenshots, forms, login flows, web app checks, or page data extraction with agent-browser CLI.",
+        "triggers": [
+          "browser automation",
+          "take screenshot",
+          "fill form",
+          "click button",
+          "scrape page",
+          "test web app"
+        ],
+        "negativeTriggers": [
+          "static HTML editing",
+          "API-only request"
+        ],
+        "requires": [
+          "agent-browser CLI or npx access"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "agent-manager-skill",
+        "category": "third-party",
+        "audience": "user",
+        "source": "skills/third-party/agent-manager-skill",
+        "runtimeName": "agent-manager-skill",
+        "description": "Use when managing multiple local CLI agents through tmux sessions, recurring schedules, task assignment, or log monitoring.",
+        "triggers": [
+          "manage local agents",
+          "tmux agent sessions",
+          "assign tasks to agents",
+          "monitor agent logs"
+        ],
+        "negativeTriggers": [
+          "single-agent task",
+          "repository subagent projection"
+        ],
+        "requires": [
+          "tmux",
+          "python3",
+          "agent-manager checkout"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "api-documentation-generator",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/api-documentation-generator",
+        "runtimeName": "api-documentation-generator",
+        "description": "Use when generating or refreshing API documentation from code, including endpoints, parameters, examples, auth, errors, and usage guidance.",
+        "triggers": [
+          "API documentation",
+          "document endpoints",
+          "OpenAPI docs",
+          "REST docs",
+          "GraphQL docs"
+        ],
+        "negativeTriggers": [
+          "general prose polish",
+          "design doc review only"
+        ],
+        "requires": [
+          "API source files or route definitions"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "architecture-diagram",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/architecture-diagram",
+        "runtimeName": "architecture-diagram",
+        "description": "Use when creating standalone HTML/SVG architecture, cloud, infrastructure, service, database, or deployment diagrams.",
+        "triggers": [
+          "architecture diagram",
+          "cloud diagram",
+          "infrastructure diagram",
+          "service topology",
+          "deployment diagram"
+        ],
+        "negativeTriggers": [
+          "Mermaid source requested",
+          "design-code traceability report"
+        ],
+        "requires": [
+          "system components and relationships"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "context7-auto-research",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/context7-auto-research",
+        "runtimeName": "context7-auto-research",
+        "description": "Use when fetching current library or framework documentation through Context7-style research before answering API or setup questions.",
+        "triggers": [
+          "latest library docs",
+          "framework documentation",
+          "Context7",
+          "API reference lookup"
+        ],
+        "negativeTriggers": [
+          "stable local source lookup",
+          "no external docs needed"
+        ],
+        "requires": [
+          "Context7 access or equivalent documentation source"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "cpp-good-taste",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/cpp-good-taste",
+        "runtimeName": "cpp-good-taste",
+        "description": "Use when reviewing C++ design taste, data shape, ownership, lifetime, API boundaries, error model, dependencies, and maintainability.",
+        "triggers": [
+          "C++ good taste",
+          "C++ design review",
+          "ownership review",
+          "lifetime review",
+          "maintainability review"
+        ],
+        "negativeTriggers": [
+          "syntax-only review",
+          "single-line mechanical change"
+        ],
+        "requires": [
+          "C++ diff, file, class, or module to review"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "defuddle",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/defuddle",
+        "runtimeName": "defuddle",
+        "description": "Use when extracting clean Markdown or metadata from web pages with Defuddle CLI to reduce clutter before reading or analysis.",
+        "triggers": [
+          "extract web page",
+          "clean markdown from URL",
+          "defuddle",
+          "read article",
+          "parse webpage"
+        ],
+        "negativeTriggers": [
+          "repository file read",
+          "single known local file"
+        ],
+        "requires": [
+          "defuddle CLI or npx access"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "docx",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/docx",
+        "runtimeName": "docx",
+        "description": "Use when creating, reading, redlining, commenting, or editing DOCX documents while preserving tracked changes and OOXML structure.",
+        "triggers": [
+          "docx",
+          "Word document",
+          "tracked changes",
+          "redline document",
+          "document comments"
+        ],
+        "negativeTriggers": [
+          "plain Markdown edit",
+          "PDF-only task"
+        ],
+        "requires": [
+          "document file or requested DOCX output"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "find-skills",
+        "category": "third-party",
+        "audience": "user",
+        "source": "skills/third-party/find-skills",
+        "runtimeName": "find-skills",
+        "description": "Use when the user wants to discover, compare, or install skills for a capability that may already exist.",
+        "triggers": [
+          "find a skill",
+          "skill for",
+          "install skill",
+          "is there a skill"
+        ],
+        "negativeTriggers": [
+          "known local skill already selected",
+          "ordinary implementation request"
+        ],
+        "requires": [
+          "skill registry, repository URL, or installable skill source"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "glab",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/glab",
+        "runtimeName": "glab",
+        "description": "Use when interacting with GitLab resources through glab, including merge requests, issues, CI pipelines, repos, and API operations.",
+        "triggers": [
+          "glab",
+          "GitLab MR",
+          "GitLab issue",
+          "GitLab pipeline",
+          "merge request",
+          "CI job"
+        ],
+        "negativeTriggers": [
+          "local git-only workflow",
+          "non-GitLab repository"
+        ],
+        "requires": [
+          "glab CLI",
+          "GitLab authentication when needed"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "glab-mr-discuss",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/glab-mr-discuss",
+        "runtimeName": "glab-mr-discuss",
+        "description": "Use when posting GitLab MR discussions, inline diff notes, multi-line comments, or suggestion blocks through glab API.",
+        "triggers": [
+          "post MR comment",
+          "inline review note",
+          "GitLab suggestion",
+          "add discussion",
+          "MR discussion"
+        ],
+        "negativeTriggers": [
+          "read-only MR review",
+          "top-level summary only"
+        ],
+        "requires": [
+          "glab skill",
+          "MR id",
+          "project path",
+          "diff refs for inline notes"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "markitdown",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/markitdown",
+        "runtimeName": "markitdown",
+        "description": "Use when converting office files, PDFs, images, audio, archives, HTML, CSV, JSON, XML, or URLs into Markdown with MarkItDown.",
+        "triggers": [
+          "convert to markdown",
+          "markitdown",
+          "extract document text",
+          "convert office file"
+        ],
+        "negativeTriggers": [
+          "manual prose rewrite",
+          "already plain text input"
+        ],
+        "requires": [
+          "markitdown package or CLI",
+          "input file or URL"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "mermaid-diagrams",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/mermaid-diagrams",
+        "runtimeName": "mermaid-diagrams",
+        "description": "Use when creating, editing, or rendering Mermaid diagrams, including flowcharts, sequence, class, ERD, C4, state, Gantt, and SVG/ASCII output.",
+        "triggers": [
+          "Mermaid diagram",
+          "render mermaid",
+          "sequence diagram",
+          "class diagram",
+          "flowchart",
+          "ERD",
+          "C4 diagram"
+        ],
+        "negativeTriggers": [
+          "bitmap image generation",
+          "non-diagram prose"
+        ],
+        "requires": [
+          "diagram intent, Mermaid source, or system relationship data"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "obsidian-bases",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/obsidian-bases",
+        "runtimeName": "obsidian-bases",
+        "description": "Use when creating or editing Obsidian Bases files with views, filters, formulas, summaries, table views, or card views.",
+        "triggers": [
+          "Obsidian Bases",
+          ".base file",
+          "Bases table view",
+          "Bases card view"
+        ],
+        "negativeTriggers": [
+          "ordinary Markdown outside Obsidian",
+          "spreadsheet task"
+        ],
+        "requires": [
+          "Obsidian vault or .base file context"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "obsidian-cli",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/obsidian-cli",
+        "runtimeName": "obsidian-cli",
+        "description": "Use when operating an Obsidian vault through CLI commands, including notes, tasks, search, properties, plugins, themes, and screenshots.",
+        "triggers": [
+          "Obsidian CLI",
+          "vault search",
+          "Obsidian plugin",
+          "Obsidian task",
+          "Obsidian screenshot"
+        ],
+        "negativeTriggers": [
+          "generic Markdown edit with no vault semantics"
+        ],
+        "requires": [
+          "Obsidian CLI and vault path"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "obsidian-markdown",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/obsidian-markdown",
+        "runtimeName": "obsidian-markdown",
+        "description": "Use when writing or editing Obsidian-flavored Markdown with wikilinks, embeds, callouts, properties, tags, or vault links.",
+        "triggers": [
+          "Obsidian Markdown",
+          "wikilinks",
+          "callouts",
+          "frontmatter properties",
+          "vault notes"
+        ],
+        "negativeTriggers": [
+          "standard Markdown only",
+          "non-Obsidian documentation"
+        ],
+        "requires": [
+          "Obsidian note or vault conventions"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "pdf",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/pdf",
+        "runtimeName": "pdf",
+        "description": "Use when extracting, creating, merging, splitting, annotating, analyzing, or filling PDF files and forms programmatically.",
+        "triggers": [
+          "PDF processing",
+          "fill PDF form",
+          "extract PDF text",
+          "merge PDFs",
+          "split PDF",
+          "PDF table"
+        ],
+        "negativeTriggers": [
+          "DOCX-only task",
+          "plain image editing"
+        ],
+        "requires": [
+          "PDF file or requested PDF output"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "pptx",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/pptx",
+        "runtimeName": "pptx",
+        "description": "Use when creating, reading, modifying, analyzing, or rendering PowerPoint PPTX presentations, layouts, comments, notes, or slide assets.",
+        "triggers": [
+          "pptx",
+          "PowerPoint",
+          "presentation slides",
+          "speaker notes",
+          "slide layout"
+        ],
+        "negativeTriggers": [
+          "HTML presentation only",
+          "DOCX-only task"
+        ],
+        "requires": [
+          "presentation file or requested PPTX output"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "redmine",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/redmine",
+        "runtimeName": "redmine",
+        "description": "Use when querying or updating Redmine issues, wiki pages, time entries, custom fields, relations, attachments, or project trackers.",
+        "triggers": [
+          "Redmine",
+          "issue tracker",
+          "ticket",
+          "wiki page",
+          "time entry",
+          "custom field"
+        ],
+        "negativeTriggers": [
+          "GitLab issue only",
+          "local TODO list"
+        ],
+        "requires": [
+          "Redmine API URL and API key when making requests"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "teach",
+        "category": "third-party",
+        "audience": "user",
+        "source": "skills/third-party/teach",
+        "runtimeName": "teach",
+        "description": "Use when the user asks to learn a topic through a persistent teaching workspace with missions, lessons, resources, and learning records.",
+        "triggers": [
+          "teach me",
+          "learn about",
+          "lesson workspace",
+          "learning record",
+          "mission-based learning"
+        ],
+        "negativeTriggers": [
+          "one-off explanation",
+          "ordinary documentation generation"
+        ],
+        "requires": [
+          "teaching workspace or permission to create one"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "xlsx",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/xlsx",
+        "runtimeName": "xlsx",
+        "description": "Use when creating, editing, analyzing, formatting, visualizing, or recalculating spreadsheets such as XLSX, XLSM, CSV, or TSV files.",
+        "triggers": [
+          "xlsx",
+          "spreadsheet",
+          "Excel",
+          "CSV analysis",
+          "recalculate formulas",
+          "financial model"
+        ],
+        "negativeTriggers": [
+          "plain Markdown table only",
+          "PDF-only task"
+        ],
+        "requires": [
+          "spreadsheet file or requested spreadsheet output"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       }
     ],
     "agents": [
@@ -558,7 +1807,12 @@
         "source": "agents/roles/harness-orchestrator.md",
         "runtimeName": "harness-orchestrator",
         "description": "Coordinate artifact-driven harness work without project-domain assumptions.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "repo-mapper",
@@ -566,7 +1820,12 @@
         "source": "agents/roles/repo-mapper.md",
         "runtimeName": "repo-mapper",
         "description": "Map repository structure, ownership, and evidence paths before planning or implementation.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "design-alternatives",
@@ -574,7 +1833,12 @@
         "source": "agents/roles/design-alternatives.md",
         "runtimeName": "design-alternatives",
         "description": "Generate orthogonal design options with tradeoffs grounded in current repository evidence.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "solution-designer",
@@ -582,7 +1846,12 @@
         "source": "agents/roles/solution-designer.md",
         "runtimeName": "solution-designer",
         "description": "Produce a selected implementation design from requirements, research, and repo evidence.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "planning-reviewer",
@@ -590,7 +1859,12 @@
         "source": "agents/roles/planning-reviewer.md",
         "runtimeName": "planning-reviewer",
         "description": "Review planning artifacts, design readiness, and task executable quality without editing them.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-planner",
@@ -598,7 +1872,12 @@
         "source": "agents/roles/implementation-planner.md",
         "runtimeName": "implementation-planner",
         "description": "Convert frozen design artifacts into ordered implementation slices and validation gates.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "code-worker",
@@ -606,7 +1885,12 @@
         "source": "agents/roles/code-worker.md",
         "runtimeName": "code-worker",
         "description": "Implement one scoped code slice from a context packet and validation target.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "reviewer",
@@ -614,7 +1898,12 @@
         "source": "agents/roles/reviewer.md",
         "runtimeName": "reviewer",
         "description": "Perform evidence-first correctness review with risk-ordered findings.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "council-synthesizer",
@@ -622,7 +1911,12 @@
         "source": "agents/roles/council-synthesizer.md",
         "runtimeName": "council-synthesizer",
         "description": "Synthesize multiple independent positions into one evidence-weighted council record.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "code-simplifier",
@@ -630,7 +1924,12 @@
         "source": "agents/roles/code-simplifier.md",
         "runtimeName": "code-simplifier",
         "description": "Use when a simplification Scope Packet asks for apply or opportunities mode across explicit coverage modes.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       }
     ],
     "hooks": [
@@ -639,42 +1938,72 @@
         "intent": "session-bootstrap",
         "source": "hooks/intents/session-bootstrap.md",
         "description": "Emit short session entrypoint and canonical harness command guidance.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "active-change-guard",
         "intent": "active-change-guard",
         "source": "hooks/intents/active-change-guard.md",
         "description": "Warn when change workspace state is ambiguous before injecting validation output.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "tool-safety-guard",
         "intent": "tool-safety-guard",
         "source": "hooks/intents/tool-safety-guard.md",
         "description": "Warn or block dangerous tool actions when the selected client capability supports it.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "regulated-structure-guard",
         "intent": "regulated-structure-guard",
         "source": "hooks/intents/regulated-structure-guard.md",
         "description": "Warn before hand-creating regulated change or memory structure.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "projection-health-check",
         "intent": "projection-health-check",
         "source": "hooks/intents/projection-health-check.md",
         "description": "Report projection state and missing managed assets.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "pre-compact-handoff",
         "intent": "pre-compact-handoff",
         "source": "hooks/intents/pre-compact-handoff.md",
         "description": "Prompt concise handoff capture before context compaction when supported.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       }
     ],
     "templates": [
@@ -684,7 +2013,12 @@
         "source": "templates/changes/README.md",
         "target": ".changes/templates/README.md",
         "description": "Generic change workspace index template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-readme",
@@ -692,7 +2026,12 @@
         "source": "templates/changes/implementation-design/README.md",
         "target": ".changes/templates/implementation-design/README.md",
         "description": "Detailed implementation design index template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-problem",
@@ -700,7 +2039,12 @@
         "source": "templates/changes/implementation-design/01-problem.md",
         "target": ".changes/templates/implementation-design/01-problem.md",
         "description": "Implementation design problem and boundary template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-code-topology",
@@ -708,7 +2052,12 @@
         "source": "templates/changes/implementation-design/02-code-topology.md",
         "target": ".changes/templates/implementation-design/02-code-topology.md",
         "description": "Implementation design subsystem and module topology template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-class-design",
@@ -716,7 +2065,12 @@
         "source": "templates/changes/implementation-design/03-class-design.md",
         "target": ".changes/templates/implementation-design/03-class-design.md",
         "description": "Implementation design class and interface template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-runtime-flow",
@@ -724,7 +2078,12 @@
         "source": "templates/changes/implementation-design/04-runtime-flow.md",
         "target": ".changes/templates/implementation-design/04-runtime-flow.md",
         "description": "Implementation design runtime flow template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-error-model",
@@ -732,7 +2091,12 @@
         "source": "templates/changes/implementation-design/05-error-model.md",
         "target": ".changes/templates/implementation-design/05-error-model.md",
         "description": "Implementation design error model template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-plan",
@@ -740,7 +2104,12 @@
         "source": "templates/changes/implementation-design/06-implementation-plan.md",
         "target": ".changes/templates/implementation-design/06-implementation-plan.md",
         "description": "Implementation design plan and traceability template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "implementation-design-constraints",
@@ -748,7 +2117,12 @@
         "source": "templates/changes/implementation-design/07-constraints.md",
         "target": ".changes/templates/implementation-design/07-constraints.md",
         "description": "Implementation design constraints and self-check template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       },
       {
         "id": "memory-index",
@@ -756,7 +2130,12 @@
         "source": "templates/memory/INDEX.md",
         "target": ".memory/INDEX.md",
         "description": "Generic memory index template.",
-        "clients": ["codex", "claude", "opencode", "omp"]
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
       }
     ],
     "tools": []

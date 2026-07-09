@@ -55,6 +55,36 @@ npx @catwithoutear/agent-harness-core harness-project \
   --verify --json
 ```
 
+## 可选第三方技能
+
+使用 `--content skills` 时，core workflow skills 会默认安装。
+`skills/third-party/` 下的工具型技能需要显式选择，因为它们封装外部工具或
+通用效率工作流，不属于 core control loop。
+
+安装全部可选第三方技能：
+
+```bash
+npx @catwithoutear/agent-harness-core harness-project \
+  --target /path/to/repo \
+  --clients codex \
+  --content skills \
+  --skill-categories third-party
+```
+
+只安装指定第三方技能：
+
+```bash
+npx @catwithoutear/agent-harness-core harness-project \
+  --target /path/to/repo \
+  --clients codex \
+  --content skills \
+  --skills glab,redmine
+```
+
+只有当目标需要一次性接收所有默认和可选技能时，才使用
+`--include-optional-skills`。新增 third-party skills 必须保持项目无关，并在
+`harness.manifest.json` 中声明 `enabledByDefault: false`。
+
 ## AI 安装提示词
 
 当你希望 AI coding agent 安装 core harness 时，将下面其中一段提示词复制给它。运行命令前替换占位符。

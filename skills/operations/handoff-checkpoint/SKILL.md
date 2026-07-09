@@ -12,8 +12,10 @@ filesystem state without trusting stale conversation history.
 ## Include
 
 - objective and current phase,
-- repositories, branches, and worktrees,
-- active change workspace or explicit no-change reason,
+- repositories, branches, worktrees, resolved `state_root`, and `code_root`,
+- active change workspace or explicit no-change/root-unresolved reason,
+- execution-map rows when present, including status, topology, branch,
+  `Worktree`, dependencies, owner, and `Last Evidence`,
 - files changed and files intentionally untouched,
 - commands run and exact results,
 - validation still missing,
@@ -26,6 +28,11 @@ filesystem state without trusting stale conversation history.
 - Prefer current `git status`, validator output, test output, and file paths.
 - Mark stale or unverified facts clearly.
 - Include absolute paths when multiple worktrees or repositories are involved.
+- Mark every `Worktree` value from `execution-map.md` as a local execution
+  coordinate. If the receiver may be in another checkout or machine, call out
+  the stale Worktree path risk and the need to reassign it.
+- Keep `Last Evidence` references change-relative and point to the owning task,
+  review, decision, or handoff artifact instead of copying logs into the map.
 - Preserve failed command output when it explains the next action.
 - Do not summarize away unresolved findings from review packets.
 
@@ -54,5 +61,7 @@ failure, and the fix that made the evidence trustworthy.
 
 - Claim work is complete unless verification was run or explicitly impossible.
 - Omit a dirty worktree because the changes are "obvious".
+- Treat dirty `.changes/<change>` paths or `--all-active` output as active
+  change proof without explicit root resolution.
 - Convert uncertain memory into confirmed current state.
 - Include secrets, tokens, private credentials, or unnecessary large logs.

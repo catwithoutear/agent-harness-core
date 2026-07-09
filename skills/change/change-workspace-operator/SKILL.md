@@ -10,38 +10,67 @@ Use `harness-change-doc` for regulated writes and discovery. Use
 memory checks. Prefer the tools over hand-created files because they write the
 front matter, artifact type, tags, description, and index links consistently.
 
-Always pass `--repo-root <repo>` when operating outside the current working
-directory or when the command output may be shown to another agent.
+Resolve the state root before regulated writes. Prefer `--state-root
+<state-root>` for the canonical `.changes` owner. `--repo-root <repo>` remains a
+legacy alias for the same state root; do not use it to mean the implementation
+checkout. Use `--code-root <code-root>` only when the source checkout differs
+from the canonical state root.
+
+For linked worktrees, run
+`harness-change-doc --state-root <state-root> --code-root <code-root> resolve --change <change> --json`
+or record why the active change is unresolved. Do not select a change solely
+from dirty git status or `--all-active` validator output.
 
 ## Commands
 
 | Need | Command |
 |---|---|
-| Read policy | `harness-change-doc --repo-root <repo> policy --json` |
-| Index a change | `harness-change-doc --repo-root <repo> index <change-id> --json` |
-| List artifacts | `harness-change-doc --repo-root <repo> list <change-id> --json` |
-| Locate artifacts | `harness-change-doc --repo-root <repo> locate <change-id> --artifact <artifact> --json` |
-| Read artifacts | `harness-change-doc --repo-root <repo> read <change-id> --artifact <artifact>` |
-| Add terminology | `harness-change-doc --repo-root <repo> add-terminology <change-id> --tags terminology --description "..."` |
-| Add implementation design pack | `harness-change-doc --repo-root <repo> add-implementation-design <change-id> --description "..."` |
-| Add review round | `harness-change-doc --repo-root <repo> add-review <change-id> --target <name> --round <n> --description "..."` |
-| Add decision record | `harness-change-doc --repo-root <repo> add-decision <change-id> --slug <topic>` |
-| Add timeline event | `harness-change-doc --repo-root <repo> add-timeline <change-id> --slug <event>` |
-| Add task slice | `harness-change-doc --repo-root <repo> add-task-slice <change-id> --slug <slice>` |
-| Validate one change | `harness-change-validate --repo-root <repo> --change <change-id>` |
-| Machine status | `harness-change-validate --repo-root <repo> --change <change-id> --status --json` |
-| Inventory files | `harness-change-validate --repo-root <repo> --change <change-id> --inventory --json` |
-| Cleanup hints | `harness-change-validate --repo-root <repo> --change <change-id> --suggest-cleanup --json` |
-| Enforce layout | `harness-change-validate --repo-root <repo> --change <change-id> --strict-layout` |
-| Check memory | `harness-change-validate --repo-root <repo> --memory --json` |
+| Read policy | `harness-change-doc --state-root <state-root> policy --json` |
+| Resolve roots | `harness-change-doc --state-root <state-root> --code-root <code-root> resolve --change <change> --json` |
+| Index a change | `harness-change-doc --state-root <state-root> index <change-id> --json` |
+| List artifacts | `harness-change-doc --state-root <state-root> list <change-id> --json` |
+| Locate artifacts | `harness-change-doc --state-root <state-root> locate <change-id> --artifact <artifact> --json` |
+| Read artifacts | `harness-change-doc --state-root <state-root> read <change-id> --artifact <artifact>` |
+| Read execution map | `harness-change-doc --state-root <state-root> execution-map <change> --json` |
+| Assign a slice | `harness-change-doc --state-root <state-root> assign-slice <change> --slice <slice> --status planned` |
+| Add terminology | `harness-change-doc --state-root <state-root> add-terminology <change-id> --tags terminology --description "..."` |
+| Add implementation design pack | `harness-change-doc --state-root <state-root> add-implementation-design <change-id> --description "..."` |
+| Add review round | `harness-change-doc --state-root <state-root> add-review <change-id> --target <name> --round <n> --description "..."` |
+| Add decision record | `harness-change-doc --state-root <state-root> add-decision <change-id> --slug <topic>` |
+| Add timeline event | `harness-change-doc --state-root <state-root> add-timeline <change-id> --slug <event>` |
+| Add task slice | `harness-change-doc --state-root <state-root> add-task-slice <change-id> --slug <slice>` |
+| Validate one change | `harness-change-validate --state-root <state-root> --change <change-id>` |
+| Validate worktrees | `harness-change-validate --state-root <state-root> --change <change> --worktrees` |
+| Machine status | `harness-change-validate --state-root <state-root> --change <change-id> --status --json` |
+| Machine status with worktrees | `harness-change-validate --state-root <state-root> --change <change-id> --worktrees --status --json` |
+| Inventory files | `harness-change-validate --state-root <state-root> --change <change-id> --inventory --json` |
+| Cleanup hints | `harness-change-validate --state-root <state-root> --change <change-id> --suggest-cleanup --json` |
+| Enforce layout | `harness-change-validate --state-root <state-root> --change <change-id> --strict-layout` |
+| Check memory | `harness-change-validate --state-root <state-root> --memory --json` |
 
 Use `--all-active` only for repository audits. Resolve the active change first
 before injecting validator output into an agent prompt; otherwise the agent may
 optimize for the wrong workspace.
 
+`harness-change-doc --repo-root <repo> ...` and
+`harness-change-validate --repo-root <repo> ...` remain valid for existing
+scripts, but new workflow text should use `--state-root` when it means the
+canonical change workspace.
+
 ## Example Flows
 
 - New task term: run `add-terminology`, fill the table, then validate the change.
+- Multi-worktree assignment: create the task slice first, then use
+  `assign-slice` to write or update `execution-map.md`. The map owns scheduling
+  fields; task slices own implementation details and evidence.
+- Claimed or active work: include `--branch` and `--worktree`. Relative
+  `Worktree` values are normalized locally, and the persisted value is a local
+  execution coordinate, not portable branch truth.
+- Gated status update: `blocked`, `ready`, `merged`, and `superseded` require
+  `--last-evidence <change-relative.md#heading>`. Keep `Last Evidence`
+  change-relative; do not put URLs, commit hashes, or free-text logs in the map.
+- Stacked topology: use `--topology stacked` only with `--depends-on` or
+  `--base`, and use `stacked-branch-workflow` for git stack operations.
 - New implementation design pack: run `add-implementation-design`, then fill the
   required topology documents. Keep `Subsystem` as the capability/runtime
   boundary and `Module` as the code organization boundary. The tool creates all
@@ -61,6 +90,26 @@ optimize for the wrong workspace.
 - Unexpected file warning: run `--inventory --json`, read the file, choose move,
   allowlist, consolidate, or remove, then rerun with `--strict-layout` only after
   the semantic decision is clear.
+
+## Execution Map Contract
+
+`execution-map.md` is the scheduling authority for multi-worktree execution in
+the V1 shared-state model. V1 does not implement branch-local-state. The
+canonical state lives under one `.changes/<change>` state_root, while code edits
+may happen from one or more code_root worktrees.
+
+The map columns are `Slice`, `Topology`, `Status`, `Branch`, `Worktree`, `Base`,
+`Depends On`, `Owner`, and `Last Evidence`.
+
+- `planned` may omit `Branch` and `Worktree`.
+- `claimed`, `active`, `blocked`, and `ready` require `Branch` and `Worktree`.
+- `blocked`, `ready`, `merged`, and `superseded` require `Last Evidence`.
+- `parallel` rows must not depend on other rows.
+- `stacked` rows need `Depends On` or `Base`; ready stacked dependencies should
+  be `ready` or `merged`, and merged stacked dependencies should be `merged`.
+- `Worktree` is local and advisory during handoff. Reassign stale local paths
+  through `assign-slice`; keep portable evidence in task slices, reviews, or
+  decisions and reference it from `Last Evidence`.
 
 ## Review And Timeline Discipline
 

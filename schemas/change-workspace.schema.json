@@ -70,7 +70,14 @@
     ],
     "required_if_directory_exists": {
       "implementation-design": [
-        "implementation-design/README.md"
+        "implementation-design/README.md",
+        "implementation-design/01-problem.md",
+        "implementation-design/02-code-topology.md",
+        "implementation-design/03-class-design.md",
+        "implementation-design/04-runtime-flow.md",
+        "implementation-design/05-error-model.md",
+        "implementation-design/06-implementation-plan.md",
+        "implementation-design/07-constraints.md"
       ]
     },
     "warning_directories": []
@@ -106,7 +113,8 @@
         "proposal.md",
         "plan.md",
         "design.md",
-        "tasks.md"
+        "tasks.md",
+        "execution-map.md"
       ]
     },
     "allowed_directories_by_mode": {

@@ -35,3 +35,8 @@ sequenceDiagram
 
 | State | Entered by | Exits to | Invariants |
 |---|---|---|---|
+
+## Traceability
+
+| Flow or state | Requirement / source fact | Source anchor | Verification plan |
+|---|---|---|---|
