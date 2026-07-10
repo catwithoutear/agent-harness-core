@@ -26,3 +26,13 @@ dispositions. Recompute target and packet identities before comparison. Report
 source, unit, rule-relation, N/A, evidence, stale, and conclusion gaps using
 the review-packet-gate taxonomy, then emit `coverage_gate` with evidence and
 assurance. Do not perform a full second correctness review or emit `overall_gate`.
+
+Use only `READY`, `READY_WITH_NOTES`, `NOT_READY`, or
+`NEEDS_USER_DECISION` as `coverage_gate` values. Never emit `BLOCKED` as a
+gate. Name failures and gaps with the canonical vocabulary:
+`TARGET_RECOMPUTE_UNAVAILABLE`, `PACKET_SEAL_INVALID`,
+`PACKET_SEAL_MISMATCH`, `RULE_SOURCE_GAP`, `UNIT_IDENTITY_GAP`,
+`RULE_COVERAGE_GAP`, `APPLICABILITY_GAP`, `EVIDENCE_GAP`, `STALE_REVIEW`, and
+`CONCLUSION_CONFLICT`. An unsealed expected packet or unavailable target
+recomputation yields `coverage_gate=NOT_READY`; do not invent alternate gap
+labels or infer an N/A disposition that the ledger did not record.

@@ -34,3 +34,5 @@ gate for the implementation-design pack.
 | `slice-005-behavioral-evidence-r01.md` | review-round | reviewed | r01 | Bounded behavioral evidence decision for deep review coverage. |
 | `slice-006-integration-handoff-r01.md` | review-round | reviewed | r01 | Final integration review and handoff for review coverage contract. |
 | `pre-commit-r01.md` | review-round | reviewed | r01 | Final uncommitted diff review before committing review coverage contract. |
+| `slice-003-delegated-verifier-projection-r02.md` | review-round | reviewed | r02 | Re-review of verifier output vocabulary after fresh-agent evaluation. |
+| `slice-005-behavioral-evidence-r02.md` | review-round | reviewed | r02 | Fresh-agent phase-1 and phase-2 behavioral evaluation evidence. |

@@ -38,24 +38,22 @@ model-general completeness.
 
 - [x] Select the smallest reproducible fixture with explicit expected unit,
       source, relation, and evidence omissions.
-- [x] Fresh phase-1/phase-2 dispatch is unavailable in this interface; record
-      the exact missing facility instead of fabricating packets or role output.
-- [x] Record the deterministic fixture paths, unavailable fresh-dispatch
-      boundary, and `blocked (approximate)` fidelity in the regulated review
-      artifact.
-- [x] If a fresh dispatch cannot be performed, record `blocked` with the exact
-      missing facility, or `partial` when lower-fidelity evidence exists; retain
-      the residual limitation for final gate synthesis.
+- [x] Dispatch phase 1 with target/rule-source fixture inputs but without the
+      reviewer ledger; record its expected UnitKey-plus-RuleRef output.
+- [x] Dispatch a fresh phase 2 with the phase-1 expectation and deliberately
+      incomplete ledger; record omission and contract-regression results.
+- [x] Record native-agent IDs, isolation boundary, fixture relation, results,
+      and `verified (approximate)` fidelity in regulated review artifacts.
 
 ## Validation
 
 - [x] Deterministic fixture and helper tests remain passing before the agent
       evaluation is run.
-- [x] Review record states why phase-1 isolation and phase-2 output cannot be
-      obtained in the current interface.
-- [x] Any unavailable evaluation is labeled `blocked` or `partial` with its
-      exact fidelity and final assurance boundary explicit; it cannot silently
-      become a deep completeness claim.
+- [x] Review records prove phase 1 had no ledger input and fresh phase 2
+      received only expected relation data plus an incomplete ledger.
+- [x] The evaluation is labeled `verified (approximate)` with target/seal and
+      model-general limits explicit; it cannot silently become a deep
+      completeness claim.
 
 ## Review
 
