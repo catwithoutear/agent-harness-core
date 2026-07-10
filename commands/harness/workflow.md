@@ -53,6 +53,14 @@ Input: `$ARGUMENTS`
 14. Verify with repository-owned commands or source evidence.
 15. Persist only high-signal results in the owning artifact. Use `reviews/` and
    `timeline/` sparingly; do not create process logs for routine steps.
+16. For explicit `coverage_mode`, apply `quick`, `standard`, or `deep` review
+    routing before implementation verification. No `coverage_mode` preserves
+    the legacy `review_gate` path. Deep requires verified target identity,
+    isolated `review-verifier` inventory, a sealed expected packet, and compare;
+    target, required-source, or seal failure is `coverage_gate=NOT_READY`.
+17. Carry four independent decisions: `coverage_gate`, `review_gate`,
+    `implementation_verification_gate`, and coordinator-owned `overall_gate`.
+    A deep downgrade requires an owner-recorded reason and residual risk.
 
 ## Output
 

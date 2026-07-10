@@ -36,6 +36,11 @@ if (all || requested.has("--skills")) {
   await module.run(run);
 }
 
+if (all || requested.has("--review-coverage")) {
+  const module = await import("./test-review-coverage.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--subagents") || requested.has("--hooks")) {
   const module = await import("./test-subagents-hooks.js");
   await module.run(run);

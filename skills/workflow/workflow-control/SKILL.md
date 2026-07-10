@@ -126,6 +126,28 @@ Use shared gate vocabulary:
 Only the coordinator should emit `NEEDS_COUNCIL`. Specialist agents can say the
 evidence conflicts and recommend escalation.
 
+## Review Coverage Routing
+
+When a review packet has No `coverage_mode`, retain the legacy evidence-first
+path: reviewer findings and `review_gate` only. Do not require the helper,
+dispatch `review-verifier`, emit `coverage_gate`, or make a completeness claim.
+
+For explicit `coverage_mode`, first resolve target identity through
+`review-packet-digest.mjs`. `quick` has target identity plus findings and no
+independent coverage claim. `standard` adds Unit Inventory, Rule Results,
+Observed Rule Sources, and a coordinator coverage audit. `deep` dispatches
+`review-verifier` inventory before the reviewer ledger exists, seals the
+Expected Coverage Packet, then dispatches compare with the sealed packet and
+ledger. `PACKET_SEAL_INVALID`, target recomputation failure, or an unavailable
+required rule source makes deep `coverage_gate=NOT_READY`.
+
+Keep `coverage_gate`, `review_gate`, `implementation_verification_gate`, and
+`overall_gate` separate. The verifier owns deep coverage evidence, the reviewer
+owns correctness findings, implementation verification owns command evidence,
+and only the coordinator synthesizes `overall_gate`. Mandatory deep triggers
+may downgrade only through an owner decision with residual risk; no silent
+downgrade or unqualified `READY` is allowed.
+
 ## Council Handling
 
 Council is not majority vote. Use one synthesizer over multiple independent

@@ -20,6 +20,13 @@ export async function run(test) {
     }
   });
 
+  await test("review verifier is read-only and isolated from reviewer findings during inventory", () => {
+    const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "review-verifier.md"), "utf8");
+    for (const required of ["Read only", "inventory", "compare", "no reviewer ledger", "overall_gate", "coverage_gate"]) {
+      assert.match(role, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+  });
+
   await test("planning reviewer covers implementation design readiness without edit authority", () => {
     const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "planning-reviewer.md"), "utf8");
     assert.match(role, /## Review Principles/);

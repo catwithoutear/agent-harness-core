@@ -1914,6 +1914,19 @@
         ]
       },
       {
+        "id": "review-verifier",
+        "kind": "specialist",
+        "source": "agents/roles/review-verifier.md",
+        "runtimeName": "review-verifier",
+        "description": "Independently inventory and compare deep review coverage without editing or owning overall readiness.",
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
         "id": "council-synthesizer",
         "kind": "specialist",
         "source": "agents/roles/council-synthesizer.md",

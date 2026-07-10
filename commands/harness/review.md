@@ -27,6 +27,14 @@ Input: `$ARGUMENTS`
    `workflow-control`; do not convert council into majority voting.
 7. Record review results in `reviews/` only for formal gates, council,
    re-review, or freeze decisions.
+8. When the packet has `coverage_mode`, route `quick`, `standard`, or `deep`
+   through `review-packet-gate`. No `coverage_mode` keeps legacy review with
+   `review_gate` only. Deep first verifies target identity, dispatches
+   `review-verifier` inventory without a ledger, seals the expected packet, and
+   compares it after reviewer output. Fail closed for target or seal failure.
+9. Report `coverage_gate`, `review_gate`, `implementation_verification_gate`,
+   and coordinator-owned `overall_gate` separately; quick has no independent
+   coverage claim and standard has coordinator, not verifier, coverage audit.
 
 ## Output
 
