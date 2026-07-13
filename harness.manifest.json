@@ -323,7 +323,8 @@
           "direct code task with an obvious owner"
         ],
         "requires": [
-          "harness.manifest.json when available"
+          "harness.manifest.json or .harness/core/harness.manifest.json when available",
+          ".harness/projection-state.json when checking installed assets"
         ],
         "priority": 100,
         "clients": [

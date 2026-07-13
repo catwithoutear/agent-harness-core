@@ -40,6 +40,32 @@ export async function run(test) {
     }
   });
 
+  await test("ask harness resolves source and deployed runtime evidence", () => {
+    const text = fs.readFileSync(path.join(packageRoot, "skills", "entry", "ask-harness", "SKILL.md"), "utf8");
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const askHarness = manifest.assets.skills.find((skill) => skill.id === "ask-harness");
+
+    for (const required of [
+      "## Evidence Resolution",
+      "`.harness/core/harness.manifest.json`",
+      "`.harness/projection-state.json`",
+      "`.harness/*-overlay/`",
+      "`@catwithoutear/agent-harness-core`",
+      "does not prove that its target still exists or matches",
+      "`--verify`",
+      "Do not report that the repository has no manifest",
+      "Only call the result best-effort",
+      "no manifest candidate exists that passes Core identity validation"
+    ]) {
+      assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `ask-harness missing ${required}`);
+    }
+
+    assert.match(text, /`harness\.manifest\.json`[\s\S]*`\.harness\/core\/harness\.manifest\.json`[\s\S]*`\.harness\/projection-state\.json`/);
+    assert.doesNotMatch(text, /DBackup/i);
+    assert(askHarness.requires.includes("harness.manifest.json or .harness/core/harness.manifest.json when available"));
+    assert(askHarness.requires.includes(".harness/projection-state.json when checking installed assets"));
+  });
+
   await test("review packet gate uses shared gate vocabulary", () => {
     const text = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
     assert.match(text, /\bREADY\b/);

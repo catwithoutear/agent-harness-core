@@ -12,15 +12,43 @@ migration, implementation, or review work starts.
 ## Inputs to Check
 
 - User goal and exact wording.
-- Current repository root and whether it has a `harness.manifest.json`.
+- Current repository root and whether it is a core source checkout or a
+  project-local deployment.
 - Available core skills, overlay skills, commands, agents, hooks, and clients.
 - Active `.changes` workspace when the request is change-bound.
 - Negative triggers in the manifest, especially domain implementation requests
   that do not need harness routing.
 
-If the manifest is present, trust it over memory or old conversation state. If
-the manifest is absent, answer from visible files only and state that the result
-is best-effort.
+## Evidence Resolution
+
+Resolve evidence from the current repository root in this order:
+
+1. `harness.manifest.json` is the canonical package contract in a core source
+   checkout.
+2. `.harness/core/harness.manifest.json` is the same package contract in a
+   project-local deployment.
+3. `.harness/projection-state.json` records which core assets were actually
+   projected into the target. It is historical inventory.
+   It does not prove that its target still exists or matches. Corroborate the
+   target and recorded hash, or run the applicable projector or deployer with
+   `--verify`, before a current installed-state claim.
+4. `.harness/*-overlay/` and the client-visible skill directories show overlay
+   assets when the overlay does not provide its own manifest.
+
+Before treating either manifest candidate as Core, confirm its `name` is
+`@catwithoutear/agent-harness-core`. A differently named root manifest may own
+project or overlay policy, but it must not supersede the deployed Core manifest;
+use each authority only for the assets it owns.
+
+When a self-hosted core checkout has both manifest paths, use the repository
+manifest for source-authoring decisions and projection state for installed-state
+decisions. Trust the matching manifest over memory or old conversation state.
+
+Do not report that the repository has no manifest until both manifest paths
+have been checked and identity-validated. Do not copy the deployed manifest to
+the repository root to make discovery succeed. Only call the result best-effort
+when no manifest candidate exists that passes Core identity validation; then
+name the missing authority and route from projection state and visible files.
 
 ## Routing Order
 
@@ -63,6 +91,8 @@ Keep the answer short. This skill chooses a path; it does not perform the path.
 ## Common Mistakes
 
 - Recommending a skill only because its name matches one word in the request.
+- Treating the absence of a root manifest as evidence that a project-local
+  harness deployment has no manifest.
 - Ignoring a manifest negative trigger.
 - Recommending overlay-specific skills for a core-only harness task.
 - Recommending a destructive or write command before a read-only status command.
