@@ -1412,6 +1412,42 @@
         ]
       },
       {
+        "id": "environment-profile-vault",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/environment-profile-vault",
+        "runtimeName": "environment-profile-vault",
+        "description": "Use when a local environment profile must be added, retrieved, updated, deleted, or injected into an automation command without GPG encryption.",
+        "triggers": [
+          "environment profile",
+          "store test environment credentials",
+          "local test environment credentials",
+          "update environment profile",
+          "reuse environment login",
+          "run with saved environment",
+          "noninteractive profile upsert"
+        ],
+        "negativeTriggers": [
+          "cloud secret manager",
+          "team-shared secret system",
+          "return password in chat",
+          "automatic remote deployment"
+        ],
+        "requires": [
+          "a writable local private profile directory",
+          "environment variables only when using noninteractive upsert",
+          "trusted direct executable when running a profile"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
         "id": "find-skills",
         "category": "third-party",
         "audience": "user",

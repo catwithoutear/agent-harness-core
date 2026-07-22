@@ -36,6 +36,11 @@ if (all || requested.has("--skills")) {
   await module.run(run);
 }
 
+if (all || requested.has("--environment-profile-vault")) {
+  const module = await import("./test-environment-profile-vault.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--review-coverage")) {
   const module = await import("./test-review-coverage.js");
   await module.run(run);

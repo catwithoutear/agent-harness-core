@@ -236,8 +236,9 @@ export async function run(test) {
       );
       assert.equal(categoryRun.status, 0, categoryRun.stderr);
       const categoryPayload = JSON.parse(categoryRun.stdout);
-      assert.equal(categoryPayload.summary.skills, 21);
+      assert.equal(categoryPayload.summary.skills, 22);
       assert(categoryPayload.records.every((record) => record.source.includes("skills/third-party")));
+      assert(categoryPayload.records.some((record) => record.asset_id === "environment-profile-vault"));
 
       const selectedRun = capture(() =>
         runHarnessProject([
@@ -250,12 +251,41 @@ export async function run(test) {
           "--content",
           "skills",
           "--skills",
-          "glab,redmine"
+          "environment-profile-vault,glab,redmine"
         ])
       );
       assert.equal(selectedRun.status, 0, selectedRun.stderr);
       const selectedPayload = JSON.parse(selectedRun.stdout);
-      assert.deepEqual(selectedPayload.records.map((record) => record.asset_id).sort(), ["glab", "redmine"]);
+      assert.deepEqual(selectedPayload.records.map((record) => record.asset_id).sort(), [
+        "environment-profile-vault",
+        "glab",
+        "redmine"
+      ]);
+
+      const project = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "codex",
+          "--content",
+          "skills",
+          "--skills",
+          "environment-profile-vault",
+          "--json"
+        ])
+      );
+      assert.equal(project.status, 0, project.stdout + project.stderr);
+      const skillDirectory = path.join(target, ".agents", "skills", "environment-profile-vault");
+      assert.equal(fs.existsSync(path.join(skillDirectory, "SKILL.md")), true);
+      assert.equal(
+        fs.existsSync(path.join(skillDirectory, "scripts", "environment-profile-vault.py")),
+        true
+      );
     });
   });
 
