@@ -12,6 +12,8 @@ This directory indexes reviews child documents.
 
 ## Current Authoritative Review
 
+- `slice-003-r01.md`: final projection, implementation, and verification review,
+  `READY`; it owns the final overall gate.
 - `slice-002-r01.md`: template and paired user-guidance review,
   `READY_WITH_NOTES`; client projection remains assigned to slice 003.
 - `slice-001-r01.md`: canonical stage-order implementation review,
@@ -46,3 +48,4 @@ This directory indexes reviews child documents.
 | `task-set-r01.md` | review-round | reviewed | r01 | Workflow stage-gate task-set review |
 | `slice-001-r01.md` | review-round | reviewed | r01 | Independent review of canonical stage order implementation |
 | `slice-002-r01.md` | review-round | reviewed | r01 | Independent review of template and paired user guidance |
+| `slice-003-r01.md` | review-round | reviewed | r01 | Final projection and implementation verification review |

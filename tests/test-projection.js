@@ -52,15 +52,46 @@ export async function run(test) {
 
   await test("dry-run reports Codex global prompts target", () => {
     withTempTarget((target) => {
-      const result = capture(() =>
-        runHarnessProject(["--target", target, "--dry-run", "--json", "--scope", "global", "--clients", "codex", "--content", "commands"])
-      );
+      const previousHome = process.env.HOME;
+      process.env.HOME = target;
+      let result;
+      try {
+        result = capture(() =>
+          runHarnessProject([
+            "--target",
+            target,
+            "--scope",
+            "global",
+            "--mode",
+            "copy",
+            "--conflict",
+            "overwrite",
+            "--json",
+            "--clients",
+            "codex",
+            "--content",
+            "commands"
+          ])
+        );
+      } finally {
+        if (previousHome === undefined) {
+          delete process.env.HOME;
+        } else {
+          process.env.HOME = previousHome;
+        }
+      }
       assert.equal(result.status, 0, result.stderr);
       const payload = JSON.parse(result.stdout);
-      const targets = payload.records.map((record) => record.target);
       assert.equal(payload.summary.commands, 6);
       assert.equal(payload.summary.unsupported, 0);
-      assert(targets.some((entry) => entry.endsWith(".codex/prompts/harness-workflow.md")));
+      const workflowRecord = payload.records.find((record) => record.asset_id === "harness-workflow");
+      assert(workflowRecord?.target.endsWith(".codex/prompts/harness-workflow.md"));
+      assert.equal(workflowRecord.status, "projected");
+      const workflowSource = fs.readFileSync(workflowRecord.target, "utf8");
+      assert.match(
+        workflowSource,
+        /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
+      );
       assert(payload.warnings.includes("client codex global command projection uses a deprecated client feature"));
     });
   });
@@ -84,8 +115,19 @@ export async function run(test) {
       );
       assert.equal(project.status, 0, project.stdout + project.stderr);
       const commandPath = path.join(target, ".claude", "commands", "harness", "workflow.md");
+      const planPath = path.join(target, ".claude", "commands", "harness", "plan.md");
       assert.equal(fs.existsSync(commandPath), true);
-      assert.match(fs.readFileSync(commandPath, "utf8"), /Activate `workflow-control`/);
+      const commandText = fs.readFileSync(commandPath, "utf8");
+      const planText = fs.readFileSync(planPath, "utf8");
+      assert.match(commandText, /Activate `workflow-control`/);
+      assert.match(
+        commandText,
+        /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
+      );
+      assert.match(
+        planText,
+        /solution-design[\s\S]*implementation-design[\s\S]*task set/i
+      );
 
       const ompProject = capture(() =>
         runHarnessProject([
@@ -103,7 +145,17 @@ export async function run(test) {
         ])
       );
       assert.equal(ompProject.status, 0, ompProject.stdout + ompProject.stderr);
-      assert.equal(fs.existsSync(path.join(target, ".omp", "commands", "harness-workflow.md")), true);
+      const ompWorkflowPath = path.join(target, ".omp", "commands", "harness-workflow.md");
+      const ompPlanPath = path.join(target, ".omp", "commands", "harness-plan.md");
+      assert.equal(fs.existsSync(ompWorkflowPath), true);
+      assert.match(
+        fs.readFileSync(ompWorkflowPath, "utf8"),
+        /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
+      );
+      assert.match(
+        fs.readFileSync(ompPlanPath, "utf8"),
+        /solution-design[\s\S]*implementation-design[\s\S]*task set/i
+      );
     });
   });
 
@@ -118,15 +170,58 @@ export async function run(test) {
           "--conflict",
           "overwrite",
           "--clients",
-          "codex",
+          "codex,claude,opencode,omp",
           "--content",
-          "rules,skills",
+          "rules,skills,templates",
           "--json"
         ])
       );
       assert.equal(project.status, 0, project.stdout + project.stderr);
       assert.equal(fs.existsSync(path.join(target, ".rules", "loop-contract.md")), true);
       assert.equal(fs.existsSync(path.join(target, ".agents", "skills", "ask-harness", "SKILL.md")), true);
+      const workflowSkill = fs.readFileSync(
+        path.join(target, ".agents", "skills", "workflow-control", "SKILL.md"),
+        "utf8"
+      );
+      const plannerSkill = fs.readFileSync(
+        path.join(target, ".agents", "skills", "change-planner", "SKILL.md"),
+        "utf8"
+      );
+      const refinerSkill = fs.readFileSync(
+        path.join(target, ".agents", "skills", "design-doc-refiner", "SKILL.md"),
+        "utf8"
+      );
+      const loopRule = fs.readFileSync(path.join(target, ".rules", "loop-contract.md"), "utf8");
+      const designTemplate = fs.readFileSync(
+        path.join(target, ".changes", "templates", "implementation-design", "README.md"),
+        "utf8"
+      );
+      for (const text of [workflowSkill, plannerSkill, loopRule]) {
+        assert.match(text, /solution-design review[\s\S]*implementation-design[\s\S]*task set/i);
+      }
+      assert.match(refinerSkill, /Stop at solution design, ambiguities, and validation intent/);
+      assert.match(designTemplate, /Review the populated pack before deriving task slices/);
+      for (const clientRoot of [".agents", ".claude", ".opencode", ".omp"]) {
+        const root = path.join(target, clientRoot, "skills");
+        const projectedWorkflow = fs.readFileSync(
+          path.join(root, "workflow-control", "SKILL.md"),
+          "utf8"
+        );
+        const projectedPlanner = fs.readFileSync(
+          path.join(root, "change-planner", "SKILL.md"),
+          "utf8"
+        );
+        const projectedRefiner = fs.readFileSync(
+          path.join(root, "design-doc-refiner", "SKILL.md"),
+          "utf8"
+        );
+        assert.match(
+          projectedWorkflow,
+          /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
+        );
+        assert.match(projectedPlanner, /Use `plan-only` for compact work/);
+        assert.match(projectedRefiner, /Stop at solution design, ambiguities, and validation intent/);
+      }
       assert.equal(fs.existsSync(path.join(target, ".harness", "projection-state.json")), true);
 
       const verify = capture(() =>
@@ -137,9 +232,9 @@ export async function run(test) {
           "--mode",
           "copy",
           "--clients",
-          "codex",
+          "codex,claude,opencode,omp",
           "--content",
-          "rules,skills",
+          "rules,skills,templates",
           "--json"
         ])
       );
@@ -394,8 +489,11 @@ export async function run(test) {
       assert.equal(fs.existsSync(path.join(target, ".changes", "change-workspace-readme", "README.md")), false);
       const templatePath = path.join(target, ".changes", "templates", "implementation-design", "README.md");
       assert.equal(fs.existsSync(templatePath), true);
-      assert.match(fs.readFileSync(templatePath, "utf8"), /Subsystem/);
-      assert.match(fs.readFileSync(templatePath, "utf8"), /Minimum Use \/ N\/A Rule/);
+      const templateText = fs.readFileSync(templatePath, "utf8");
+      assert.match(templateText, /Subsystem/);
+      assert.match(templateText, /Minimum Use \/ N\/A Rule/);
+      assert.match(templateText, /settled, reviewed solution design/);
+      assert.match(templateText, /latest pack review is ready/);
 
       const verify = capture(() =>
         runHarnessProject([

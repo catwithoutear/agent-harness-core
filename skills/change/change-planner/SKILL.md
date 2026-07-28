@@ -7,7 +7,9 @@ description: Use when turning settled requirements, proposals, designs, specs, o
 
 Convert a settled design into executable, reviewable task slices inside the
 active `.changes` workspace. Use this skill after the direction is chosen and
-the solution-design review is ready, and before coding starts or resumes.
+before coding starts or resumes. On the design path, the solution-design review
+must be ready. On the compact path, a settled local solution and an explicit
+no-design/no-pack reason are enough.
 
 Use `change-workspace-operator` for regulated file creation, lookup, reading,
 and validation. This skill decides what the tasks should be; it does not replace
@@ -59,9 +61,11 @@ ambiguous, return `NEEDS_USER_DECISION` instead of inventing tasks.
 
 ## Implementation-Design Trigger Rule
 
-After the solution-design review is ready and before task slicing, decide
-whether the change needs an `implementation-design/` topology pack. Require it
-when any of these are true:
+On the design path, decide whether the change needs an
+`implementation-design/` topology pack after the solution-design review is
+ready and before task slicing. On the compact path, record why the settled local
+solution does not meet this trigger. Require the pack when any of these are
+true:
 
 - the change crosses subsystem boundaries;
 - the change touches two or more modules with dependency-order risk;
@@ -80,7 +84,7 @@ specific enough for implementation and its review is ready.
 
 ## Planning Admission
 
-Use the design-to-tasks path only when:
+Use `design-to-tasks` only when:
 
 - the proposal direction and solution design are settled;
 - the latest relevant solution-design review is ready;
@@ -91,6 +95,12 @@ Use the design-to-tasks path only when:
 
 If a downstream discovery changes the accepted solution, return to solution
 design. Do not settle architecture or compatibility inside task slices.
+
+Use `plan-only` for compact work when the solution is already clear and local,
+the no-design/no-pack reason is explicit, and the lightweight plan records
+validation and rollback. It does not require a separate solution-design
+artifact or review. Uncertainty about behavior, compatibility, ownership,
+lifecycle, migration, or dependency order disqualifies this path.
 
 ## Planning Flow
 
@@ -110,23 +120,28 @@ design. Do not settle architecture or compatibility inside task slices.
      reviewable plan;
    - `slice-refine`: existing tasks are too broad, stale, or untestable;
    - `review-replan`: review findings changed ordering, scope, or validation.
-4. Extract behavior slices. A slice should map one coherent behavior, contract,
+4. For `plan-only`, write one bounded lightweight plan with the goal, affected
+   source, no-design/no-pack reason, validation, and rollback. Review it only
+   when risk warrants review. Do not create formal task slices or require a
+   task-set review; validate the owning artifact and stop.
+5. For `design-to-tasks`, `slice-refine`, or `review-replan`, extract behavior
+   slices. A slice should map one coherent behavior, contract,
    migration, test, documentation, or rollout concern to concrete files and a
    validation path.
-5. Order slices by dependency, risk, and reviewability. Prefer small,
+6. Order slices by dependency, risk, and reviewability. Prefer small,
    independently reviewable slices over file-based batching. For multi-worktree
    execution, make the task order dependency-ordered and record intended
    `parallel`, `stacked`, or `standalone` topology in the execution map.
-6. For each slice, record source-design traceability, subsystem, module,
+7. For each slice, record source-design traceability, subsystem, module,
    concrete files/classes, implementation steps, validation, rollback/revert
    notes, and open decisions.
-7. Write or update task artifacts only through the change workspace's regulated
+8. Write or update task artifacts only through the change workspace's regulated
    creation path. For this harness, use `harness-change-doc add-task-slice`
    before hand-editing task content.
-8. Review the complete task set for index coverage, satisfiable and acyclic
+9. Review the complete task set for index coverage, satisfiable and acyclic
    dependencies, non-conflicting ownership, validation coverage, and unresolved
    upstream decisions before implementation dispatch.
-9. Run `harness-change-validate --state-root <state-root> --change <id>` or the
+10. Run `harness-change-validate --state-root <state-root> --change <id>` or the
    repository equivalent. Add `--worktrees` when an execution map participates
    in the plan. Treat warnings as decisions to resolve or explicitly accept
    before freeze.

@@ -16,4 +16,4 @@ This directory indexes tasks child documents.
 |---|---|---|---|---|
 | `slice-001-canonical-stage-order.md` | task-slice | reviewed | 001 | canonical-stage-order |
 | `slice-002-template-and-user-guidance.md` | task-slice | reviewed | 002 | template-and-user-guidance |
-| `slice-003-projection-and-final-verification.md` | task-slice | draft | 003 | projection-and-final-verification |
+| `slice-003-projection-and-final-verification.md` | task-slice | reviewed | 003 | projection-and-final-verification |

@@ -72,7 +72,8 @@ needs evidence-backed pressure testing before coding.
 
 ## Refinement Rules
 
-- Convert vague claims into concrete implementation statements.
+- Convert vague claims into concrete solution-level behavior and contract
+  statements.
 - Preserve technical accuracy over prose quality.
 - Mark inferred details as assumptions.
 - Do not invent APIs, fields, classes, files, states, schemas, protocols, or
@@ -114,7 +115,7 @@ otherwise review-only:
 
 - do not produce a full rewritten design,
 - do not silently fix wording or structure,
-- report confirmed blockers, ambiguities, and missing implementation contracts,
+- report confirmed blockers, ambiguities, and missing solution contracts,
 - include exact source text that motivated each issue,
 - end with a readiness recommendation or route to `multi-lens-design-review`.
 
@@ -134,4 +135,4 @@ otherwise review-only:
 - Producing implementation topology or task slices before the solution design
   is reviewed.
 - Treating validation as an appendix instead of part of implementation
-  design readiness.
+  solution-design readiness.

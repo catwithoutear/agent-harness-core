@@ -268,17 +268,37 @@ export async function run(test) {
     }
 
     assert.match(workflowControl, /Fast path:[\s\S]*Compact path:[\s\S]*Design path:/);
-    assert.match(workflowControl, /return to solution design/i);
     assert.match(workflowControl, /does not\s+change behavior, interfaces, lifecycle, dependencies, migration, or failure\s+contracts/);
     assert.match(workflowControl, /Review that lightweight plan when the risk warrants it/);
     assert.match(planner, /File\s+presence is not readiness evidence/);
-    assert.match(planner, /return to\s+solution\s+design/i);
+    assert.match(
+      planner,
+      /Use `plan-only` for compact work[\s\S]*does not require a separate solution-design\s+artifact or review/
+    );
+    assert.match(
+      planner,
+      /Use `plan-only` for compact work[\s\S]*lightweight plan records\s+validation and rollback/
+    );
+    assert.match(
+      planCommand,
+      /compact `plan-only`[\s\S]*A separate solution-design artifact and review are unnecessary/
+    );
+    for (const text of [planner, planCommand]) {
+      assert.match(
+        text,
+        /plan-only[\s\S]*Do not\s+create formal task slices or require a\s+task-set review/i
+      );
+      assert.match(text, /plan-only[\s\S]*risk warrants review/i);
+    }
 
     for (const text of [refiner, refinerContract, technicalDoc]) {
       assert.match(text, /validation intent/i);
       assert.match(text, /change-planner/);
     }
     assert.match(refiner, /Stop at solution design, ambiguities, and validation intent/);
+    assert.doesNotMatch(refiner, /concrete implementation statements/);
+    assert.doesNotMatch(refiner, /missing implementation contracts/);
+    assert.doesNotMatch(refiner, /implementation design readiness/);
     assert.doesNotMatch(refinerContract, /Implementation Task Breakdown/);
     assert.doesNotMatch(refinerContract, /## Implementation Tasks/);
 

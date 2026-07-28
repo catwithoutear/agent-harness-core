@@ -1,6 +1,6 @@
 ---
 artifact: task-slice
-status: draft
+status: reviewed
 tags: [implementation]
 description: "projection-and-final-verification"
 ---
@@ -26,42 +26,44 @@ repository gate.
 - Module: projection tests and verification.
 - Changed surfaces: `tests/test-projection.js` and projector-owned runtime
   outputs generated from canonical assets.
-- Prerequisites: slices 001 and 002 are reviewed `READY`; their task-owned
-  commits form the recorded stacked base.
+- Prerequisites: slices 001 and 002 are reviewed `READY_WITH_NOTES`; their
+  task-owned commits `4075ed3` and `9e7dc17` form the recorded stacked base.
+  Their shared note requires excluding pre-existing untracked `.pyc` files from
+  commits.
 
 ## Steps
 
-- [ ] Add projection assertions for updated skills, rules, templates, and
+- [x] Add projection assertions for updated skills, rules, templates, and
   workflow/plan command content.
-- [ ] Verify project skills/rules/templates for existing supported clients;
+- [x] Verify project skills/rules/templates for existing supported clients;
   Claude/OMP project commands succeed; Codex/OpenCode project commands remain
   unsupported; Codex global prompts retain the deprecated warning and updated
   text.
-- [ ] Run a behavior-preserving simplify review over the exact source diff.
-- [ ] Regenerate the self-hosted Codex runtime from canonical sources.
-- [ ] Run focused and full repository verification and prepare the final review
+- [x] Run a behavior-preserving simplify review over the exact source diff.
+- [x] Regenerate the self-hosted Codex runtime from canonical sources.
+- [x] Run focused and full repository verification and prepare the final review
   packet.
 
 ## Validation
 
-- [ ] `npm test -- --skills`: passes.
-- [ ] `npm test -- --projection`: passes.
-- [ ] `npm test`: passes.
-- [ ] `node bin/harness.js manifest --json`: passes.
-- [ ] Codex self-host projection and `--verify --json`: pass for
+- [x] `npm test -- --skills`: passes.
+- [x] `npm test -- --projection`: passes.
+- [x] `npm test`: passes.
+- [x] `node bin/harness.js manifest --json`: passes.
+- [x] Codex self-host projection and `--verify --json`: pass for
   `rules,templates,skills,subagents,hooks`.
-- [ ] Run:
+- [x] Run:
   `node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --conflict overwrite --json`.
-- [ ] Run:
+- [x] Run:
   `node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --verify --json`.
-- [ ] `git diff --name-status <implementation-base>..HEAD` contains only the
+- [x] `git diff --name-status <implementation-base>..HEAD` contains only the
   reviewed workflow-stage source, metadata, tests, and generated projections;
   it contains no writer, validator, schema, policy, migration, route,
   client-capability, or phase-state change.
-- [ ] `node bin/harness-change-validate.js --state-root . --change
+- [x] `node bin/harness-change-validate.js --state-root . --change
   workflow-design-stage-gate --strict-layout --status --json`: 0 errors; only
   explicitly accepted warnings remain.
-- [ ] `git diff --check`: passes.
+- [x] `git diff --check`: passes.
 
 ## Review
 
