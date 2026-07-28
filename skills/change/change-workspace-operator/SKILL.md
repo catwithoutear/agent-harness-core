@@ -14,7 +14,8 @@ Resolve the state root before regulated writes. Prefer `--state-root
 <state-root>` for the canonical `.changes` owner. `--repo-root <repo>` remains a
 legacy alias for the same state root; do not use it to mean the implementation
 checkout. Use `--code-root <code-root>` only when the source checkout differs
-from the canonical state root.
+from the canonical state root. Regulated writes reject a symlink alias or a
+linked worktree as the state root; pass the canonical shared owner instead.
 
 For linked worktrees, run
 `harness-change-doc --state-root <state-root> --code-root <code-root> resolve --change <change> --json`
@@ -39,6 +40,8 @@ from dirty git status or `--all-active` validator output.
 | Add decision record | `harness-change-doc --state-root <state-root> add-decision <change-id> --slug <topic>` |
 | Add timeline event | `harness-change-doc --state-root <state-root> add-timeline <change-id> --slug <event>` |
 | Add task slice | `harness-change-doc --state-root <state-root> add-task-slice <change-id> --slug <slice>` |
+| Inspect a legacy migration | `harness-change-doc --state-root <state-root> migrate <change-id> --dry-run` |
+| Apply an accepted migration | `harness-change-doc --state-root <state-root> migrate <change-id> --apply --expected-plan-sha256 <sha256>` |
 | Validate one change | `harness-change-validate --state-root <state-root> --change <change-id>` |
 | Validate worktrees | `harness-change-validate --state-root <state-root> --change <change> --worktrees` |
 | Machine status | `harness-change-validate --state-root <state-root> --change <change-id> --status --json` |
@@ -56,6 +59,33 @@ optimize for the wrong workspace.
 `harness-change-validate --repo-root <repo> ...` remain valid for existing
 scripts, but new workflow text should use `--state-root` when it means the
 canonical change workspace.
+
+## Controlled Legacy Migration
+
+Use migration only when a legacy proposal workspace needs structured-only
+artifacts such as directory task slices, structured reviews or decisions, or an
+implementation-design pack. First run `migrate <change-id> --dry-run`, review
+the canonical `plan_sha256`, source inventory, archive destinations, and
+structured skeleton. Apply only that accepted digest with `--apply
+--expected-plan-sha256 <sha256>`.
+
+The operation archives exact bytes of top-level `review-log.md`, `timeline.md`,
+and `tasks.md` under `.changes/archive/<change-id>/legacy/`, writes indexes and
+one provenance decision, and never fabricates review rounds, task slices, or an
+implementation-design pack. It fails closed for an interrupted transaction,
+changed input, missing archive, or changed migration provenance. When a
+recoverable interrupted transaction no longer matches the accepted plan, the
+tool restores its staged source snapshot and requires a fresh dry run. A repeat
+apply with the accepted digest verifies immutable archive/provenance evidence
+and the structured anchors; it does not rewrite historical evidence or freeze
+ordinary workspace documents. Validate the migrated change before creating the
+next structured artifact.
+
+Historical bootstrap V1/V2 registries are read-only validation evidence. They
+do not authorize or block ordinary migration apply, and no bootstrap lifecycle
+mutation command is exposed. Preserve existing bytes. Invalid or nonterminal
+records remain diagnostics for `harness-change-validate`; do not edit control
+state to make migration proceed.
 
 ## Example Flows
 

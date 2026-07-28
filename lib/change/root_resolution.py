@@ -19,41 +19,79 @@ def resolve_change_context(
     env_map = env if env is not None else os.environ
     cwd_change = find_cwd_change(cwd_path)
     resolved_change = change_id or (cwd_change or {}).get("change_id")
-    explicit_state = resolve_root(state_root, cwd_path)
-    legacy_repo = resolve_root(repo_root, cwd_path)
+    explicit_state = resolve_explicit_root(state_root, cwd_path, "state-root")
+    legacy_repo = resolve_explicit_root(repo_root, cwd_path, "repo-root")
     resolved_code_root = resolve_code_root(code_root, cwd_path)
 
-    if explicit_state and legacy_repo and explicit_state != legacy_repo:
+    aliased_root = next(
+        (root for root in (explicit_state, legacy_repo) if root and root["requested"] != root["resolved"]),
+        None,
+    )
+    if aliased_root:
+        return unresolved_context(
+            code_root=resolved_code_root,
+            change_id=resolved_change,
+            source="unresolved",
+            unresolved_reason="aliased-state-root",
+            candidates=[candidate(aliased_root["resolved"], resolved_change, aliased_root["source"], aliased_root["requested"])],
+        )
+
+    if explicit_state and legacy_repo and explicit_state["resolved"] != legacy_repo["resolved"]:
         return unresolved_context(
             code_root=resolved_code_root,
             change_id=resolved_change,
             source="conflict",
             unresolved_reason="conflicting-explicit-roots",
             candidates=[
-                candidate(explicit_state, resolved_change, "state-root"),
-                candidate(legacy_repo, resolved_change, "repo-root"),
+                candidate(explicit_state["resolved"], resolved_change, "state-root", explicit_state["requested"]),
+                candidate(legacy_repo["resolved"], resolved_change, "repo-root", legacy_repo["requested"]),
             ],
         )
 
     if explicit_state or legacy_repo:
         root = explicit_state or legacy_repo
-        source = "state-root" if explicit_state else "repo-root"
+        if is_linked_worktree(root["resolved"], git_worktrees(root["resolved"])):
+            return unresolved_context(
+                code_root=resolved_code_root,
+                change_id=resolved_change,
+                source="unresolved",
+                unresolved_reason="linked-worktree-state-root",
+                is_linked_worktree=True,
+                candidates=[candidate(root["resolved"], resolved_change, root["source"], root["requested"])],
+            )
         return resolved_context(
-            state_root=root,
+            state_root=root["resolved"],
             code_root=resolved_code_root,
             change_id=resolved_change,
-            source=source,
-            candidates=[candidate(root, resolved_change, source)],
+            source=root["source"],
+            candidates=[candidate(root["resolved"], resolved_change, root["source"], root["requested"])],
         )
 
-    env_root = resolve_root(env_map.get("HARNESS_CHANGE_STATE_ROOT"), cwd_path)
+    env_root = resolve_explicit_root(env_map.get("HARNESS_CHANGE_STATE_ROOT"), cwd_path, "environment")
     if env_root:
+        if env_root["requested"] != env_root["resolved"]:
+            return unresolved_context(
+                code_root=resolved_code_root,
+                change_id=resolved_change,
+                source="unresolved",
+                unresolved_reason="aliased-state-root",
+                candidates=[candidate(env_root["resolved"], resolved_change, "environment", env_root["requested"])],
+            )
+        if is_linked_worktree(env_root["resolved"], git_worktrees(env_root["resolved"])):
+            return unresolved_context(
+                code_root=resolved_code_root,
+                change_id=resolved_change,
+                source="unresolved",
+                unresolved_reason="linked-worktree-state-root",
+                is_linked_worktree=True,
+                candidates=[candidate(env_root["resolved"], resolved_change, "environment", env_root["requested"])],
+            )
         return resolved_context(
-            state_root=env_root,
+            state_root=env_root["resolved"],
             code_root=resolved_code_root,
             change_id=resolved_change,
             source="environment",
-            candidates=[candidate(env_root, resolved_change, "environment")],
+            candidates=[candidate(env_root["resolved"], resolved_change, "environment", env_root["requested"])],
         )
 
     worktrees = git_worktrees(resolved_code_root)
@@ -134,6 +172,12 @@ def error_text(context: dict) -> str:
         state = next((item["state_root"] for item in context["candidates"] if item["source"] == "state-root"), "<missing>")
         repo = next((item["state_root"] for item in context["candidates"] if item["source"] == "repo-root"), "<missing>")
         return f"ERROR: conflicting state roots{change}: --state-root {state} differs from --repo-root {repo}\nGUIDE: retry with one canonical state root."
+    if reason == "aliased-state-root":
+        item = context["candidates"][0] if context.get("candidates") else {}
+        return f"ERROR: state root alias{change}: {item.get('requested_root', '<missing>')} resolves to {item.get('state_root', '<missing>')}\nGUIDE: retry with the canonical state-root path."
+    if reason == "linked-worktree-state-root":
+        item = context["candidates"][0] if context.get("candidates") else {}
+        return f"ERROR: state root{change} is a linked worktree: {item.get('state_root', '<missing>')}\nGUIDE: retry with the canonical shared state-root, not a linked worktree."
     if reason == "ambiguous-state-root":
         return "\n".join([f"ERROR: ambiguous state root{change}", *candidate_lines(context), "GUIDE: inspect candidates and retry with --state-root <canonical-state-root>."])
     if reason == "other-worktree-state-root":
@@ -165,15 +209,18 @@ def unresolved_context(*, code_root: Path, change_id: str | None, source: str, u
     }
 
 
-def candidate(state_root: Path, change_id: str | None, source: str) -> dict:
+def candidate(state_root: Path, change_id: str | None, source: str, requested_root: Path | None = None) -> dict:
     state_root = Path(state_root).resolve()
     change_dir = state_root / ".changes" / change_id if change_id else None
-    return {
+    result = {
         "state_root": str(state_root),
         "change_dir": str(change_dir) if change_dir else None,
         "source": source,
         "exists": change_dir.exists() if change_dir else state_root.exists(),
     }
+    if requested_root is not None:
+        result["requested_root"] = str(requested_root)
+    return result
 
 
 def add_candidate(candidates: list[dict], state_root: Path, change_id: str, source: str, require_exists: bool) -> None:
@@ -193,12 +240,18 @@ def candidate_lines(context: dict) -> list[str]:
 
 
 def resolve_root(value: str | None, cwd: Path) -> Path | None:
+    root = resolve_explicit_root(value, cwd, "explicit")
+    return root["resolved"] if root else None
+
+
+def resolve_explicit_root(value: str | None, cwd: Path, source: str) -> dict | None:
     if not value:
         return None
     path = Path(value)
     if not path.is_absolute():
         path = cwd / path
-    return path.resolve()
+    requested = Path(os.path.abspath(path))
+    return {"requested": requested, "resolved": realpath_or_resolve(requested), "source": source}
 
 
 def resolve_code_root(value: str | None, cwd: Path) -> Path:

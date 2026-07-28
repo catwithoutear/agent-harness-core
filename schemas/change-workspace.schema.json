@@ -5,6 +5,7 @@
     "specs_dir": ".specs",
     "archive_dir": ".changes/archive",
     "ignored_change_dirs": [
+      ".control",
       "archive",
       "templates"
     ]

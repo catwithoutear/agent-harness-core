@@ -162,10 +162,23 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-当 implementation-design trigger rule 适用时，先创建详细设计 topology pack，再推导 task slices：
+当 implementation-design trigger rule 适用时，先创建详细设计 topology pack，再推导 task slices。legacy proposal workspace 必须先通过受控迁移进入 structured layout；不要把 pack 或 task-slice writer 当作隐式迁移手段：
 
 ```bash
-harness-change-doc --repo-root /path/to/repo add-implementation-design <change-id>
+harness-change-doc --state-root /path/to/repo migrate <change-id> --dry-run
+harness-change-doc --state-root /path/to/repo migrate <change-id> --apply \
+  --expected-plan-sha256 <accepted-sha256>
+harness-change-validate --state-root /path/to/repo --change <change-id>
+```
+
+dry run 会生成 canonical plan。被接受的 digest 绑定精确的 legacy 输入、archive destination 和 structured skeleton。apply 会将顶层 legacy review、timeline、task 的精确字节保留到 `.changes/archive/<change-id>/legacy/`，只创建 index 和 migration provenance；遇到输入变化或未完成 transaction 时会 fail closed。可恢复的未完成 transaction 一旦不再匹配已接受的 plan，会先依据 staged source snapshot 回滚，再要求重新 dry run。提交后 archive 与 provenance 保持不可变，普通 structured workspace 文档仍可继续演进。它不会创建 implementation-design pack 或 task slice。
+
+历史 bootstrap V1/V2 control record 仅作为只读验证证据保留。它们既不授权也不阻止普通 migration apply，document command 也不再提供 bootstrap lifecycle 修改命令。无效或非终态的历史记录继续由 validator 报告，不能为了推进 migration 而改写。
+
+只有在上述 validation 成功之后，才创建 pack：
+
+```bash
+harness-change-doc --state-root /path/to/repo add-implementation-design <change-id>
 ```
 
 生成的 `implementation-design/` pack 会区分 `Subsystem` 的 capability 或 runtime 边界与 `Module` 的代码组织边界，然后记录 code topology、file/class mapping、runtime flow、error model、implementation order、constraints 和 traceability。

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -20,6 +21,9 @@ export async function run(test) {
     assert.equal(policy.commands.execution_map, "harness-change-doc execution-map <change> --json");
     assert.equal(policy.commands.assign_slice, "harness-change-doc assign-slice <change> --slice <slice>");
     assert.equal(policy.commands.add_implementation_design, "harness-change-doc add-implementation-design");
+    assert.equal(policy.commands.migrate, "harness-change-doc migrate <change> --dry-run | --apply --expected-plan-sha256 <sha256>");
+    assert.equal(Object.hasOwn(policy.commands, "bootstrap_close"), false);
+    assert.equal(Object.hasOwn(policy.commands, "bootstrap_revoke"), false);
     assert.doesNotMatch(result.stdout, /dbackup-change-/i);
     assert.doesNotMatch(result.stdout, /quick-project/i);
 
@@ -30,6 +34,24 @@ export async function run(test) {
     assert.equal(pyPolicy.commands.resolve, "harness-change-doc resolve --json");
     assert.equal(pyPolicy.commands.execution_map, "harness-change-doc execution-map <change> --json");
     assert.equal(pyPolicy.commands.assign_slice, "harness-change-doc assign-slice <change> --slice <slice>");
+    assert.equal(pyPolicy.commands.migrate, "harness-change-doc migrate <change> --dry-run | --apply --expected-plan-sha256 <sha256>");
+    assert.equal(Object.hasOwn(pyPolicy.commands, "bootstrap_close"), false);
+    assert.equal(Object.hasOwn(pyPolicy.commands, "bootstrap_revoke"), false);
+  });
+
+  await test("bootstrap lifecycle mutation commands are not exposed", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      for (const command of ["bootstrap-close", "bootstrap-revoke"]) {
+        const jsResult = capture(() => runChangeDoc(["--state-root", repo, command, "feature-one"]));
+        assert.equal(jsResult.status, 2, jsResult.stdout + jsResult.stderr);
+        assert.match(jsResult.stderr, new RegExp(`unknown command: ${command}`));
+
+        const pyResult = runPythonChangeDoc(["--state-root", repo, command, "feature-one"]);
+        assert.equal(pyResult.status, 2, pyResult.stdout + pyResult.stderr);
+        assert.match(pyResult.stderr, /invalid choice/);
+      }
+    });
   });
 
   await test("policy registers execution map artifact", () => {
@@ -1155,6 +1177,948 @@ export async function run(test) {
       assert.match(strict.stdout, /legacy top-level artifact/);
     });
   });
+
+  await test("controlled migration preserves legacy bytes, commits a structured skeleton, and mirrors Python", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const change = path.join(repo, ".changes", "feature-one");
+      fs.writeFileSync(path.join(change, "review-log.md"), "legacy review bytes\n");
+      const legacyTasks = fs.readFileSync(path.join(change, "tasks.md"));
+      const legacyReview = fs.readFileSync(path.join(change, "review-log.md"));
+
+      const jsDry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const pyDry = runPythonChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]);
+      assert.equal(jsDry.status, 0, jsDry.stdout + jsDry.stderr);
+      assert.equal(pyDry.status, 0, pyDry.stdout + pyDry.stderr);
+      const jsPlan = JSON.parse(jsDry.stdout);
+      assert.deepEqual(JSON.parse(pyDry.stdout), jsPlan);
+      assert.match(jsPlan.plan_sha256, /^[a-f0-9]{64}$/);
+      assert.equal(fs.existsSync(path.join(change, "README.md")), false);
+
+      const mismatch = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          "0".repeat(64)
+        ])
+      );
+      assert.equal(mismatch.status, 1, mismatch.stdout + mismatch.stderr);
+      assert.match(mismatch.stderr, /plan digest does not match/);
+      assert.equal(fs.existsSync(path.join(change, "README.md")), false);
+
+      const applied = runPythonChangeDoc([
+        "--state-root",
+        repo,
+        "migrate",
+        "feature-one",
+        "--apply",
+        "--expected-plan-sha256",
+        jsPlan.plan_sha256
+      ]);
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      assert.equal(JSON.parse(applied.stdout).idempotent, false);
+      assert.deepEqual(fs.readFileSync(path.join(repo, ".changes", "archive", "feature-one", "legacy", "tasks.md")), legacyTasks);
+      assert.deepEqual(fs.readFileSync(path.join(repo, ".changes", "archive", "feature-one", "legacy", "review-log.md")), legacyReview);
+      assert.equal(fs.existsSync(path.join(change, "tasks.md")), false);
+      assert.equal(fs.existsSync(path.join(change, "review-log.md")), false);
+      assert.equal(fs.existsSync(path.join(change, "specs", "README.md")), true);
+      assert.equal(fs.existsSync(path.join(change, "decisions", "DR-001-migration-provenance.md")), true);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(repo, ".changes", ".control", "migrations", "feature-one", "current.json"), "utf8")).state, "committed");
+      assert.match(fs.readFileSync(path.join(change, "README.md"), "utf8"), /harness-migration-status:start/);
+
+      // Ordinary workspace documents remain editable after the immutable migration boundary commits.
+      fs.appendFileSync(path.join(change, "README.md"), "\n## Follow-up\n\nStructured work continues after migration.\n");
+
+      const nodeRepeat = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          jsPlan.plan_sha256
+        ])
+      );
+      assert.equal(nodeRepeat.status, 0, nodeRepeat.stdout + nodeRepeat.stderr);
+      assert.equal(JSON.parse(nodeRepeat.stdout).idempotent, true);
+
+      const jsValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pyValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(jsValidate.status, 0, jsValidate.stdout + jsValidate.stderr);
+      assert.equal(pyValidate.status, 0, pyValidate.stdout + pyValidate.stderr);
+      assert.doesNotMatch(jsValidate.stdout, /migration transaction is/);
+      assert.doesNotMatch(pyValidate.stdout, /migration transaction is/);
+      assert.doesNotMatch(jsValidate.stdout, /committed migration destination is missing or digest-mismatched/);
+      assert.doesNotMatch(pyValidate.stdout, /committed migration destination is missing or digest-mismatched/);
+
+      const active = capture(() => runChangeValidate(["--state-root", repo, "--all-active"]));
+      assert.equal(active.status, 0, active.stdout + active.stderr);
+      assert.match(active.stdout, /validated_changes=1 errors=0/);
+    });
+  });
+
+  await test("controlled migration preserves and validates each frozen legacy review round", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const change = path.join(repo, ".changes", "feature-one");
+      const reviewLog = [
+        "# Review Log",
+        "",
+        "## Review Round design-r01",
+        "",
+        "Decision ID: design-r01",
+        "",
+        "Decision: READY",
+        "",
+        "Frozen: yes",
+        "",
+        "Blocking Open: 0",
+        "",
+        "## Review Round design-r02",
+        "",
+        "Decision ID: design-r02",
+        "",
+        "Decision: READY",
+        "",
+        "Frozen: yes",
+        "",
+        "Blocking Open: 0",
+        ""
+      ].join("\n");
+      fs.writeFileSync(path.join(change, "review-log.md"), reviewLog);
+
+      const jsDry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const pyDry = runPythonChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]);
+      assert.equal(jsDry.status, 0, jsDry.stdout + jsDry.stderr);
+      assert.equal(pyDry.status, 0, pyDry.stdout + pyDry.stderr);
+      const plan = JSON.parse(jsDry.stdout);
+      assert.deepEqual(JSON.parse(pyDry.stdout), plan);
+      const reviewSource = plan.legacy_sources.find((source) => source.path === "review-log.md");
+      assert.deepEqual(reviewSource.frozen_review_rounds.map((round) => round.decision_id), ["design-r01", "design-r02"]);
+
+      const applied = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      const transaction = JSON.parse(fs.readFileSync(path.join(repo, ".changes", ".control", "migrations", "feature-one", "current.json"), "utf8"));
+      assert.deepEqual(transaction.legacy_sources.find((source) => source.path === "review-log.md").frozen_review_rounds, reviewSource.frozen_review_rounds);
+      const provenance = fs.readFileSync(path.join(change, "decisions", "DR-001-migration-provenance.md"), "utf8");
+      assert.match(provenance, /Archived Frozen Review Rounds/);
+      assert.match(provenance, /design-r01/);
+      assert.match(provenance, /design-r02/);
+
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 0, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 0, pythonValidate.stdout + pythonValidate.stderr);
+    });
+  });
+
+  await test("controlled migration keeps frozen round digests stable across blank round separators", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const first = bootstrapReviewRound({
+        decisionId: "legacy-boundary-r01",
+        executorId: "bootstrap-executor",
+        reviewerId: "bootstrap-reviewer"
+      });
+      const second = bootstrapReviewRound({
+        decisionId: "legacy-boundary-r02",
+        executorId: "bootstrap-executor",
+        reviewerId: "bootstrap-reviewer"
+      });
+      fs.writeFileSync(path.join(repo, ".changes", "feature-one", "review-log.md"), `${first}\n${second}`);
+
+      const nodeDry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const pythonDry = runPythonChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]);
+      assert.equal(nodeDry.status, 0, nodeDry.stdout + nodeDry.stderr);
+      assert.equal(pythonDry.status, 0, pythonDry.stdout + pythonDry.stderr);
+      const nodeRounds = JSON.parse(nodeDry.stdout).legacy_sources.find((source) => source.path === "review-log.md").frozen_review_rounds;
+      const pythonRounds = JSON.parse(pythonDry.stdout).legacy_sources.find((source) => source.path === "review-log.md").frozen_review_rounds;
+      const expected = [
+        { decision_id: "legacy-boundary-r01", sha256: sha256Text(canonicalReviewRoundText(first)) },
+        { decision_id: "legacy-boundary-r02", sha256: sha256Text(canonicalReviewRoundText(second)) }
+      ];
+      assert.deepEqual(nodeRounds, expected);
+      assert.deepEqual(pythonRounds, expected);
+
+      const applied = runPythonChangeDoc([
+        "--state-root",
+        repo,
+        "migrate",
+        "feature-one",
+        "--apply",
+        "--expected-plan-sha256",
+        JSON.parse(nodeDry.stdout).plan_sha256
+      ]);
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 0, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 0, pythonValidate.stdout + pythonValidate.stderr);
+    });
+  });
+
+  await test("validators reject a committed migration whose accepted plan no longer binds its transaction", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const plan = JSON.parse(dry.stdout);
+      const applied = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      const transactionPath = path.join(repo, ".changes", ".control", "migrations", "feature-one", "current.json");
+      const transaction = JSON.parse(fs.readFileSync(transactionPath, "utf8"));
+      transaction.destination_manifest[0].sha256 = "0".repeat(64);
+      fs.writeFileSync(transactionPath, JSON.stringify(transaction));
+
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 1, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 1, pythonValidate.stdout + pythonValidate.stderr);
+      assert.match(nodeValidate.stdout, /committed migration fields do not match the accepted plan/);
+      assert.match(pythonValidate.stdout, /committed migration fields do not match the accepted plan/);
+    });
+  });
+
+  await test("repeat apply rejects a committed transaction whose mutable fields no longer bind its plan", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const plan = JSON.parse(dry.stdout);
+      const applied = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      const transactionPath = path.join(repo, ".changes", ".control", "migrations", "feature-one", "current.json");
+      const transaction = JSON.parse(fs.readFileSync(transactionPath, "utf8"));
+      transaction.legacy_sources = [];
+      fs.writeFileSync(transactionPath, JSON.stringify(transaction));
+
+      const jsRepeat = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      const pyRepeat = runPythonChangeDoc([
+        "--state-root",
+        repo,
+        "migrate",
+        "feature-one",
+        "--apply",
+        "--expected-plan-sha256",
+        plan.plan_sha256
+      ]);
+      assert.equal(jsRepeat.status, 1, jsRepeat.stdout + jsRepeat.stderr);
+      assert.equal(pyRepeat.status, 1, pyRepeat.stdout + pyRepeat.stderr);
+      assert.match(jsRepeat.stderr, /fields do not match the accepted plan/);
+      assert.match(pyRepeat.stderr, /fields do not match the accepted plan/);
+    });
+  });
+
+  await test("controlled migration fails closed for an interrupted transaction and resumes only with the accepted plan", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      assert.equal(dry.status, 0, dry.stdout + dry.stderr);
+      const plan = JSON.parse(dry.stdout);
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      fs.mkdirSync(transaction, { recursive: true });
+      fs.writeFileSync(
+        path.join(transaction, "current.json"),
+        JSON.stringify({
+          version: 1,
+          change_id: "feature-one",
+          state_root: repo,
+          state: "interrupted",
+          plan_sha256: plan.plan_sha256,
+          plan
+        })
+      );
+
+      const incompleteJs = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const incompletePy = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(incompleteJs.status, 1, incompleteJs.stdout + incompleteJs.stderr);
+      assert.equal(incompletePy.status, 1, incompletePy.stdout + incompletePy.stderr);
+      assert.match(incompleteJs.stdout, /migration transaction is interrupted/);
+      assert.match(incompletePy.stdout, /migration transaction is interrupted/);
+
+      const resumed = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      assert.equal(resumed.status, 0, resumed.stdout + resumed.stderr);
+      assert.equal(JSON.parse(resumed.stdout).idempotent, false);
+    });
+  });
+
+  await test("migration rejects a symlinked state-root before plan acceptance", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const alias = `${repo}-alias`;
+      fs.symlinkSync(repo, alias, "dir");
+      try {
+        const jsDry = capture(() => runChangeDoc(["--state-root", alias, "migrate", "feature-one", "--dry-run"]));
+        const pyDry = runPythonChangeDoc(["--state-root", alias, "migrate", "feature-one", "--dry-run"]);
+        assert.equal(jsDry.status, 2, jsDry.stdout + jsDry.stderr);
+        assert.equal(pyDry.status, 2, pyDry.stdout + pyDry.stderr);
+        assert.match(jsDry.stderr, /state root alias/);
+        assert.match(pyDry.stderr, /state root alias/);
+        assert.equal(fs.existsSync(path.join(repo, ".changes", ".control", "migrations", "feature-one")), false);
+      } finally {
+        fs.unlinkSync(alias);
+      }
+    });
+  });
+
+  await test("migration rejects a linked worktree as the explicit state-root", () => {
+    withGitWorktrees(({ linked }) => {
+      writeLegacyProposal(linked, "feature-one");
+      const jsDry = capture(() => runChangeDoc(["--state-root", linked, "migrate", "feature-one", "--dry-run"]));
+      const pyDry = runPythonChangeDoc(["--state-root", linked, "migrate", "feature-one", "--dry-run"]);
+      assert.equal(jsDry.status, 2, jsDry.stdout + jsDry.stderr);
+      assert.equal(pyDry.status, 2, pyDry.stdout + pyDry.stderr);
+      assert.match(jsDry.stderr, /linked worktree/);
+      assert.match(pyDry.stderr, /linked worktree/);
+      assert.equal(fs.existsSync(path.join(linked, ".changes", ".control", "migrations", "feature-one")), false);
+    });
+  });
+
+
+  await test("migration apply ignores historical bootstrap lifecycle state in both command mirrors", () => {
+    const clients = [
+      { name: "Node", run: (args) => capture(() => runChangeDoc(args)) },
+      { name: "Python", run: (args) => runPythonChangeDoc(args) }
+    ];
+    const cases = [
+      { registryId: "migration-bootstrap-v1", state: "scoped" },
+      { registryId: "migration-bootstrap-v2", state: "scoped" },
+      { registryId: "migration-bootstrap-v1", state: "consumed" },
+      { registryId: "migration-bootstrap-v2", state: "consumed" },
+      { registryId: "migration-bootstrap-v1", state: "revoked-v1" },
+      { registryId: "migration-bootstrap-v2", state: "revoked-v2" }
+    ];
+    for (const client of clients) {
+      for (const testCase of cases) {
+        withTempRepo((repo) => {
+          initBootstrapGitRepo(repo);
+          writeLegacyProposal(repo, "feature-one");
+          writeLegacyProposal(repo, "feature-two");
+          const bootstrap = writeScopedBootstrap(repo, "feature-one", testCase.registryId);
+          if (testCase.state === "consumed") {
+            writeConsumedBootstrap(repo, "feature-one", testCase.registryId, bootstrap);
+          } else if (testCase.state === "revoked-v1") {
+            writeForgedRevokedBootstrap(repo, "feature-one", testCase.registryId, { scoped: false });
+          } else if (testCase.state === "revoked-v2") {
+            writeReviewedRevokedBootstrap(repo, "feature-one", testCase.registryId);
+          }
+
+          const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+          const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+          assert.equal(nodeValidate.status, 0, nodeValidate.stdout + nodeValidate.stderr);
+          assert.equal(pythonValidate.status, 0, pythonValidate.stdout + pythonValidate.stderr);
+          if (testCase.state === "scoped") {
+            assert.match(nodeValidate.stdout, /nonterminal historical bootstrap control debt \(scoped\); it does not authorize or block migration apply/);
+            assert.match(pythonValidate.stdout, /nonterminal historical bootstrap control debt \(scoped\); it does not authorize or block migration apply/);
+          }
+
+          const dry = client.run(["--state-root", repo, "migrate", "feature-two", "--dry-run"]);
+          assert.equal(dry.status, 0, client.name + " " + testCase.state + ": " + dry.stdout + dry.stderr);
+          const applied = client.run([
+            "--state-root",
+            repo,
+            "migrate",
+            "feature-two",
+            "--apply",
+            "--expected-plan-sha256",
+            JSON.parse(dry.stdout).plan_sha256
+          ]);
+          assert.equal(applied.status, 0, client.name + " " + testCase.state + ": " + applied.stdout + applied.stderr);
+        });
+      }
+    }
+  });
+
+  await test("validators reject a scoped bootstrap whose frozen claim spec is not canonical", () => {
+    withTempRepo((repo) => {
+      initBootstrapGitRepo(repo);
+      writeLegacyProposal(repo, "feature-one");
+      const bootstrap = writeScopedBootstrap(repo, "feature-one", "migration-bootstrap-v9");
+      const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+      const review = fs.readFileSync(reviewPath, "utf8");
+      const nonCanonicalClaim = JSON.stringify(bootstrap.claim_spec);
+      assert.notEqual(nonCanonicalClaim, canonicalJson(bootstrap.claim_spec));
+      fs.writeFileSync(reviewPath, review.replace(canonicalJson(bootstrap.claim_spec), nonCanonicalClaim));
+
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 1, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 1, pythonValidate.stdout + pythonValidate.stderr);
+      assert.match(nodeValidate.stdout, /canonical JSON block is not canonical: BootstrapClaimSpec/);
+      assert.match(pythonValidate.stdout, /canonical JSON block is not canonical: BootstrapClaimSpec/);
+    });
+  });
+
+  await test("bootstrap gate references bind one exact frozen review round without invalidating earlier rounds", () => {
+    const cases = [
+      {
+        name: "unrelated append",
+        mutate: (repo) => writeFrozenNotReadyReview(repo, "feature-one", "unrelated-review-r01"),
+        status: 0
+      },
+      {
+        name: "duplicate decision",
+        mutate: (repo) => {
+          const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+          fs.appendFileSync(reviewPath, reviewRoundText(fs.readFileSync(reviewPath, "utf8"), "bootstrap-scope-r01"));
+        },
+        status: 1,
+        pattern: /one exact heading/
+      },
+      {
+        name: "vague heading",
+        mutate: (repo) => {
+          const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+          fs.writeFileSync(
+            reviewPath,
+            fs.readFileSync(reviewPath, "utf8").replace("## Review Round bootstrap-scope-r01", "## Review Round bootstrap-scope-r01 evidence")
+          );
+        },
+        status: 1,
+        pattern: /one exact heading/
+      },
+      {
+        name: "bare review marker remains within the selected round",
+        mutate: (repo) => {
+          const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+          const review = fs.readFileSync(reviewPath, "utf8");
+          const scope = reviewRoundText(review, "bootstrap-scope-r01");
+          fs.writeFileSync(
+            reviewPath,
+            review.replace(scope, scope.replace("### Freeze Decision", "## Review Round\n\n### Freeze Decision"))
+          );
+          refreshScopedBootstrapReviewDigest(repo, "feature-one", "migration-bootstrap-v9");
+        },
+        status: 0
+      },
+      {
+        name: "missing disposition",
+        mutate: (repo) => {
+          const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+          const review = fs.readFileSync(reviewPath, "utf8");
+          const scope = reviewRoundText(review, "bootstrap-scope-r01").replace("### Freeze Decision", "### Missing Freeze Decision");
+          fs.writeFileSync(reviewPath, review.replace(reviewRoundText(review, "bootstrap-scope-r01"), scope));
+        },
+        status: 1,
+        pattern: /required disposition heading/
+      },
+      {
+        name: "malformed reviewed input table",
+        mutate: (repo) => {
+          const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+          const review = fs.readFileSync(reviewPath, "utf8");
+          const scope = reviewRoundText(review, "bootstrap-scope-r01");
+          const malformed = scope.replace(
+            `| Path | SHA-256 | Purpose |\n|---|---|---|\n| \`fixture\` | \`${"a".repeat(64)}\` | Controlled test evidence. |`,
+            `| Input |\n|---|\n| \`${"a".repeat(64)}\` |`
+          );
+          fs.writeFileSync(reviewPath, review.replace(scope, malformed));
+          refreshScopedBootstrapReviewDigest(repo, "feature-one", "migration-bootstrap-v9");
+        },
+        status: 1,
+        pattern: /reviewed-input digest table/
+      },
+      {
+        name: "altered frozen scope",
+        mutate: (repo) => {
+          const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+          fs.writeFileSync(reviewPath, fs.readFileSync(reviewPath, "utf8").replace('"behavioral_purposes":["test"]', '"behavioral_purposes":["test-altered"]'));
+        },
+        status: 1,
+        pattern: /frozen manifest|canonical JSON/
+      }
+    ];
+    for (const testCase of cases) {
+      withTempRepo((repo) => {
+        initBootstrapGitRepo(repo);
+        writeLegacyProposal(repo, "feature-one");
+        writeScopedBootstrap(repo, "feature-one", "migration-bootstrap-v9");
+        testCase.mutate(repo);
+        const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+        const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+        assert.equal(nodeValidate.status, testCase.status, `${testCase.name}: ${nodeValidate.stdout}${nodeValidate.stderr}`);
+        assert.equal(pythonValidate.status, testCase.status, `${testCase.name}: ${pythonValidate.stdout}${pythonValidate.stderr}`);
+        if (testCase.pattern) {
+          assert.match(nodeValidate.stdout, testCase.pattern, testCase.name);
+          assert.match(pythonValidate.stdout, testCase.pattern, testCase.name);
+        }
+      });
+    }
+  });
+
+
+  await test("migration apply ignores invalid historical bootstrap evidence while validators diagnose it", () => {
+    const clients = [
+      { name: "Node", run: (args) => capture(() => runChangeDoc(args)) },
+      { name: "Python", run: (args) => runPythonChangeDoc(args) }
+    ];
+    for (const client of clients) {
+      withTempRepo((repo) => {
+        initBootstrapGitRepo(repo);
+        writeLegacyProposal(repo, "feature-one");
+        for (const registryId of ["migration-bootstrap-v1", "migration-bootstrap-v2"]) {
+          writeScopedBootstrap(repo, "feature-one", registryId);
+          writeForgedConsumedBootstrap(repo, "feature-one", registryId);
+        }
+
+        const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+        const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+        assert.equal(nodeValidate.status, 1, nodeValidate.stdout + nodeValidate.stderr);
+        assert.equal(pythonValidate.status, 1, pythonValidate.stdout + pythonValidate.stderr);
+        assert.match(nodeValidate.stdout, /Bootstrap Close Evidence|does not bind/);
+        assert.match(pythonValidate.stdout, /Bootstrap Close Evidence|does not bind/);
+
+        const dry = client.run(["--state-root", repo, "migrate", "feature-one", "--dry-run"]);
+        assert.equal(dry.status, 0, client.name + ": " + dry.stdout + dry.stderr);
+        const applied = client.run([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          JSON.parse(dry.stdout).plan_sha256
+        ]);
+        assert.equal(applied.status, 0, client.name + ": " + applied.stdout + applied.stderr);
+      });
+    }
+  });
+
+
+  await test("validators require revoke evidence for new records but retain the historical v1 terminal shape", () => {
+    withTempRepo((repo) => {
+      initBootstrapGitRepo(repo);
+      writeLegacyProposal(repo, "feature-one");
+      writeScopedBootstrap(repo, "feature-one", "migration-bootstrap-v9");
+      writeForgedRevokedBootstrap(repo, "feature-one", "migration-bootstrap-v9", { scoped: true });
+
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 1, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 1, pythonValidate.stdout + pythonValidate.stderr);
+      assert.match(nodeValidate.stdout, /revocation evidence/);
+      assert.match(pythonValidate.stdout, /revocation evidence/);
+    });
+
+    withTempRepo((repo) => {
+      initBootstrapGitRepo(repo);
+      writeLegacyProposal(repo, "feature-one");
+      writeScopedBootstrap(repo, "feature-one", "migration-bootstrap-v1");
+      writeForgedRevokedBootstrap(repo, "feature-one", "migration-bootstrap-v1", { scoped: false });
+
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 0, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 0, pythonValidate.stdout + pythonValidate.stderr);
+    });
+  });
+
+
+  await test("controlled migration keeps an incomplete transaction without its accepted plan fail-closed", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      fs.mkdirSync(transaction, { recursive: true });
+      fs.writeFileSync(
+        path.join(transaction, "current.json"),
+        JSON.stringify({
+          version: 1,
+          change_id: "feature-one",
+          state_root: repo,
+          state: "interrupted",
+          plan_sha256: "0".repeat(64)
+        })
+      );
+
+      const result = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          "0".repeat(64)
+        ])
+      );
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(result.stderr, /lacks a recoverable accepted plan/);
+      assert.equal(fs.existsSync(path.join(repo, ".changes", "feature-one", "README.md")), false);
+    });
+  });
+
+  await test("controlled migration resumes a partial install from the stored accepted plan", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const change = path.join(repo, ".changes", "feature-one");
+      fs.writeFileSync(path.join(change, "review-log.md"), "legacy review bytes\n");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      assert.equal(dry.status, 0, dry.stdout + dry.stderr);
+      const plan = JSON.parse(dry.stdout);
+
+      withTempRepo((donor) => {
+        writeLegacyProposal(donor, "feature-one");
+        const donorChange = path.join(donor, ".changes", "feature-one");
+        fs.writeFileSync(path.join(donorChange, "review-log.md"), "legacy review bytes\n");
+        const donorDry = capture(() => runChangeDoc(["--state-root", donor, "migrate", "feature-one", "--dry-run"]));
+        const donorPlan = JSON.parse(donorDry.stdout);
+        const donorApply = capture(() =>
+          runChangeDoc([
+            "--state-root",
+            donor,
+            "migrate",
+            "feature-one",
+            "--apply",
+            "--expected-plan-sha256",
+            donorPlan.plan_sha256
+          ])
+        );
+        assert.equal(donorApply.status, 0, donorApply.stdout + donorApply.stderr);
+        fs.copyFileSync(path.join(donorChange, "README.md"), path.join(change, "README.md"));
+      });
+
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      fs.mkdirSync(transaction, { recursive: true });
+      fs.writeFileSync(
+        path.join(transaction, "current.json"),
+        JSON.stringify({
+          version: 1,
+          change_id: "feature-one",
+          state_root: repo,
+          state: "interrupted",
+          plan_sha256: plan.plan_sha256,
+          plan
+        })
+      );
+
+      const resumed = runPythonChangeDoc([
+        "--state-root",
+        repo,
+        "migrate",
+        "feature-one",
+        "--apply",
+        "--expected-plan-sha256",
+        plan.plan_sha256
+      ]);
+      assert.equal(resumed.status, 0, resumed.stdout + resumed.stderr);
+      assert.equal(JSON.parse(resumed.stdout).idempotent, false);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(transaction, "current.json"), "utf8")).state, "committed");
+    });
+  });
+
+  await test("controlled migration reclaims a stale owner lock", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const plan = JSON.parse(dry.stdout);
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      fs.mkdirSync(transaction, { recursive: true });
+      fs.writeFileSync(path.join(transaction, "migration.lock"), `99999999 ${"f".repeat(32)}\n`);
+
+      const applied = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      assert.equal(fs.existsSync(path.join(transaction, "migration.lock")), false);
+    });
+  });
+
+  await test("controlled migration normalizes frozen legacy review-round digests without rewriting CRLF archive bytes", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const review = bootstrapReviewRound({
+        decisionId: "legacy-review-r01",
+        executorId: "bootstrap-executor",
+        reviewerId: "bootstrap-reviewer"
+      });
+      const reviewPath = path.join(repo, ".changes", "feature-one", "review-log.md");
+      const crlfReview = review.replace(/\n/g, "\r\n");
+      fs.writeFileSync(reviewPath, crlfReview);
+
+      const nodeDry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const pythonDry = runPythonChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]);
+      assert.equal(nodeDry.status, 0, nodeDry.stdout + nodeDry.stderr);
+      assert.equal(pythonDry.status, 0, pythonDry.stdout + pythonDry.stderr);
+      const nodePlan = JSON.parse(nodeDry.stdout);
+      const pythonPlan = JSON.parse(pythonDry.stdout);
+      const nodeRounds = nodePlan.legacy_sources.find((source) => source.path === "review-log.md").frozen_review_rounds;
+      const pythonRounds = pythonPlan.legacy_sources.find((source) => source.path === "review-log.md").frozen_review_rounds;
+      assert.deepEqual(nodeRounds, pythonRounds);
+      assert.deepEqual(nodeRounds, [{ decision_id: "legacy-review-r01", sha256: sha256Text(canonicalReviewRoundText(review)) }]);
+
+      const applied = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          nodePlan.plan_sha256
+        ])
+      );
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      assert.deepEqual(
+        fs.readFileSync(path.join(repo, ".changes", "archive", "feature-one", "legacy", "review-log.md")),
+        Buffer.from(crlfReview, "utf8")
+      );
+
+      const nodeValidate = capture(() => runChangeValidate(["--state-root", repo, "--change", "feature-one"]));
+      const pythonValidate = runPythonChangeValidate(["--state-root", repo, "--change", "feature-one"]);
+      assert.equal(nodeValidate.status, 0, nodeValidate.stdout + nodeValidate.stderr);
+      assert.equal(pythonValidate.status, 0, pythonValidate.stdout + pythonValidate.stderr);
+    });
+  });
+
+  await test("controlled migration fails closed when a stale-lock recovery guard is left behind", () => {
+    const clients = [
+      { name: "Node", run: (args) => capture(() => runChangeDoc(args)) },
+      { name: "Python", run: (args) => runPythonChangeDoc(args) }
+    ];
+    for (const client of clients) {
+      withTempRepo((repo) => {
+        writeLegacyProposal(repo, "feature-one");
+        const dry = client.run(["--state-root", repo, "migrate", "feature-one", "--dry-run"]);
+        const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+        fs.mkdirSync(transaction, { recursive: true });
+        fs.writeFileSync(path.join(transaction, "migration.lock"), `99999998 ${"e".repeat(32)}\n`);
+        fs.writeFileSync(path.join(transaction, "migration.lock.recovery"), `99999999 ${"d".repeat(32)}\n`);
+        const applied = client.run([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          JSON.parse(dry.stdout).plan_sha256
+        ]);
+        assert.equal(applied.status, 1, `${client.name}: ${applied.stdout}${applied.stderr}`);
+        assert.match(applied.stderr, /stale-lock recovery is unrecovered/);
+        assert.equal(fs.readFileSync(path.join(transaction, "migration.lock"), "utf8"), `99999998 ${"e".repeat(32)}\n`);
+      });
+    }
+  });
+
+  await test("abandoned interrupted migration restores its staged source snapshot before a fresh plan", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const change = path.join(repo, ".changes", "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      assert.equal(dry.status, 0, dry.stdout + dry.stderr);
+      const plan = JSON.parse(dry.stdout);
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      const staging = path.join(transaction, "staging", plan.plan_sha256, "source");
+      for (const source of plan.source_inventory) {
+        const sourcePath = path.join(change, source.path);
+        const snapshotPath = path.join(staging, source.path);
+        fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+        fs.copyFileSync(sourcePath, snapshotPath);
+      }
+      fs.mkdirSync(transaction, { recursive: true });
+      fs.writeFileSync(
+        path.join(transaction, "current.json"),
+        JSON.stringify({
+          version: 1,
+          change_id: "feature-one",
+          state_root: repo,
+          state: "interrupted",
+          plan_sha256: plan.plan_sha256,
+          source_inventory: plan.source_inventory,
+          legacy_sources: plan.legacy_sources,
+          destination_manifest: plan.destination_manifest,
+          provenance_path: "decisions/DR-001-migration-provenance.md",
+          plan
+        })
+      );
+
+      const abandoned = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          "0".repeat(64)
+        ])
+      );
+      assert.equal(abandoned.status, 1, abandoned.stdout + abandoned.stderr);
+      assert.match(abandoned.stderr, /prior partial workspace was rolled back/);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(transaction, "current.json"), "utf8")).state, "rolled-back");
+      assert.equal(fs.existsSync(path.join(change, "tasks.md")), true);
+      assert.equal(fs.existsSync(path.join(change, "specs", "README.md")), false);
+
+      const applied = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          plan.plan_sha256
+        ])
+      );
+      assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+      assert.equal(JSON.parse(applied.stdout).transaction_state, "committed");
+    });
+  });
+
+  await test("interrupted migration never restores a non-legacy source removed after the accepted plan", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const change = path.join(repo, ".changes", "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      assert.equal(dry.status, 0, dry.stdout + dry.stderr);
+      const plan = JSON.parse(dry.stdout);
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      const staging = path.join(transaction, "staging", plan.plan_sha256, "source");
+      for (const source of plan.source_inventory) {
+        const sourcePath = path.join(change, source.path);
+        const snapshotPath = path.join(staging, source.path);
+        fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+        fs.copyFileSync(sourcePath, snapshotPath);
+      }
+      fs.writeFileSync(
+        path.join(transaction, "current.json"),
+        JSON.stringify({
+          version: 1,
+          change_id: "feature-one",
+          state_root: repo,
+          state: "interrupted",
+          plan_sha256: plan.plan_sha256,
+          source_inventory: plan.source_inventory,
+          legacy_sources: plan.legacy_sources,
+          destination_manifest: plan.destination_manifest,
+          provenance_path: "decisions/DR-001-migration-provenance.md",
+          plan
+        })
+      );
+      fs.unlinkSync(path.join(change, "proposal.md"));
+
+      const result = capture(() =>
+        runChangeDoc([
+          "--state-root",
+          repo,
+          "migrate",
+          "feature-one",
+          "--apply",
+          "--expected-plan-sha256",
+          "0".repeat(64)
+        ])
+      );
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(result.stderr, /cannot safely roll back.*source file is missing proposal\.md/);
+      assert.equal(fs.existsSync(path.join(change, "proposal.md")), false);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(transaction, "current.json"), "utf8")).state, "interrupted");
+    });
+  });
+
+  await test("Python rolls back a recoverable interrupted migration from the staged source snapshot", () => {
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      const change = path.join(repo, ".changes", "feature-one");
+      const dry = capture(() => runChangeDoc(["--state-root", repo, "migrate", "feature-one", "--dry-run"]));
+      const plan = JSON.parse(dry.stdout);
+      const transaction = path.join(repo, ".changes", ".control", "migrations", "feature-one");
+      const staging = path.join(transaction, "staging", plan.plan_sha256, "source");
+      for (const source of plan.source_inventory) {
+        const sourcePath = path.join(change, source.path);
+        const snapshotPath = path.join(staging, source.path);
+        fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+        fs.copyFileSync(sourcePath, snapshotPath);
+      }
+      fs.writeFileSync(
+        path.join(transaction, "current.json"),
+        JSON.stringify({
+          version: 1,
+          change_id: "feature-one",
+          state_root: repo,
+          state: "interrupted",
+          plan_sha256: plan.plan_sha256,
+          source_inventory: plan.source_inventory,
+          legacy_sources: plan.legacy_sources,
+          destination_manifest: plan.destination_manifest,
+          provenance_path: "decisions/DR-001-migration-provenance.md",
+          plan
+        })
+      );
+
+      const abandoned = runPythonChangeDoc([
+        "--state-root",
+        repo,
+        "migrate",
+        "feature-one",
+        "--apply",
+        "--expected-plan-sha256",
+        "0".repeat(64)
+      ]);
+      assert.equal(abandoned.status, 1, abandoned.stdout + abandoned.stderr);
+      assert.match(abandoned.stderr, /prior partial workspace was rolled back/);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(transaction, "current.json"), "utf8")).state, "rolled-back");
+    });
+  });
 }
 
 function capture(fn) {
@@ -1305,6 +2269,386 @@ function initGitRepo(repo) {
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function writeScopedBootstrap(repo, changeId, registryId) {
+  const control = path.join(repo, ".changes", ".control", registryId);
+  const authorityId = registryId.replace(/^migration-bootstrap-/, "migration-apply-bootstrap-");
+  const root = path.resolve(repo);
+  const baseCommit = git(["rev-parse", "HEAD"], repo).stdout.trim();
+  const executorId = "bootstrap-executor";
+  const reviewerId = "bootstrap-reviewer";
+  const predecessor = [];
+  const predecessorHash = sha256Text(canonicalJson(predecessor));
+  const claimSpec = {
+    bootstrap_id: authorityId,
+    expected_authority_decision_id: "bootstrap-authority-r01",
+    exclusive_create: true,
+    originating_change_id: changeId,
+    state_root_realpath: root
+  };
+  const authority = {
+    artifact_path: "review-log.md",
+    artifact_sha256: null,
+    change_id: changeId,
+    decision: "READY",
+    decision_id: "bootstrap-authority-r01"
+  };
+  const authorityRound = bootstrapReviewRound({
+    body: ["### BootstrapClaimSpec", "", "```json", canonicalJson(claimSpec), "```"],
+    decisionId: "bootstrap-authority-r01",
+    executorId,
+    reviewerId
+  });
+  authority.artifact_sha256 = sha256Text(canonicalReviewRoundText(authorityRound));
+  const claimed = {
+    authority_ref: authority,
+    bootstrap_id: authorityId,
+    claim_spec_digest: sha256Text(canonicalJson(claimSpec)),
+    generation: 1,
+    originating_change_id: changeId,
+    owner: executorId,
+    state: "claimed",
+    state_root_realpath: root
+  };
+  const claimHash = sha256Text(canonicalJson(claimed));
+  const manifest = {
+    authority_record_sha256: claimHash,
+    base_commit: baseCommit,
+    behavioral_purposes: ["test"],
+    code_root_realpath: root,
+    executor_id: executorId,
+    originating_change_id: changeId,
+    predecessor_snapshot_sha256: predecessorHash,
+    reviewer_id: reviewerId,
+    rollback_boundary: "test-boundary",
+    source_paths: ["README.md"],
+    validation_ids: ["test"]
+  };
+  const manifestHash = sha256Text(canonicalJson(manifest));
+  const snapshotHash = sha256Text(canonicalJson([]));
+  const validationEvidence = { commands: ["test"] };
+  const validationHash = sha256Text(canonicalJson(validationEvidence));
+  const scopeRound = bootstrapReviewRound({
+    body: [
+      "### Bootstrap Scope Manifest",
+      "",
+      "```json",
+      canonicalJson(manifest),
+      "```",
+      "",
+      "### Predecessor Source Snapshot",
+      "",
+      "```json",
+      canonicalJson(predecessor),
+      "```"
+    ],
+    decisionId: "bootstrap-scope-r01",
+    executorId,
+    reviewerId
+  });
+  const closeEvidence = {
+    authority_record_sha256: claimHash,
+    base_commit: baseCommit,
+    executor_id: executorId,
+    implementation_snapshot_sha256: snapshotHash,
+    reviewer_id: reviewerId,
+    scope_manifest_sha256: manifestHash,
+    validation_evidence: validationEvidence
+  };
+  const closeRound = bootstrapReviewRound({
+    body: ["### Bootstrap Close Evidence", "", "```json", canonicalJson(closeEvidence), "```"],
+    decisionId: "bootstrap-close-r01",
+    executorId,
+    reviewerId
+  });
+  const review = [authorityRound, scopeRound, closeRound].join("");
+  const reviewPath = path.join(repo, ".changes", changeId, "review-log.md");
+  fs.writeFileSync(reviewPath, review);
+  const scoped = {
+    authority_event_sha256: claimHash,
+    base_commit: baseCommit,
+    bootstrap_id: authorityId,
+    generation: 2,
+    originating_change_id: changeId,
+    predecessor_snapshot_sha256: predecessorHash,
+    rollback_boundary: "test-boundary",
+    scope_gate_ref: {
+      artifact_path: "review-log.md",
+      artifact_sha256: sha256Text(canonicalReviewRoundText(scopeRound)),
+      change_id: changeId,
+      decision: "READY",
+      decision_id: "bootstrap-scope-r01"
+    },
+    scope_manifest_sha256: manifestHash,
+    state: "scoped",
+    state_root_realpath: root
+  };
+  const scopeHash = sha256Text(canonicalJson(scoped));
+  writeCanonicalJson(path.join(control, "events", "000001-claimed.json"), claimed);
+  writeCanonicalJson(path.join(control, "events", "000002-scoped.json"), scoped);
+  writeCanonicalJson(path.join(control, "current.json"), {
+    event: "events/000002-scoped.json",
+    event_sha256: scopeHash,
+    generation: 2,
+    state: "scoped"
+  });
+  return {
+    authority_event_sha256: claimHash,
+    claim_spec: claimSpec,
+    close_evidence_sha256: sha256Text(canonicalJson(closeEvidence)),
+    review_sha256: sha256Text(canonicalReviewRoundText(closeRound)),
+    scope_event_sha256: scopeHash,
+    snapshot_sha256: snapshotHash,
+    validation_evidence_sha256: validationHash
+  };
+}
+
+function bootstrapReviewRound({ body = [], decision = "READY", decisionId, executorId, reviewerId }) {
+  return [
+    `## Review Round ${decisionId}`,
+    "",
+    `Decision ID: ${decisionId}`,
+    "",
+    `Decision: ${decision}`,
+    "",
+    "Frozen: yes",
+    "",
+    `Executor ID: ${executorId}`,
+    "",
+    `Reviewer ID: ${reviewerId}`,
+    "",
+    "Reviewed Inputs:",
+    "",
+    "| Path | SHA-256 | Purpose |",
+    "|---|---|---|",
+    `| \`fixture\` | \`${"a".repeat(64)}\` | Controlled test evidence. |`,
+    "",
+    ...body,
+    "",
+    "### Findings",
+    "",
+    "- Fixture evidence is internally consistent.",
+    "",
+    "### Blocking",
+    "",
+    "Blocking Open: 0",
+    "",
+    "### Re-review Result",
+    "",
+    `- ${decision}: fixture round is frozen for the requested transition.`,
+    "",
+    "### Freeze Decision",
+    "",
+    `- ${decisionId} is frozen ${decision}.`,
+    "",
+    "### Status",
+    "",
+    "### Should Fix",
+    "",
+    "### Fix Applied",
+    "",
+    "### Deferred With Reason",
+    "",
+    ""
+  ].join("\n");
+}
+
+function reviewRoundText(text, decisionId) {
+  const heading = `## Review Round ${decisionId}`;
+  const start = text.indexOf(heading);
+  assert.notEqual(start, -1, `missing fixture review round: ${decisionId}`);
+  const next = text.indexOf("## Review Round ", start + heading.length);
+  return canonicalReviewRoundText(text.slice(start, next < 0 ? text.length : next));
+}
+
+function canonicalReviewRoundText(text) {
+  return `${text.replace(/(?:\n[ \t]*)+$/, "")}\n`;
+}
+
+function initBootstrapGitRepo(repo) {
+  initGitRepo(repo);
+  git(["config", "user.email", "tests@example.invalid"], repo);
+  git(["config", "user.name", "Harness Tests"], repo);
+  git(["commit", "--allow-empty", "-q", "-m", "bootstrap-base"], repo);
+}
+
+function writeFrozenNotReadyReview(repo, changeId, decisionId) {
+  const reviewPath = path.join(repo, ".changes", changeId, "review-log.md");
+  const round = bootstrapReviewRound({
+    decision: "NOT_READY",
+    decisionId,
+    executorId: "bootstrap-executor",
+    reviewerId: "bootstrap-reviewer"
+  });
+  fs.appendFileSync(reviewPath, `\n${round}`);
+  return sha256Text(canonicalReviewRoundText(round));
+}
+
+function writeForgedConsumedBootstrap(repo, changeId, registryId) {
+  const control = path.join(repo, ".changes", ".control", registryId);
+  const currentPath = path.join(control, "current.json");
+  const current = JSON.parse(fs.readFileSync(currentPath, "utf8"));
+  const authorityId = registryId.replace(/^migration-bootstrap-/, "migration-apply-bootstrap-");
+  const forged = {
+    authority_event_sha256: JSON.parse(fs.readFileSync(path.join(control, "events", "000002-scoped.json"), "utf8")).authority_event_sha256,
+    bootstrap_id: authorityId,
+    close_evidence_sha256: "0".repeat(64),
+    close_gate_ref: {
+      artifact_path: "review-log.md",
+      artifact_sha256: "0".repeat(64),
+      change_id: changeId,
+      decision: "READY",
+      decision_id: "bootstrap-close-r01"
+    },
+    executor_id: "bootstrap-executor",
+    generation: 3,
+    implementation_snapshot_sha256: "0".repeat(64),
+    originating_change_id: changeId,
+    reviewer_id: "bootstrap-reviewer",
+    scope_event_sha256: current.event_sha256,
+    state: "consumed",
+    state_root_realpath: path.resolve(repo),
+    validation_evidence_sha256: "0".repeat(64)
+  };
+  writeCanonicalJson(path.join(control, "events", "000003-consumed.json"), forged);
+  writeCanonicalJson(currentPath, {
+    event: "events/000003-consumed.json",
+    event_sha256: sha256Text(canonicalJson(forged)),
+    generation: 3,
+    state: "consumed"
+  });
+}
+
+function writeConsumedBootstrap(repo, changeId, registryId, bootstrap) {
+  const control = path.join(repo, ".changes", ".control", registryId);
+  const currentPath = path.join(control, "current.json");
+  const authorityId = registryId.replace(/^migration-bootstrap-/, "migration-apply-bootstrap-");
+  const consumed = {
+    authority_event_sha256: bootstrap.authority_event_sha256,
+    bootstrap_id: authorityId,
+    close_evidence_sha256: bootstrap.close_evidence_sha256,
+    close_gate_ref: {
+      artifact_path: "review-log.md",
+      artifact_sha256: bootstrap.review_sha256,
+      change_id: changeId,
+      decision: "READY",
+      decision_id: "bootstrap-close-r01"
+    },
+    executor_id: "bootstrap-executor",
+    generation: 3,
+    implementation_snapshot_sha256: bootstrap.snapshot_sha256,
+    originating_change_id: changeId,
+    reviewer_id: "bootstrap-reviewer",
+    scope_event_sha256: bootstrap.scope_event_sha256,
+    state: "consumed",
+    state_root_realpath: path.resolve(repo),
+    validation_evidence_sha256: bootstrap.validation_evidence_sha256
+  };
+  writeCanonicalJson(path.join(control, "events", "000003-consumed.json"), consumed);
+  writeCanonicalJson(currentPath, {
+    event: "events/000003-consumed.json",
+    event_sha256: sha256Text(canonicalJson(consumed)),
+    generation: 3,
+    state: "consumed"
+  });
+}
+
+function writeForgedRevokedBootstrap(repo, changeId, registryId, { scoped }) {
+  const control = path.join(repo, ".changes", ".control", registryId);
+  const currentPath = path.join(control, "current.json");
+  const current = JSON.parse(fs.readFileSync(currentPath, "utf8"));
+  const authorityId = registryId.replace(/^migration-bootstrap-/, "migration-apply-bootstrap-");
+  const revoked = {
+    bootstrap_id: authorityId,
+    generation: 3,
+    originating_change_id: changeId,
+    ...(scoped ? { scope_event_sha256: current.event_sha256 } : { prior_event_sha256: current.event_sha256 }),
+    ...(scoped ? {} : { replacement_bootstrap_id: "migration-apply-bootstrap-v2" }),
+    reason: "fixture-terminal-containment",
+    state: "revoked",
+    state_root_realpath: path.resolve(repo)
+  };
+  writeCanonicalJson(path.join(control, "events", "000003-revoked.json"), revoked);
+  writeCanonicalJson(currentPath, {
+    event: "events/000003-revoked.json",
+    event_sha256: sha256Text(canonicalJson(revoked)),
+    generation: 3,
+    state: "revoked"
+  });
+}
+
+function writeReviewedRevokedBootstrap(repo, changeId, registryId) {
+  const control = path.join(repo, ".changes", ".control", registryId);
+  const currentPath = path.join(control, "current.json");
+  const current = JSON.parse(fs.readFileSync(currentPath, "utf8"));
+  const decisionId = "bootstrap-revoke-r01";
+  const reviewHash = writeFrozenNotReadyReview(repo, changeId, decisionId);
+  const authorityId = registryId.replace(/^migration-bootstrap-/, "migration-apply-bootstrap-");
+  const revoked = {
+    bootstrap_id: authorityId,
+    generation: 3,
+    originating_change_id: changeId,
+    reason: "fixture-reviewed-containment",
+    revoke_gate_ref: {
+      artifact_path: "review-log.md",
+      artifact_sha256: reviewHash,
+      change_id: changeId,
+      decision: "NOT_READY",
+      decision_id: decisionId
+    },
+    scope_event_sha256: current.event_sha256,
+    state: "revoked",
+    state_root_realpath: path.resolve(repo)
+  };
+  writeCanonicalJson(path.join(control, "events", "000003-revoked.json"), revoked);
+  writeCanonicalJson(currentPath, {
+    event: "events/000003-revoked.json",
+    event_sha256: sha256Text(canonicalJson(revoked)),
+    generation: 3,
+    state: "revoked"
+  });
+}
+
+function refreshScopedBootstrapReviewDigest(repo, changeId, registryId) {
+  const control = path.join(repo, ".changes", ".control", registryId);
+  const scopedPath = path.join(control, "events", "000002-scoped.json");
+  const scoped = JSON.parse(fs.readFileSync(scopedPath, "utf8"));
+  scoped.scope_gate_ref.artifact_sha256 = sha256Text(reviewRoundText(fs.readFileSync(path.join(repo, ".changes", changeId, "review-log.md"), "utf8"), "bootstrap-scope-r01"));
+  writeCanonicalJson(scopedPath, scoped);
+  writeCanonicalJson(path.join(control, "current.json"), {
+    event: "events/000002-scoped.json",
+    event_sha256: sha256Text(canonicalJson(scoped)),
+    generation: 2,
+    state: "scoped"
+  });
+}
+
+function writeCanonicalJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, canonicalJson(value));
+}
+
+function canonicalJson(value) {
+  return JSON.stringify(canonicalValue(value));
+}
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalValue(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  }
+  return value;
+}
+
+function sha256Text(text) {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+function sha256File(filePath) {
+  return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
 function writeLegacyProposal(repo, changeId) {
