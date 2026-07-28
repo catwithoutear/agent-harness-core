@@ -16,21 +16,29 @@ Input: `$ARGUMENTS`
 1. Activate `change-planner` when it is installed.
 2. Use `change-workspace-operator` for regulated `.changes` reads, creation, and
    validation commands.
-3. Read the active change README first, then requirements, proposal, specs,
-   design, implementation-design, existing tasks, reviews, and high-signal
-   timeline entries when present.
+3. Read the active change README first, then requirements, proposal, design,
+   the latest relevant solution-design review, specs, implementation-design,
+   its latest review, existing tasks, other reviews, and high-signal timeline
+   entries when present.
 4. If ownership, entry points, failure mode, feasibility, or validation is still
    unclear, call the focused evidence skill before planning:
    `architecture-scout`, `diagnose`, `prototype-spike`, or
    `verification-first`.
-5. Apply the implementation-design trigger rule before task slicing. Require an
-   `implementation-design/` topology pack when work crosses subsystem
-   boundaries, touches 2+ modules with dependency risk, adds lifecycle/failure
-   semantics, or needs dependency/file/class/test-seam constraints. Otherwise
-   record the no-design reason.
-6. Produce bounded task slices. Each slice must have scope, subsystem, module,
+5. Refuse formal task slicing while the solution or its review is unresolved.
+   Apply the implementation-design trigger only after the solution-design
+   review is ready. Require a populated and reviewed `implementation-design/`
+   topology pack when work crosses subsystem boundaries, touches 2+ modules
+   with dependency risk, adds lifecycle/failure semantics, or needs
+   dependency/file/class/test-seam constraints. Otherwise record the no-design
+   reason.
+6. Produce bounded task slices from the accepted solution or reviewed pack.
+   Each slice must have scope, subsystem, module,
    changed surfaces, prerequisites, validation, rollback, and review owner.
-7. Keep unrelated future work out of the executable plan. Record it as a
+7. Review the complete task set for index coverage, dependency order, ownership,
+   validation coverage, and unresolved upstream decisions before implementation.
+8. If a task requires a changed solution decision, return to solution design
+   instead of settling it inside the task.
+9. Keep unrelated future work out of the executable plan. Record it as a
    deferred note only when it affects current decisions.
 
 ## Output

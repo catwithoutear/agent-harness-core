@@ -59,7 +59,7 @@ Use `relative/path:Symbol` when possible. For symbol-less config or docs, use
 | Design refinement | `skills/knowledge/design-doc-refiner/SKILL.md:Workflow` | Settle solution design before topology mapping. |
 | Refiner output contract | `skills/knowledge/design-doc-refiner/references/output-contract.md` | Solution-design refinement outputs the design, ambiguities, and validation intent; formal task slicing belongs to `change-planner` after topology assessment. |
 | Adjacent writing route | `skills/knowledge/technical-doc-refinement/SKILL.md:Boundary` | Route implementation task breakdown to `change-planner`, not solution refinement. |
-| Skill metadata | `harness.manifest.json` entry for `design-doc-refiner` | Keep description equal to the canonical skill front matter; do not change routes or client support. |
+| Skill metadata | `harness.manifest.json` entry for `design-doc-refiner` | Keep description equal to the canonical skill front matter and remove trigger phrases that assign formal task slicing to the refiner; do not change source, runtime name, clients, or asset projection routes. |
 | Operator guidance | `skills/change/change-workspace-operator/SKILL.md:Example Flows` | Explain ordering and structural-only writers. |
 | User commands | `commands/harness/workflow.md`, `commands/harness/plan.md` | Route the same phase order at entry points. |
 | Generic loop | `rules/loop-contract.md` | Add solution and conditional topology gates. |

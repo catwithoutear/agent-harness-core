@@ -6,11 +6,11 @@ Use this contract unless the user requests another structure.
 
 Return these sections in order:
 
-1. Improved Design Document
+1. Improved Solution Design
 2. Ambiguities / Missing Information
-3. Implementation Task Breakdown
+3. Validation Intent
 
-## Implementation-Readiness Gate
+## Solution-Design Readiness Gate
 
 Before returning the document, check whether it answers these questions:
 
@@ -18,11 +18,11 @@ Before returning the document, check whether it answers these questions:
 |---|---|---|
 | Change surface | Affected modules, contracts, data, workflows, and users are identified at the most specific level supported by the input. | Add an ambiguity instead of inventing names. |
 | Failure behavior | Retry, rollback, cleanup, interruption, idempotency, and concurrency are covered where relevant. | Add a failure-behavior open question. |
-| Verification | Tests or manual checks map to goals, risks, and compatibility concerns. | Add validation tasks and missing test questions. |
+| Verification | Tests or manual checks map to goals, risks, and compatibility concerns. | Add validation gaps and missing test questions. |
 | Compatibility | Old data, old callers, defaults, migration, and rollback are addressed when contracts or persistence change. | Add compatibility questions. |
-| Task split | Tasks are reviewable slices, not vague work themes. | Split by module, contract, data, validation, or rollout boundary. |
+| Downstream readiness | The design is clear enough to assess whether implementation design is required. | Preserve the missing ownership or topology fact as an ambiguity. |
 
-## Improved Design Document Structure
+## Improved Solution Design Structure
 
 ```markdown
 # Title
@@ -104,10 +104,6 @@ Describe how to introduce, verify, disable, or revert the behavior.
 | Question | Why It Matters | Suggested Resolution |
 |---|---|---|
 
-## Implementation Tasks
-
-List ordered implementation tasks. Keep each task independently reviewable when
-possible.
 ```
 
 ## Ambiguities / Missing Information
@@ -123,15 +119,25 @@ Rules:
 - Do not silently resolve conflicts.
 - Distinguish missing facts from assumptions.
 
-## Implementation Task Breakdown
+## Validation Intent
 
 Use this table:
 
-| Task | Module | Description | Risk | Suggested Order |
-|---|---|---|---|---|
+| Goal or Risk | Planned Evidence | Success Condition | Known Gap |
+|---|---|---|---|
 
 Rules:
 
-- Tasks should map to modules, interfaces, tests, or reviewable slices.
-- Include validation work, not only implementation work.
-- Do not create fake file names or APIs to make the plan look concrete.
+- Map planned evidence to solution goals, failure behavior, compatibility, and
+  material risks.
+- Keep unverified assumptions and unavailable environments explicit.
+- Do not turn this section into implementation topology or task slices.
+
+## Downstream Boundary
+
+After this design is reviewed ready:
+
+1. apply the implementation-design trigger;
+2. create and review the topology pack when required;
+3. use `change-planner` to derive formal task slices from the accepted upstream
+   artifacts.

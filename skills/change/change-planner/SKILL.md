@@ -7,7 +7,7 @@ description: Use when turning settled requirements, proposals, designs, specs, o
 
 Convert a settled design into executable, reviewable task slices inside the
 active `.changes` workspace. Use this skill after the direction is chosen and
-before coding starts or resumes.
+the solution-design review is ready, and before coding starts or resumes.
 
 Use `change-workspace-operator` for regulated file creation, lookup, reading,
 and validation. This skill decides what the tasks should be; it does not replace
@@ -59,8 +59,9 @@ ambiguous, return `NEEDS_USER_DECISION` instead of inventing tasks.
 
 ## Implementation-Design Trigger Rule
 
-Before task slicing, decide whether the change needs an
-`implementation-design/` topology pack. Require it when any of these are true:
+After the solution-design review is ready and before task slicing, decide
+whether the change needs an `implementation-design/` topology pack. Require it
+when any of these are true:
 
 - the change crosses subsystem boundaries;
 - the change touches two or more modules with dependency-order risk;
@@ -73,6 +74,24 @@ For localized work that does not meet those triggers, write an explicit
 no-design reason in the slice and keep the lightweight path. Do not generate a
 seven-file pack only to leave empty tables.
 
+If the trigger applies, read the populated pack and its latest review. File
+presence is not readiness evidence. Return `NOT_READY` until the pack is
+specific enough for implementation and its review is ready.
+
+## Planning Admission
+
+Use the design-to-tasks path only when:
+
+- the proposal direction and solution design are settled;
+- the latest relevant solution-design review is ready;
+- the implementation-design trigger has been assessed against that accepted
+  design;
+- any required implementation-design pack is populated and reviewed ready;
+- no unresolved decision would change task ownership, ordering, or validation.
+
+If a downstream discovery changes the accepted solution, return to solution
+design. Do not settle architecture or compatibility inside task slices.
+
 ## Planning Flow
 
 1. Locate and read the active change through `harness-change-doc` or the
@@ -80,7 +99,8 @@ seven-file pack only to leave empty tables.
    over guessing paths by hand.
 2. Read the controlling artifacts in this order when present:
    `requirements.md`, `proposal.md`, `terminology.md`, `design.md`, `specs/`,
-   `implementation-design/`, existing `tasks/`, `execution-map.md`,
+   the latest relevant solution-design review, `implementation-design/`, its
+   latest relevant review, existing `tasks/`, `execution-map.md`, other
    `reviews/`, and recent `timeline/` entries.
    Treat architecture scout notes, diagnosis records, spike results, and
    validation plans as source evidence, not as tasks by themselves.
@@ -103,7 +123,10 @@ seven-file pack only to leave empty tables.
 7. Write or update task artifacts only through the change workspace's regulated
    creation path. For this harness, use `harness-change-doc add-task-slice`
    before hand-editing task content.
-8. Run `harness-change-validate --state-root <state-root> --change <id>` or the
+8. Review the complete task set for index coverage, satisfiable and acyclic
+   dependencies, non-conflicting ownership, validation coverage, and unresolved
+   upstream decisions before implementation dispatch.
+9. Run `harness-change-validate --state-root <state-root> --change <id>` or the
    repository equivalent. Add `--worktrees` when an execution map participates
    in the plan. Treat warnings as decisions to resolve or explicitly accept
    before freeze.
@@ -127,6 +150,9 @@ seven-file pack only to leave empty tables.
   in the slice.
 - Mark dependencies and blocked decisions instead of silently reordering around
   them.
+- When an accepted solution changes materially, invalidate and revisit the
+  dependent implementation-design and task evidence instead of patching around
+  it.
 - Use `execution-map.md` for slice assignment state. Do not duplicate branch,
   worktree, owner, or status rows into task-slice front matter.
 - Treat `Worktree` as a local execution coordinate, not a portable promise.

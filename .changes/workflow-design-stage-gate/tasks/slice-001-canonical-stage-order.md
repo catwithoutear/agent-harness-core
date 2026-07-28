@@ -1,6 +1,6 @@
 ---
 artifact: task-slice
-status: draft
+status: reviewed
 tags: [implementation]
 description: "canonical-stage-order"
 ---
@@ -23,7 +23,8 @@ slicing, and implementation.
   writers, validators, schema, policy, migration, routes, clients, or phase
   state.
 - Scope: canonical skills, adjacent skill routing, workflow/plan commands, loop
-  rule, matching skill description metadata, and focused contract tests.
+  rule, matching refiner description and trigger ownership metadata, and
+  focused contract tests.
 - Subsystem: workflow coordination.
 - Module: workflow and planning source contracts.
 - Changed surfaces:
@@ -34,8 +35,8 @@ slicing, and implementation.
   `skills/knowledge/technical-doc-refinement/SKILL.md`,
   `skills/change/change-workspace-operator/SKILL.md`,
   `commands/harness/workflow.md`, `commands/harness/plan.md`,
-  `rules/loop-contract.md`, the `design-doc-refiner` description in
-  `harness.manifest.json`, and `tests/test-skills.js`.
+  `rules/loop-contract.md`, the `design-doc-refiner` description and conflicting
+  trigger phrases in `harness.manifest.json`, and `tests/test-skills.js`.
 - Prerequisites: `solution-design-r03` and `implementation-design-r03` are
   `READY`; preserve the migration/tooling diff in a separate reviewed commit or
   create a dedicated worktree from an equivalent recorded base commit before
@@ -51,20 +52,22 @@ slicing, and implementation.
 - [x] Record the implementation base commit and confirm the task-owned diff
   excludes change-tool, schema, policy, migration, routing, and client-support
   surfaces.
-- [ ] Update canonical workflow and planning guidance with fast, compact, and
+- [x] Update canonical workflow and planning guidance with fast, compact, and
   design paths and explicit return-to-design behavior.
-- [ ] Make `design-doc-refiner` stop at solution design, ambiguities, and
+- [x] Make `design-doc-refiner` stop at solution design, ambiguities, and
   validation intent; route formal task slicing to `change-planner`.
-- [ ] Synchronize only the changed `design-doc-refiner` manifest description.
-- [ ] Add focused assertions for phase order, lightweight paths, specialist
+- [x] Synchronize the changed `design-doc-refiner` manifest description and
+  remove trigger phrases that assign formal task slicing to it; preserve its
+  source, runtime name, clients, and projection route.
+- [x] Add focused assertions for phase order, lightweight paths, specialist
   ownership, output-contract content, and metadata equality.
 
 ## Validation
 
-- [ ] `npm test -- --skills`: passes.
-- [ ] `node bin/harness.js manifest --json`: passes.
-- [ ] `git diff --check`: passes.
-- [ ] Exact task diff contains no new command, route, client capability, writer,
+- [x] `npm test -- --skills`: passes.
+- [x] `node bin/harness.js manifest --json`: passes.
+- [x] `git diff --check`: passes.
+- [x] Exact task diff contains no new command, route, client capability, writer,
   validator, schema, policy, migration, or phase-state change.
 
 ## Review

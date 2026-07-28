@@ -95,6 +95,12 @@ state to make migration proceed.
   with source references, outcome expectations, constraints, code landscape,
   risk areas, and scoping confidence. Do not create a new template unless the
   existing owning artifact cannot hold the evidence.
+- Design path: challenge the proposal, wait until the solution-design review is
+  ready, then assess the implementation-design trigger. When the trigger
+  applies, populate and review the pack before using `change-planner` to create
+  task slices. Review the complete task set before implementation. Writers
+  create structure and validators check repository policy; neither makes a
+  semantic readiness decision.
 - Multi-worktree assignment: create the task slice first, then use
   `assign-slice` to write or update `execution-map.md`. The map owns scheduling
   fields; task slices own implementation details and evidence.
@@ -114,6 +120,9 @@ state to make migration proceed.
   and `07` when their risk surfaces exist, otherwise mark sections `N/A` with a
   reason. For small localized work below the trigger threshold, keep a no-design
   reason in the plan instead of creating the pack.
+- If a solution decision changes after the pack or task set exists, return to
+  solution design and revisit dependent artifacts. Do not hide the change in a
+  task slice.
 - New review round: only for a gate, council, re-review, freeze decision, or
   other review event that changes the decision state. Run `add-review`, write
   concise findings and the decision, then ensure `reviews/README.md` makes the

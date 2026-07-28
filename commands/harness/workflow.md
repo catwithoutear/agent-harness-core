@@ -39,26 +39,35 @@ Input: `$ARGUMENTS`
    - `diagnose` for symptoms, failures, regressions, or unclear root cause.
    - `prototype-spike` for proposal/design feasibility risks.
    - `verification-first` for validation choice and evidence reporting.
-9. Apply the implementation-design trigger rule before task slicing. Require an
-   `implementation-design/` topology pack when work crosses subsystem
-   boundaries, touches 2+ modules with dependency risk, adds lifecycle/failure
-   semantics, or needs dependency/file/class/test-seam constraints. Otherwise
-   record the no-design reason.
-10. Plan one bounded implementation slice. State scope, subsystem, module,
-   changed surfaces, prerequisites, validation, rollback, and review owner.
-11. Implement only the agreed slice when the user asked for implementation.
-12. After meaningful code edits, run `simplify` or explicitly explain why it does
-   not apply.
-13. Review the slice with a review packet and gate decision.
-14. Verify with repository-owned commands or source evidence.
-15. Persist only high-signal results in the owning artifact. Use `reviews/` and
+9. Choose the lightest valid path:
+   - fast: for work that changes no behavior, interface, lifecycle, dependency,
+     migration, or failure contract, observe, make the local edit, and verify;
+   - compact: record the bounded goal, affected source, no-design/no-pack
+     reason, validation, and rollback, then review when risk warrants it;
+   - design: challenge the proposal, then write and review the solution design.
+10. On the design path, apply the implementation-design trigger only after the
+    solution-design review is ready. Require a populated and reviewed
+    `implementation-design/` pack when work crosses subsystem boundaries,
+    touches 2+ modules with dependency risk, adds lifecycle/failure semantics,
+    or needs dependency/file/class/test-seam constraints.
+11. Derive bounded task slices from the accepted solution or reviewed pack.
+    Review the complete task set before implementation dispatch. File presence
+    and structural validation are not semantic readiness evidence.
+12. Implement only the agreed slice when the user asked for implementation.
+13. If implementation changes an accepted solution decision, return to solution
+    design and revisit dependent pack and task evidence.
+14. After meaningful code edits, run `simplify` or explicitly explain why it does
+    not apply.
+15. Review the slice with a review packet and gate decision.
+16. Verify with repository-owned commands or source evidence.
+17. Persist only high-signal results in the owning artifact. Use `reviews/` and
    `timeline/` sparingly; do not create process logs for routine steps.
-16. For explicit `coverage_mode`, apply `quick`, `standard`, or `deep` review
+18. For explicit `coverage_mode`, apply `quick`, `standard`, or `deep` review
     routing before implementation verification. No `coverage_mode` preserves
     the legacy `review_gate` path. Deep requires verified target identity,
     isolated `review-verifier` inventory, a sealed expected packet, and compare;
     target, required-source, or seal failure is `coverage_gate=NOT_READY`.
-17. Carry four independent decisions: `coverage_gate`, `review_gate`,
+19. Carry four independent decisions: `coverage_gate`, `review_gate`,
     `implementation_verification_gate`, and coordinator-owned `overall_gate`.
     A deep downgrade requires an owner-recorded reason and residual risk.
 

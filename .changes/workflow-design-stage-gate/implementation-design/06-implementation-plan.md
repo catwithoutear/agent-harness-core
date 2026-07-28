@@ -24,7 +24,7 @@ completed checkpoint. Before workflow-stage source implementation:
 
 | Step | Subsystem | Module | Source anchors | Behavior | Validation | Rollback |
 |---|---|---|---|---|---|---|
-| 1 | Workflow coordination | Canonical skills, refiner output contract, adjacent routing, commands, loop rule, and metadata | `skills/workflow/workflow-control/SKILL.md`; `skills/change/change-planner/SKILL.md`; `skills/knowledge/design-doc-refiner/SKILL.md`; `skills/knowledge/design-doc-refiner/references/output-contract.md`; `skills/knowledge/technical-doc-refinement/SKILL.md`; `skills/change/change-workspace-operator/SKILL.md`; `commands/harness/{workflow,plan}.md`; `rules/loop-contract.md`; matching manifest description | State phase order, lightweight exceptions, trigger timing, return-to-design behavior, task-set review, and specialist ownership consistently. Solution refinement outputs design, ambiguities, and validation intent; `change-planner` owns formal task slicing. | Focused `tests/test-skills.js`; reference-contract assertions; cross-asset review; manifest description equality. | Revert the task-owned commit. |
+| 1 | Workflow coordination | Canonical skills, refiner output contract, adjacent routing, commands, loop rule, and metadata | `skills/workflow/workflow-control/SKILL.md`; `skills/change/change-planner/SKILL.md`; `skills/knowledge/design-doc-refiner/SKILL.md`; `skills/knowledge/design-doc-refiner/references/output-contract.md`; `skills/knowledge/technical-doc-refinement/SKILL.md`; `skills/change/change-workspace-operator/SKILL.md`; `commands/harness/{workflow,plan}.md`; `rules/loop-contract.md`; matching manifest description and trigger ownership | State phase order, lightweight exceptions, trigger timing, return-to-design behavior, task-set review, and specialist ownership consistently. Solution refinement outputs design, ambiguities, and validation intent; `change-planner` owns formal task slicing. | Focused `tests/test-skills.js`; reference-contract assertions; cross-asset review; manifest description equality and negative trigger ownership. | Revert the task-owned commit. |
 | 2 | Workflow coordination | Pack template and paired user guidance | `templates/changes/implementation-design/README.md`; `README.md`; `README_CN.md` | Explain that the pack maps a settled solution and that small work keeps lightweight paths. | Focused template/doc assertions and paired semantic review. | Revert the task-owned commit. |
 | 3 | Package projection | Existing manifest routes and client projections | `harness.manifest.json`; `tests/test-projection.js` | Verify changed skills, commands, rules, and templates reach their existing clients; do not change manifest entries. | Projection tests, self-host projection verify, full suite, change validation, `git diff --check`. | Regenerate projections from reverted sources. |
 
@@ -69,7 +69,9 @@ completed checkpoint. Before workflow-stage source implementation:
 - Keep each task slice aligned to one numbered step; do not mix migration
   cleanup or review-verifier V2 work into these files.
 - Do not modify document writers, validators, schema, policy, migration, asset
-  routes, client support, or manifest entries other than the
-  `design-doc-refiner` description that must match its canonical front matter.
+  projection routes, client support, or manifest entries other than the
+  `design-doc-refiner` description and trigger phrases needed to match its
+  canonical responsibility. Do not change that asset's source, runtime name,
+  clients, or projection behavior.
 - Any mutable phase state, new command, digest protocol, or semantic
   auto-approval requires returning to solution design and owner confirmation.

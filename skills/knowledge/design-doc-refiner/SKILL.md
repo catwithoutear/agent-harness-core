@@ -1,20 +1,26 @@
 ---
 name: design-doc-refiner
-description: Use when turning rough technical notes, issue analysis, or draft designs into implementation-ready design documents with contracts, risks, tests, and task slices.
+description: Use when turning rough technical notes, issue analysis, or draft designs into solution design documents with clear behavior, boundaries, risks, ambiguities, and validation intent.
 ---
 
 # Design Doc Refiner
 
-Convert rough technical input into an implementation-ready design document. Do
-not merely polish language. Restructure, clarify, expose assumptions, and make
-the result useful for implementation, review, and validation.
+Convert rough technical input into a reviewable solution design. Do not merely
+polish language. Restructure, clarify, expose assumptions, and make behavior,
+boundaries, failure semantics, compatibility, risks, and validation intent
+clear enough for solution-design review.
 
 ## Core Rule
 
-A refined design is ready only when an implementer can identify what changes,
-what does not change, which contracts are affected, how failures behave, and
-how the result will be verified. If the input does not support that specificity,
-preserve the gap as an ambiguity instead of inventing detail.
+A refined solution design is ready only when a reviewer can identify what
+changes, what does not change, which contracts are affected, how failures
+behave, and how the result should be verified. If the input does not support
+that specificity, preserve the gap as an ambiguity instead of inventing detail.
+
+Stop at solution design, ambiguities, and validation intent. Formal code
+topology belongs in `implementation-design/` after the solution-design review
+is ready and the trigger applies. Formal task slicing belongs to
+`change-planner` after any required implementation-design review is ready.
 
 ## Workflow
 
@@ -29,8 +35,8 @@ preserve the gap as an ambiguity instead of inventing detail.
    document.
 5. Preserve existing terminology unless it is ambiguous; define new terms near
    the first use.
-6. Produce the refined design, ambiguity table, and implementation task
-   breakdown only when rewrite/refinement is in scope.
+6. Produce the refined solution design, ambiguity table, and validation intent
+   only when rewrite/refinement is in scope.
 7. Do not choose between unresolved product, ownership, or policy alternatives
    without evidence or user input.
 
@@ -52,7 +58,7 @@ user resolves them.
 ## Approach Selection
 
 When more than one credible approach exists, include a short approach-selection
-pass before writing implementation tasks:
+pass before writing the selected solution:
 
 - success criteria for the selected direction;
 - the status quo and reusable repository patterns;
@@ -76,7 +82,7 @@ needs evidence-backed pressure testing before coding.
 - Prefer numbered steps for workflows and failure paths.
 - Use diagrams only when they clarify ownership, data flow, control flow, or
   state transitions.
-- Keep task slices reviewable and tied to validation.
+- Describe validation intent without inventing executable task slices.
 
 ## Mini Example
 
@@ -118,11 +124,14 @@ otherwise review-only:
   map code back to design.
 - Use `multi-lens-design-review` when the goal is readiness review rather than
   rewriting or refining.
+- Use `change-planner` for formal task slicing after the solution design and any
+  required implementation-design pack are reviewed ready.
 
 ## Common Mistakes
 
 - Hiding missing facts inside polished prose.
 - Creating fake precision by inventing file names or APIs.
-- Producing tasks that are work themes rather than reviewable slices.
+- Producing implementation topology or task slices before the solution design
+  is reviewed.
 - Treating validation as an appendix instead of part of implementation
-  readiness.
+  design readiness.

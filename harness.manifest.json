@@ -770,13 +770,12 @@
         "audience": "model",
         "source": "skills/knowledge/design-doc-refiner",
         "runtimeName": "design-doc-refiner",
-        "description": "Use when turning rough technical notes, issue analysis, or draft designs into implementation-ready design documents with contracts, risks, tests, and task slices.",
+        "description": "Use when turning rough technical notes, issue analysis, or draft designs into solution design documents with clear behavior, boundaries, risks, ambiguities, and validation intent.",
         "triggers": [
           "design doc refinement",
-          "implementation-ready design",
+          "solution design refinement",
           "rough design notes",
-          "design rewrite",
-          "task slices"
+          "design rewrite"
         ],
         "negativeTriggers": [
           "proofreading only",

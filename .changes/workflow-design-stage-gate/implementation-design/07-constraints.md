@@ -24,7 +24,7 @@ Before readiness or freeze, every row below needs either evidence or
 | Paired documentation | README and README_CN | Semantic changes update both. |
 | No slices before pack review | Active change | `tasks/README.md` stays empty until pack review is `READY`. |
 | Separate implementation baseline | Source implementation | Migration/tooling checkpoint is committed separately or used as a recorded worktree base; rollback uses task-owned commits. |
-| Minimal metadata synchronization | Manifest | Only a changed skill description may be synchronized; asset inventory, triggers, routes, and clients remain unchanged. |
+| Minimal metadata synchronization | Manifest | Synchronize the changed refiner description and remove trigger phrases that assign formal task slicing to it; asset inventory, source, runtime name, projection routes, and clients remain unchanged. |
 
 ## Self Check
 

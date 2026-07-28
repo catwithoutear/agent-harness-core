@@ -26,13 +26,41 @@ honest final verification statement.
 
 1. Observe the current state before planning.
 2. Build a compact context packet from verified sources.
-3. Apply the implementation-design trigger rule before task slicing.
-4. Plan one bounded slice with validation and rollback.
-5. Implement only the slice.
-6. Run a behavior-preserving simplify pass for non-trivial code edits.
-7. Review the slice against the packet and plan.
-8. Verify with commands or source evidence.
-9. Persist the result in the owning artifact or handoff.
+3. Choose the lightest path that fits the work.
+4. When the solution is not settled, draft and challenge a proposal, then write
+   and review the solution design.
+5. After the solution-design review is ready, apply the
+   implementation-design trigger rule.
+6. When the trigger applies, create and review the implementation-design pack
+   before task slicing.
+7. Create bounded task slices with validation and rollback, then review the
+   task set before implementation.
+8. Implement only the current slice.
+9. Run a behavior-preserving simplify pass for non-trivial code edits.
+10. Review the slice against the packet and plan.
+11. Verify with commands or source evidence.
+12. Persist the result in the owning artifact or handoff.
+
+If a review or implementation discovery changes an accepted solution decision,
+return to solution design and reassess dependent implementation design and task
+slices. Do not repair a changed design inside a downstream artifact.
+
+## Workflow Paths
+
+- Fast path: low-risk wording, formatting, or similarly local work that does not
+  change behavior, interfaces, lifecycle, dependencies, migration, or failure
+  contracts. Observe, make the narrow edit, and verify it. A proposal, design,
+  pack, and task set are unnecessary.
+- Compact path: bounded implementation with a settled solution and no
+  implementation-design trigger. Record the goal, affected source, why design
+  and the pack are unnecessary, validation, and rollback in a plan or slice.
+  Review that lightweight plan when the risk warrants it.
+- Design path: use proposal and challenge, reviewed solution design,
+  implementation-design assessment, a reviewed pack when required, and a
+  reviewed task set before implementation.
+
+Uncertainty about behavior, compatibility, ownership, lifecycle, migration, or
+dependency order disqualifies the fast and compact paths.
 
 ## Evidence Skills
 
@@ -54,8 +82,9 @@ do not replace task slicing, review, or implementation.
 
 ## Implementation-Design Trigger Rule
 
-Create or require an `implementation-design/` topology pack before task slicing
-when any of these are true:
+Assess whether an `implementation-design/` topology pack is required only after
+the solution design is settled and its review is ready. Require the pack before
+task slicing when any of these are true:
 
 - the change crosses subsystem boundaries;
 - the change touches two or more modules with dependency-order risk;
@@ -67,6 +96,10 @@ when any of these are true:
 For localized work that does not meet those triggers, record an explicit
 no-design reason in the plan or task slice and continue with the lightweight
 path. Do not create a seven-file pack just to fill empty tables.
+
+When a pack is required, directory presence is not readiness. Read the populated
+pack and require a ready review before creating task slices. Review the complete
+task set before implementation dispatch.
 
 ## Fast Path Examples
 

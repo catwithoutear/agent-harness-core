@@ -237,6 +237,62 @@ export async function run(test) {
     assert(byId["change-planner"].negativeTriggers.includes("unresolved design"));
   });
 
+  await test("workflow guidance preserves canonical design stage order", () => {
+    const workflowControl = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
+    const planner = fs.readFileSync(path.join(packageRoot, "skills", "change", "change-planner", "SKILL.md"), "utf8");
+    const refiner = fs.readFileSync(path.join(packageRoot, "skills", "knowledge", "design-doc-refiner", "SKILL.md"), "utf8");
+    const refinerContract = fs.readFileSync(
+      path.join(packageRoot, "skills", "knowledge", "design-doc-refiner", "references", "output-contract.md"),
+      "utf8"
+    );
+    const technicalDoc = fs.readFileSync(path.join(packageRoot, "skills", "knowledge", "technical-doc-refinement", "SKILL.md"), "utf8");
+    const workspace = fs.readFileSync(path.join(packageRoot, "skills", "change", "change-workspace-operator", "SKILL.md"), "utf8");
+    const workflowCommand = fs.readFileSync(path.join(packageRoot, "commands", "harness", "workflow.md"), "utf8");
+    const planCommand = fs.readFileSync(path.join(packageRoot, "commands", "harness", "plan.md"), "utf8");
+    const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
+
+    for (const [name, text] of [
+      ["workflow-control", workflowControl],
+      ["change-planner", planner],
+      ["change-workspace-operator", workspace],
+      ["workflow command", workflowCommand],
+      ["plan command", planCommand],
+      ["loop contract", loopRule]
+    ]) {
+      assert.match(
+        text,
+        /solution-design review[\s\S]*implementation-design[\s\S]*task set/i,
+        `${name} does not preserve solution-design review -> implementation-design -> task-set order`
+      );
+      assert.match(text, /return to\s+solution\s+design/i, `${name} does not return changed solutions to design`);
+    }
+
+    assert.match(workflowControl, /Fast path:[\s\S]*Compact path:[\s\S]*Design path:/);
+    assert.match(workflowControl, /return to solution design/i);
+    assert.match(workflowControl, /does not\s+change behavior, interfaces, lifecycle, dependencies, migration, or failure\s+contracts/);
+    assert.match(workflowControl, /Review that lightweight plan when the risk warrants it/);
+    assert.match(planner, /File\s+presence is not readiness evidence/);
+    assert.match(planner, /return to\s+solution\s+design/i);
+
+    for (const text of [refiner, refinerContract, technicalDoc]) {
+      assert.match(text, /validation intent/i);
+      assert.match(text, /change-planner/);
+    }
+    assert.match(refiner, /Stop at solution design, ambiguities, and validation intent/);
+    assert.doesNotMatch(refinerContract, /Implementation Task Breakdown/);
+    assert.doesNotMatch(refinerContract, /## Implementation Tasks/);
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const refinerAsset = manifest.assets.skills.find((skill) => skill.id === "design-doc-refiner");
+    const refinerMeta = parseFrontMatter(
+      path.join(packageRoot, "skills", "knowledge", "design-doc-refiner", "SKILL.md")
+    );
+    assert.equal(refinerAsset.description, refinerMeta.description);
+    assert(!refinerAsset.triggers.includes("task slices"));
+    assert(!refinerAsset.triggers.includes("implementation-ready design"));
+    assert(refinerAsset.triggers.includes("solution design refinement"));
+  });
+
   await test("change evidence skills integrate with the control loop", () => {
     const expectedSkills = [
       "architecture-scout",

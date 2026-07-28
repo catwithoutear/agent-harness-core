@@ -22,8 +22,10 @@ Use this for cleanup-oriented writing work:
 - organize content by dependency or reader workflow,
 - remove AI-ish tone from user-facing prose.
 
-Use `design-doc-refiner` when the user needs an implementation-ready design with
-contracts, task slices, risks, and validation.
+Use `design-doc-refiner` when the user needs a solution design with behavior,
+contracts, risks, ambiguities, and validation intent. After that design is
+reviewed, use `change-planner` for formal task slicing; require a reviewed
+`implementation-design/` pack first when the workflow trigger applies.
 
 Use an external `humanizer`-style writing skill only when the task is
 non-technical prose, personal voice matching, marketing copy, or a broad
