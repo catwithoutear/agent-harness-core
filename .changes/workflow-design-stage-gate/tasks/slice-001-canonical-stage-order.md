@@ -40,10 +40,15 @@ slicing, and implementation.
   `READY`; preserve the migration/tooling diff in a separate reviewed commit or
   create a dedicated worktree from an equivalent recorded base commit before
   source edits.
+- Implementation base commit:
+  `0ad9836c57bbe772f44b4fbbbcb33d551a09b4d8` (`Complete controlled change
+  workspace migration`). This commit contains the reviewed migration/tooling
+  diff and its `.changes` evidence chain; workflow-stage source implementation
+  starts after this commit.
 
 ## Steps
 
-- [ ] Record the implementation base commit and confirm the task-owned diff
+- [x] Record the implementation base commit and confirm the task-owned diff
   excludes change-tool, schema, policy, migration, routing, and client-support
   surfaces.
 - [ ] Update canonical workflow and planning guidance with fast, compact, and

@@ -28,7 +28,8 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 ## Current Phase
 
 - Phase: simplified solution design, implementation-design pack, and task set
-  are reviewed `READY`; source dispatch waits for baseline isolation.
+  are reviewed `READY`; baseline isolation is complete and source dispatch may
+  begin from commit `0ad9836`.
 - Owner: coordinator.
 - Current design evidence: `research.md`, `proposal.md`, the simplified
   `design.md`, and frozen legacy round `design-r16` (`READY`). Round
@@ -79,9 +80,10 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 - Current implementation-design gate:
   `reviews/implementation-design-r03.md`, `READY`.
 - Current task-set gate: `reviews/task-set-r01.md`, `READY`.
-- Next checkpoint: preserve the existing migration/tooling diff as a separate
-  reviewed commit or create an equivalent dedicated worktree and record its
-  base commit. Do not edit workflow-stage source before that prerequisite.
+- Next checkpoint: implement
+  `tasks/slice-001-canonical-stage-order.md` from base commit `0ad9836`; keep its
+  task-owned diff outside change-tool, schema, policy, migration, routing, and
+  client-support surfaces.
 
 ## Artifact Index
 
@@ -98,10 +100,10 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 | `decisions/DR-002-stage-gate-simplification.md` | frozen | Removes mechanical gate references and restores the readable workflow boundary. |
 | `reviews/solution-design-r03.md` | reviewed | Final simplified solution-design gate. |
 | `reviews/implementation-design-r03.md` | reviewed | Final simplified implementation-design gate. |
-| `reviews/task-set-r01.md` | reviewed | Complete task-set gate; dispatch waits for baseline isolation. |
+| `reviews/task-set-r01.md` | reviewed | Complete task-set gate; slice 001 may dispatch from the recorded baseline. |
 | `implementation-design/README.md` | draft | Required implementation topology and source mapping. |
 | `specs/README.md` | draft | Structured specification index. |
-| `tasks/README.md` | draft | Structured task index; no task slices are authorized yet. |
+| `tasks/README.md` | draft | Reviewed task set; slice 001 is ready for implementation from the recorded baseline. |
 
 <!-- harness-migration-status:start -->
 ## Migration Status
