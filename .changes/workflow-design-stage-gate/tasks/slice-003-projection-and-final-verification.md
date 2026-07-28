@@ -30,6 +30,7 @@ repository gate.
   task-owned commits `4075ed3` and `9e7dc17` form the recorded stacked base.
   Their shared note requires excluding pre-existing untracked `.pyc` files from
   commits.
+- Implementation and final verification commit: `71a4ec8`.
 
 ## Steps
 

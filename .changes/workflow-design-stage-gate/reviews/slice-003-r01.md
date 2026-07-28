@@ -30,7 +30,7 @@ description: "Final projection and implementation verification review"
 
 - Implementation base:
   `0ad9836c57bbe772f44b4fbbbcb33d551a09b4d8`.
-- Task commits: `4075ed3`, `9e7dc17`.
+- Task commits: `4075ed3`, `9e7dc17`, `71a4ec8`.
 - `npm test -- --skills`: passed.
 - `npm test -- --projection`: passed.
 - `npm test`: passed.

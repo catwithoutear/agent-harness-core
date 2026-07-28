@@ -79,7 +79,8 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 - Current implementation-design gate:
   `reviews/implementation-design-r03.md`, `READY`.
 - Current task-set gate: `reviews/task-set-r01.md`, `READY`.
-- Next checkpoint: commit the reviewed slice 003 and final evidence chain.
+- Next checkpoint: none. The change is ready for normal publication or release
+  handling.
 
 ## Artifact Index
 
