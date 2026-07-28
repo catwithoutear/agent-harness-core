@@ -12,6 +12,8 @@ This directory indexes reviews child documents.
 
 ## Current Authoritative Review
 
+- `slice-002-r01.md`: template and paired user-guidance review,
+  `READY_WITH_NOTES`; client projection remains assigned to slice 003.
 - `slice-001-r01.md`: canonical stage-order implementation review,
   `READY_WITH_NOTES`; the only note is to exclude pre-existing untracked
   `.pyc` files from commits.
@@ -43,3 +45,4 @@ This directory indexes reviews child documents.
 | `implementation-design-r03.md` | review-round | reviewed | r03 | Final simplified implementation-design review |
 | `task-set-r01.md` | review-round | reviewed | r01 | Workflow stage-gate task-set review |
 | `slice-001-r01.md` | review-round | reviewed | r01 | Independent review of canonical stage order implementation |
+| `slice-002-r01.md` | review-round | reviewed | r01 | Independent review of template and paired user guidance |

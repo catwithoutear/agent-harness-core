@@ -1,6 +1,6 @@
 ---
 artifact: task-slice
-status: draft
+status: reviewed
 tags: [implementation]
 description: "template-and-user-guidance"
 ---
@@ -27,25 +27,26 @@ canonical stage order without adding new required fields or ceremony.
 - Module: user and artifact guidance.
 - Changed surfaces: `templates/changes/implementation-design/README.md`,
   `README.md`, `README_CN.md`, and relevant `tests/test-skills.js` assertions.
-- Prerequisites: slice 001 is reviewed `READY` and its task-owned commit is the
-  recorded base for this stacked slice.
+- Prerequisites: slice 001 is reviewed `READY_WITH_NOTES`; its task-owned commit
+  `4075ed3` is the recorded base for this stacked slice. The note requires
+  excluding pre-existing untracked `.pyc` files from commits.
 
 ## Steps
 
-- [ ] Update the pack template to state that it maps a settled solution and is
+- [x] Update the pack template to state that it maps a settled solution and is
   reviewed before task slicing.
-- [ ] Explain fast, compact, and design paths consistently in README and
+- [x] Explain fast, compact, and design paths consistently in README and
   README_CN without exposing internal implementation mechanics.
-- [ ] Add assertions that user/template guidance preserves lightweight paths
+- [x] Add assertions that user/template guidance preserves lightweight paths
   and does not require a mechanical evidence protocol.
-- [ ] Review the paired English/Chinese sections for semantic equivalence.
+- [x] Review the paired English/Chinese sections for semantic equivalence.
 
 ## Validation
 
-- [ ] `npm test -- --skills`: passes.
-- [ ] `node bin/harness.js manifest --json`: passes.
-- [ ] `git diff --check`: passes.
-- [ ] Paired documentation review finds no semantic drift.
+- [x] `npm test -- --skills`: passes.
+- [x] `node bin/harness.js manifest --json`: passes.
+- [x] `git diff --check`: passes.
+- [x] Paired documentation review finds no semantic drift.
 
 ## Review
 

@@ -293,6 +293,86 @@ export async function run(test) {
     assert(refinerAsset.triggers.includes("solution design refinement"));
   });
 
+  await test("template and user guidance preserve lightweight workflow paths", () => {
+    const template = fs.readFileSync(
+      path.join(packageRoot, "templates", "changes", "implementation-design", "README.md"),
+      "utf8"
+    );
+    const readme = fs.readFileSync(path.join(packageRoot, "README.md"), "utf8");
+    const readmeCn = fs.readFileSync(path.join(packageRoot, "README_CN.md"), "utf8");
+    const normalizedTemplate = template.replace(/\s+/g, " ");
+    const normalizedReadme = readme.replace(/\s+/g, " ");
+    const normalizedReadmeCn = readmeCn.replace(/\s+/g, " ");
+    const workflowSection = normalizedReadme.match(
+      /## Change Workspace Design Packs (.*?) A legacy proposal workspace/
+    )?.[1];
+    const workflowSectionCn = normalizedReadmeCn.match(
+      /## Change Workspace Design Packs (.*?) legacy proposal workspace/
+    )?.[1];
+    assert(workflowSection, "missing English workflow guidance section");
+    assert(workflowSectionCn, "missing Chinese workflow guidance section");
+
+    for (const required of [
+      "settled, reviewed solution design",
+      "return to solution design",
+      "Review the populated pack before deriving task slices",
+      "structural validation do not replace that review"
+    ]) {
+      assert.match(normalizedTemplate, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    assert.doesNotMatch(template, /gate[_ -]reference/i);
+    assert.doesNotMatch(template, /required.*digest/i);
+
+    for (const required of [
+      "Fast path:",
+      "Compact path:",
+      "Design path:",
+      "Solution design decides behavior and boundaries",
+      "File presence or structural validation is not approval",
+      "Review the populated pack before deriving task slices"
+    ]) {
+      assert.match(normalizedReadme, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    assert.match(
+      workflowSection,
+      /Fast path:.*changes no behavior, interface, lifecycle, dependency, migration, or failure contract/
+    );
+    assert.match(
+      workflowSection,
+      /Compact path:.*settled solution.*no implementation-design trigger.*Review that plan when its risk warrants review/
+    );
+    assert.match(
+      workflowSection,
+      /Design path:.*review the solution design.*assess the implementation-design trigger.*review the populated pack.*create and review task slices/
+    );
+    for (const required of [
+      "快速路径",
+      "紧凑路径",
+      "设计路径",
+      "Solution design 决定行为和边界",
+      "文件存在或结构校验通过都不等于获得批准",
+      "完成 pack 后先审阅，再推导 task slices"
+    ]) {
+      assert.match(normalizedReadmeCn, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    assert.match(
+      workflowSectionCn,
+      /快速路径.*不改变行为、接口、生命周期、依赖关系、迁移或失败契约/
+    );
+    assert.match(
+      workflowSectionCn,
+      /紧凑路径.*方案已经明确.*不触发 implementation-design.*风险需要时再审阅/
+    );
+    assert.match(
+      workflowSectionCn,
+      /设计路径.*审阅 solution design.*判断是否触发 implementation-design.*完成并审阅 pack.*创建和审阅 task slices/
+    );
+
+    for (const text of [normalizedTemplate, workflowSection, workflowSectionCn]) {
+      assert.doesNotMatch(text, /gate[_ -]reference|artifact_sha256|decision_id|PacketDigest/i);
+    }
+  });
+
   await test("change evidence skills integrate with the control loop", () => {
     const expectedSkills = [
       "architecture-scout",

@@ -162,7 +162,15 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-当 implementation-design trigger rule 适用时，先创建详细设计 topology pack，再推导 task slices。legacy proposal workspace 必须先通过受控迁移进入 structured layout；不要把 pack 或 task-slice writer 当作隐式迁移手段：
+根据工作复杂度选择最轻量的适用路径：
+
+- 快速路径：适用于措辞、格式或类似的局部修改，前提是不改变行为、接口、生命周期、依赖关系、迁移或失败契约。读取当前源码，完成小范围修改并验证即可。
+- 紧凑路径：适用于方案已经明确、且不触发 implementation-design 的有限实现。记录目标、影响范围、不需要 solution design 和 pack 的原因、验证方式以及回滚方式；风险需要时再审阅这份计划。
+- 设计路径：先挑战 proposal，再审阅 solution design；随后判断是否触发 implementation-design。需要 pack 时，先完成并审阅 pack，再创建和审阅 task slices，最后进入实现。
+
+Solution design 决定行为和边界。需要 `implementation-design/` pack 时，它负责把已接受的方案映射到代码归属、依赖方向、运行与失败流程、实施顺序和测试点。文件存在或结构校验通过都不等于获得批准。后续工作如果改变了方案决策，应回到 solution design，并重新检查依赖它的 pack 和 task evidence。
+
+legacy proposal workspace 必须先通过受控迁移进入 structured layout；不要把 pack 或 task-slice writer 当作隐式迁移手段：
 
 ```bash
 harness-change-doc --state-root /path/to/repo migrate <change-id> --dry-run
@@ -175,13 +183,13 @@ dry run 会生成 canonical plan。被接受的 digest 绑定精确的 legacy �
 
 历史 bootstrap V1/V2 control record 仅作为只读验证证据保留。它们既不授权也不阻止普通 migration apply，document command 也不再提供 bootstrap lifecycle 修改命令。无效或非终态的历史记录继续由 validator 报告，不能为了推进 migration 而改写。
 
-只有在上述 validation 成功之后，才创建 pack：
+只有在上述 validation 成功、solution-design review 已就绪且 trigger 适用时，才创建 pack：
 
 ```bash
 harness-change-doc --state-root /path/to/repo add-implementation-design <change-id>
 ```
 
-生成的 `implementation-design/` pack 会区分 `Subsystem` 的 capability 或 runtime 边界与 `Module` 的代码组织边界，然后记录 code topology、file/class mapping、runtime flow、error model、implementation order、constraints 和 traceability。
+生成的 `implementation-design/` pack 会区分 `Subsystem` 的 capability 或 runtime 边界与 `Module` 的代码组织边界，然后记录 code topology、file/class mapping、runtime flow、error model、implementation order、constraints 和 traceability。完成 pack 后先审阅，再推导 task slices。
 
 ## Self-Host The Core For Codex
 

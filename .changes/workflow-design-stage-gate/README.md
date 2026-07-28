@@ -27,8 +27,8 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 
 ## Current Phase
 
-- Phase: slice 001 canonical stage-order implementation is reviewed
-  `READY_WITH_NOTES`; its only note is to exclude pre-existing untracked
+- Phase: slices 001 and 002 are implemented and independently reviewed
+  `READY_WITH_NOTES`; the shared note is to exclude pre-existing untracked
   `.pyc` files from commits.
 - Owner: coordinator.
 - Current design evidence: `research.md`, `proposal.md`, the simplified
@@ -80,8 +80,8 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 - Current implementation-design gate:
   `reviews/implementation-design-r03.md`, `READY`.
 - Current task-set gate: `reviews/task-set-r01.md`, `READY`.
-- Next checkpoint: commit slice 001, record that commit in slice 002, then
-  implement `tasks/slice-002-template-and-user-guidance.md`.
+- Next checkpoint: commit slice 002, record that commit in slice 003, then run
+  projection coverage, simplify review, full verification, and final review.
 
 ## Artifact Index
 
@@ -100,6 +100,7 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
 | `reviews/implementation-design-r03.md` | reviewed | Final simplified implementation-design gate. |
 | `reviews/task-set-r01.md` | reviewed | Complete task-set gate; slice 001 may dispatch from the recorded baseline. |
 | `reviews/slice-001-r01.md` | reviewed | Slice 001 implementation review; `READY_WITH_NOTES`. |
+| `reviews/slice-002-r01.md` | reviewed | Slice 002 template and paired user-guidance review; `READY_WITH_NOTES`. |
 | `implementation-design/README.md` | draft | Required implementation topology and source mapping. |
 | `specs/README.md` | draft | Structured specification index. |
 | `tasks/README.md` | draft | Reviewed task set; slice 001 is ready for implementation from the recorded baseline. |

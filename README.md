@@ -177,10 +177,29 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-When the implementation-design trigger rule applies, create the detailed design
-topology pack before deriving task slices. A legacy proposal workspace must
-first enter the structured layout through the controlled migration command; do
-not use pack or task-slice writers as an implicit migration:
+Use the lightest workflow that fits the work:
+
+- Fast path: for wording, formatting, or similarly local work that changes no
+  behavior, interface, lifecycle, dependency, migration, or failure contract,
+  observe the current source, make the narrow edit, and verify it.
+- Compact path: for bounded implementation with a settled solution and no
+  implementation-design trigger, record the goal, affected source, why design
+  and the pack are unnecessary, validation, and rollback. Review that plan when
+  its risk warrants review.
+- Design path: challenge the proposal, review the solution design, assess the
+  implementation-design trigger, review the populated pack when required, then
+  create and review task slices before implementation.
+
+Solution design decides behavior and boundaries. An `implementation-design/`
+pack, when required, maps that accepted solution to code ownership, dependency
+direction, runtime and failure flow, implementation order, and test points.
+File presence or structural validation is not approval. If downstream work
+changes a solution decision, return to solution design and revisit dependent
+pack and task evidence.
+
+A legacy proposal workspace must first enter the structured layout through the
+controlled migration command; do not use pack or task-slice writers as an
+implicit migration:
 
 ```bash
 harness-change-doc --state-root /path/to/repo migrate <change-id> --dry-run
@@ -206,7 +225,8 @@ document command exposes no bootstrap lifecycle mutation command. Invalid or
 nonterminal historical records remain validator diagnostics and must not be
 rewritten to make migration proceed.
 
-Only after that validation succeeds, create the pack:
+Only after that validation succeeds and the solution-design review is ready,
+create the pack when the trigger applies:
 
 ```bash
 harness-change-doc --state-root /path/to/repo add-implementation-design <change-id>
@@ -215,7 +235,8 @@ harness-change-doc --state-root /path/to/repo add-implementation-design <change-
 The generated `implementation-design/` pack separates `Subsystem` capability or
 runtime boundaries from `Module` code organization boundaries, then captures
 code topology, file/class mapping, runtime flow, error model, implementation
-order, constraints, and traceability.
+order, constraints, and traceability. Review the populated pack before deriving
+task slices.
 
 ## Self-Host The Core For Codex
 

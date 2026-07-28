@@ -9,8 +9,10 @@ description: "Detailed implementation design index."
 
 ## Purpose
 
-This directory turns the selected design into code topology constraints for
-implementation agents.
+This directory maps a settled, reviewed solution design into code topology
+constraints for implementation agents. It does not choose or revise the
+solution. If topology work reveals a changed behavior, compatibility rule, or
+other solution decision, return to solution design and review it again.
 
 Use `Subsystem` for capability or runtime boundaries. Use `Module` for code
 organization boundaries. A small task with one subsystem may fold the subsystem
@@ -51,8 +53,9 @@ field name.
 ## Minimum Use / N/A Rule
 
 Use this pack only when implementation-design is required by the workflow
-trigger rule. The tool creates all standard file paths for stable indexing, but
-that does not make every detail document substantively required.
+trigger rule after the solution-design review is ready. The tool creates all
+standard file paths for stable indexing, but that does not make every detail
+document substantively required or ready.
 
 - Default core documents: `01-problem.md`, `02-code-topology.md`, and
   `06-implementation-plan.md`.
@@ -66,9 +69,12 @@ that does not make every detail document substantively required.
   marked `N/A` with a short reason, not left blank.
 - For localized work below the trigger threshold, keep a no-design reason in
   the task plan instead of creating this pack.
+- Review the populated pack before deriving task slices. Directory presence,
+  generated files, and structural validation do not replace that review.
 
 ## Readiness Gate
 
+- The upstream solution design and its review are identified and still current.
 - Code topology identifies subsystem and module boundaries when they differ.
 - File/class mappings are concrete enough to guide implementation.
 - Runtime, failure, rollback, and validation paths are documented.
@@ -82,3 +88,4 @@ that does not make every detail document substantively required.
 - Document integrity is checked with available mechanical signals: front matter,
   generated file set, README/index tables, Mermaid fences, links, and validation
   output supplied by the parent agent or tool.
+- The latest pack review is ready before `change-planner` derives task slices.
