@@ -365,6 +365,39 @@
         ]
       },
       {
+        "id": "clarify",
+        "category": "workflow",
+        "audience": "user",
+        "source": "skills/workflow/clarify",
+        "runtimeName": "clarify",
+        "description": "Use when explicitly asked to clarify or rewrite an instruction, or when material ambiguity, conflicting constraints, unresolved references, missing critical context, or an unclear action boundary blocks safe execution.",
+        "triggers": [
+          "clarify this instruction",
+          "rewrite this prompt",
+          "完善提示词",
+          "优化任务说明",
+          "澄清需求",
+          "conflicting constraints",
+          "unclear action boundary"
+        ],
+        "negativeTriggers": [
+          "clear executable instruction",
+          "ordinary analysis request with a named target",
+          "ordinary modification request with explicit scope"
+        ],
+        "requires": [
+          "current user instruction",
+          "relevant conversation and repository context when available"
+        ],
+        "priority": 95,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
         "id": "stacked-branch-workflow",
         "category": "workflow",
         "audience": "model",

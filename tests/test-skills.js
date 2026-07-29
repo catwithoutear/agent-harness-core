@@ -527,6 +527,7 @@ export async function run(test) {
     const migrated = [
       ["workflow", "stacked-branch-workflow"],
       ["workflow", "workflow-packaging-auditor"],
+      ["workflow", "clarify"],
       ["workflow", "grill-me"],
       ["workflow", "grill-with-docs"],
       ["workflow", "simplify"],
@@ -565,6 +566,23 @@ export async function run(test) {
         }
       }
     }
+  });
+
+  await test("clarify preserves intent and only blocks on material ambiguity", () => {
+    const text = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "clarify", "SKILL.md"),
+      "utf8"
+    );
+    const examples = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "clarify", "references", "examples.md"),
+      "utf8"
+    );
+    assert.match(text, /原意优先/);
+    assert.match(text, /关键歧义才提问/);
+    assert.match(text, /不制造执行权限/);
+    assert.match(text, /双向语义审计/);
+    assert.match(examples, /自动调用：清晰指令直接执行/);
+    assert.match(text, /references\/examples\.md/);
   });
 
   await test("second-tier migrations preserve requested boundaries", () => {
