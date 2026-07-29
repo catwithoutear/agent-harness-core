@@ -34,10 +34,11 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
   `design.md`, and frozen legacy round `design-r16` (`READY`). Round
   `design-r15` is historical because its reviewed design depended on the
   now-rejected prefix writer.
-- Current control evidence: archived legacy round
-  `migration-bootstrap-containment-r10`, the immutable migration provenance,
-  and structured review `reviews/migration-r01.md`. V1/V2 bootstrap registries
-  remain terminal read-only history.
+- Historical migration evidence remains in the archived legacy review,
+  `decisions/DR-001-migration-provenance.md`, and
+  `reviews/migration-r01.md`. The former control registries and transaction
+  record were removed by `change-migration-simplification`; they no longer
+  participate in validation.
 - Current solution-design gate:
   - `change_id`: `workflow-design-stage-gate`
   - `artifact_path`: `.changes/archive/workflow-design-stage-gate/legacy/review-log.md`
@@ -50,28 +51,10 @@ description: "Draft phase-gate contract separating proposal, design, and impleme
   - `decision_id`: `bounded-migration-cleanup-r01`
   - `artifact_sha256`: `e1060dd02502703171abfe9fc03e7976a9312e27264163a7a28907ee41f89f00`
   - `decision`: `READY`
-- Bootstrap control:
-  - `migration-apply-bootstrap-v1`: generation `3`, terminal `revoked`;
-    historical replacement points to v2.
-  - `migration-apply-bootstrap-v2`: generation `3`, terminal `revoked`;
-    containment evidence is `migration-bootstrap-containment-r07`.
-  - `migration-bootstrap-containment-r10`: `READY_WITH_NOTES` for the
-    append-stable review-boundary repair; it does not reactivate v2 or authorize
-    migration.
-- Migration gate:
-  - accepted `plan_sha256`:
-    `1e21ce201af7f01d51785d253cd432188daf154ee1ff2e8682672f5376a2c9d4`;
-  - Node apply committed the accepted transaction;
-  - Python verified the committed transaction idempotently;
-  - archived bytes, provenance, destination manifest, strict layout, and
-    Node/Python validation agree;
-  - `requirements.md` remains an optional-file warning and does not block the
-    implementation-design checkpoint.
-- Owner decision: delete `bootstrap-prefix-writer`; do not create V3, reactivate
-  V1/V2, or introduce another authority-writing subsystem.
-- Resolved direction: exact-plan authorization and the controlled migration are
-  complete. The migration created only the structured skeleton and provenance;
-  it did not fabricate review rounds, implementation design, or task slices.
+- Historical migration result: the legacy bytes remain archived and the
+  structured workspace remains valid. Future migrations use the direct
+  archive-first, rerunnable file upgrade and do not fabricate review rounds,
+  implementation design, or task slices.
 - Current implementation-design history:
   `reviews/implementation-design-r01.md` is superseded by owner decision
   `decisions/DR-002-stage-gate-simplification.md`.

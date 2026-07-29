@@ -198,32 +198,24 @@ changes a solution decision, return to solution design and revisit dependent
 pack and task evidence.
 
 A legacy proposal workspace must first enter the structured layout through the
-controlled migration command; do not use pack or task-slice writers as an
+migration command; do not use pack or task-slice writers as an
 implicit migration:
 
 ```bash
 harness-change-doc --state-root /path/to/repo migrate <change-id> --dry-run
-harness-change-doc --state-root /path/to/repo migrate <change-id> --apply \
-  --expected-plan-sha256 <accepted-sha256>
+harness-change-doc --state-root /path/to/repo migrate <change-id> --apply
 harness-change-validate --state-root /path/to/repo --change <change-id>
 ```
 
-The dry run is a canonical plan. Its accepted digest binds the exact legacy
-inputs, archive destinations, and structured skeleton. Apply preserves exact
-top-level legacy review, timeline, and task bytes under
-`.changes/archive/<change-id>/legacy/`, creates only indexes and migration
-provenance, and fails closed on a changed input or incomplete transaction. A
-recoverable interrupted migration that no longer matches its accepted plan is
-rolled back from its staged source snapshot before a fresh dry run. The archive
-and provenance remain immutable after commit, while ordinary structured
-workspace documents may continue to evolve. It does not create an
+Dry run lists the legacy sources, archive destinations, and structured paths.
+Apply preserves exact top-level legacy review, timeline, and task bytes under
+`.changes/archive/<change-id>/legacy/`, creates indexes and migration
+provenance, then removes only sources that match their archive. Existing
+conflicting archive or generated files stop the operation before source
+removal. If a process stops partway through, run apply again; once all
+top-level legacy sources are gone, repeat apply is a no-op and preserves later
+workspace edits. Run migration with one writer. It does not create an
 implementation-design pack or task slice.
-
-Historical bootstrap V1/V2 control records are retained as read-only validation
-evidence. They do not authorize or block ordinary migration apply, and the
-document command exposes no bootstrap lifecycle mutation command. Invalid or
-nonterminal historical records remain validator diagnostics and must not be
-rewritten to make migration proceed.
 
 Only after that validation succeeds and the solution-design review is ready,
 create the pack when the trigger applies:

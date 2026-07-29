@@ -170,18 +170,15 @@ writing any global file.
 
 Solution design 决定行为和边界。需要 `implementation-design/` pack 时，它负责把已接受的方案映射到代码归属、依赖方向、运行与失败流程、实施顺序和测试点。文件存在或结构校验通过都不等于获得批准。后续工作如果改变了方案决策，应回到 solution design，并重新检查依赖它的 pack 和 task evidence。
 
-legacy proposal workspace 必须先通过受控迁移进入 structured layout；不要把 pack 或 task-slice writer 当作隐式迁移手段：
+legacy proposal workspace 必须先通过迁移进入 structured layout；不要把 pack 或 task-slice writer 当作隐式迁移手段：
 
 ```bash
 harness-change-doc --state-root /path/to/repo migrate <change-id> --dry-run
-harness-change-doc --state-root /path/to/repo migrate <change-id> --apply \
-  --expected-plan-sha256 <accepted-sha256>
+harness-change-doc --state-root /path/to/repo migrate <change-id> --apply
 harness-change-validate --state-root /path/to/repo --change <change-id>
 ```
 
-dry run 会生成 canonical plan。被接受的 digest 绑定精确的 legacy 输入、archive destination 和 structured skeleton。apply 会将顶层 legacy review、timeline、task 的精确字节保留到 `.changes/archive/<change-id>/legacy/`，只创建 index 和 migration provenance；遇到输入变化或未完成 transaction 时会 fail closed。可恢复的未完成 transaction 一旦不再匹配已接受的 plan，会先依据 staged source snapshot 回滚，再要求重新 dry run。提交后 archive 与 provenance 保持不可变，普通 structured workspace 文档仍可继续演进。它不会创建 implementation-design pack 或 task slice。
-
-历史 bootstrap V1/V2 control record 仅作为只读验证证据保留。它们既不授权也不阻止普通 migration apply，document command 也不再提供 bootstrap lifecycle 修改命令。无效或非终态的历史记录继续由 validator 报告，不能为了推进 migration 而改写。
+dry run 会列出 legacy source、archive destination 和将处理的 structured path。apply 会将顶层 legacy review、timeline、task 的精确字节保留到 `.changes/archive/<change-id>/legacy/`，创建 index 和 migration provenance，再删除与 archive 一致的旧入口。archive 或 generated file 存在内容冲突时，会在删除旧入口前停止。进程中断后重新执行 apply 即可；所有顶层 legacy source 都移除后，重复 apply 不再改写 workspace，因此会保留后续编辑。迁移期间只允许一个 writer。它不会创建 implementation-design pack 或 task slice。
 
 只有在上述 validation 成功、solution-design review 已就绪且 trigger 适用时，才创建 pack：
 
