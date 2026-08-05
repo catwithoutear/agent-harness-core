@@ -12,7 +12,15 @@ Input: `$ARGUMENTS`
 
 ## Required Behavior
 
-1. Activate `workflow-control` when it is installed.
+1. Activate `workflow-control` when it is installed. Enable continuous
+   convergence only when the active request combines both a workflow-use signal
+   and an overall-completion signal such as converge, continue until complete,
+   close all remaining gaps, or continue until acceptance criteria pass.
+   Invoking this workflow command supplies the workflow-use signal. Interpret
+   the completion signal semantically rather than requiring a fixed phrase,
+   word order, or language. If both signals exist, continue until the overall
+   objective passes its acceptance criteria; do not interpret the request as a
+   single workflow pass or wait for another "continue" message.
 2. Resolve `state_root`, `code_root`, and `active_change` explicitly before any
    regulated write. Prefer
    `harness-change-doc --state-root <state-root> --code-root <code-root> resolve --change <change> --json`
@@ -70,6 +78,22 @@ Input: `$ARGUMENTS`
 19. Carry four independent decisions: `coverage_gate`, `review_gate`,
     `implementation_verification_gate`, and coordinator-owned `overall_gate`.
     A deep downgrade requires an owner-recorded reason and residual risk.
+20. After every implementation, review, correction, or verification iteration,
+    evaluate the overall objective separately from phase and slice gates. If it
+    is incomplete, take the smallest safe in-scope next action and re-enter the
+    appropriate phase. Findings, failed checks, `NOT_READY`, incomplete work,
+    missing evidence, and ordinary technical uncertainty are continuation input,
+    not completion. Continue without asking the user to say "continue".
+21. Treat `READY` as permission to advance one phase. Treat
+    `READY_WITH_NOTES` as overall completion only when every residual note is
+    explicitly allowed by the acceptance criteria; otherwise continue with the
+    notes as open work.
+22. A handoff or context-compaction checkpoint must preserve the objective,
+    current evidence, remaining gaps, and exact next action, then continuation
+    resumes from that action. Pause only with `NEEDS_USER_DECISION` when an
+    owner-controlled decision cannot be resolved from accepted requirements and
+    current evidence. State the decision and ask the smallest necessary
+    question instead of returning a progress-only handoff.
 
 ## Output
 
@@ -80,8 +104,12 @@ Input: `$ARGUMENTS`
 - Skills/agents used:
 - Review gate:
 - Verification:
+- Overall objective status:
+- Convergence next action:
 - Persisted artifacts:
 - Remaining risks:
 
-Do not close the task without naming exact verification run, not run, blocked,
-or intentionally skipped.
+Do not report the task complete without naming the exact verification run, not
+run, blocked, or intentionally skipped and showing that every applicable
+acceptance criterion passes. A non-complete verification status remains work for
+the next convergence iteration unless it requires `NEEDS_USER_DECISION`.

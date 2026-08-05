@@ -179,7 +179,7 @@
             "~/.omp/skills/<runtimeName>/"
           ],
           "agents": [
-            "~/.omp/agents/<runtimeName>.md"
+            "~/.omp/agent/agents/<runtimeName>.md"
           ],
           "commands": [
             "~/.omp/agent/commands/<assetId>.md"
@@ -340,11 +340,14 @@
         "audience": "model",
         "source": "skills/workflow/workflow-control",
         "runtimeName": "workflow-control",
-        "description": "Use when agent work needs an evidence-gated workflow, active change coordination, implementation slicing, council escalation, or handoff discipline.",
+        "description": "Use when agent work needs an evidence-gated workflow, continuous convergence, active change coordination, implementation slicing, council escalation, or handoff discipline.",
         "triggers": [
           "artifact workflow",
           "evidence gate",
           "control loop",
+          "workflow with convergence intent",
+          "workflow with continue-until-complete intent",
+          "workflow with overall-acceptance intent",
           "active change coordination",
           "implementation slice",
           "council escalation"
@@ -1883,7 +1886,7 @@
         "kind": "coordinator",
         "source": "agents/roles/harness-orchestrator.md",
         "runtimeName": "harness-orchestrator",
-        "description": "Coordinate artifact-driven harness work without project-domain assumptions.",
+        "description": "Use when artifact-driven work needs multi-phase coordination across evidence, change artifacts, specialists, review gates, verification, and handoff.",
         "clients": [
           "codex",
           "claude",
@@ -1896,7 +1899,7 @@
         "kind": "specialist",
         "source": "agents/roles/repo-mapper.md",
         "runtimeName": "repo-mapper",
-        "description": "Map repository structure, ownership, and evidence paths before planning or implementation.",
+        "description": "Use when ownership, entry points, execution flow, dependencies, or repository precedents must be mapped before planning or implementation.",
         "clients": [
           "codex",
           "claude",
@@ -1909,7 +1912,7 @@
         "kind": "specialist",
         "source": "agents/roles/design-alternatives.md",
         "runtimeName": "design-alternatives",
-        "description": "Generate orthogonal design options with tradeoffs grounded in current repository evidence.",
+        "description": "Use when an unsettled feature or refactor needs three repository-grounded, genuinely orthogonal design options and explicit tradeoffs.",
         "clients": [
           "codex",
           "claude",
@@ -1922,7 +1925,7 @@
         "kind": "specialist",
         "source": "agents/roles/solution-designer.md",
         "runtimeName": "solution-designer",
-        "description": "Produce a selected implementation design from requirements, research, and repo evidence.",
+        "description": "Use after a direction is selected to produce a repository-grounded solution design before implementation planning begins.",
         "clients": [
           "codex",
           "claude",
@@ -1948,7 +1951,7 @@
         "kind": "specialist",
         "source": "agents/roles/implementation-planner.md",
         "runtimeName": "implementation-planner",
-        "description": "Convert frozen design artifacts into ordered implementation slices and validation gates.",
+        "description": "Use when frozen requirements and design artifacts must become ordered, reviewable implementation slices with validation and rollback gates.",
         "clients": [
           "codex",
           "claude",
@@ -1961,7 +1964,7 @@
         "kind": "specialist",
         "source": "agents/roles/code-worker.md",
         "runtimeName": "code-worker",
-        "description": "Implement one scoped code slice from a context packet and validation target.",
+        "description": "Use when an approved context packet assigns one bounded implementation slice with explicit scope and validation.",
         "clients": [
           "codex",
           "claude",
@@ -1974,7 +1977,7 @@
         "kind": "specialist",
         "source": "agents/roles/reviewer.md",
         "runtimeName": "reviewer",
-        "description": "Perform evidence-first correctness review with risk-ordered findings.",
+        "description": "Use when an implementation diff, commit range, or changed behavior needs read-only, evidence-first correctness review with risk-ordered findings.",
         "clients": [
           "codex",
           "claude",
@@ -2000,7 +2003,7 @@
         "kind": "specialist",
         "source": "agents/roles/council-synthesizer.md",
         "runtimeName": "council-synthesizer",
-        "description": "Synthesize multiple independent positions into one evidence-weighted council record.",
+        "description": "Use when multiple independent positions need one evidence-weighted synthesis without voting or overriding the decision owner.",
         "clients": [
           "codex",
           "claude",

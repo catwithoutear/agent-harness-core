@@ -21,6 +21,21 @@ Accept any design target:
 If the target is ambiguous, inspect the current repository state and ask only
 when multiple plausible targets would change the review.
 
+## Design Quality Baseline
+
+For a target that defines code structure, module architecture, runtime behavior,
+data ownership, or operational behavior, read
+[`references/design-principles-baseline.md`](references/design-principles-baseline.md)
+before selecting detailed lenses. Use it as the single canonical baseline for
+code and architecture quality. Do not replace it with a shorter remembered list
+or copy its detailed rubric into another skill or role.
+
+Perform an applicability screen across the baseline's code and architecture
+families, then investigate and report only the principles material to the
+target. Preserve reasoned `N/A` decisions and accepted tradeoffs when their
+omission would otherwise make readiness ambiguous. The applicability screen does
+not require printing every principle or running every lens.
+
 ## Protocol
 
 1. Preserve review-only boundaries unless edits are requested.
@@ -28,17 +43,24 @@ when multiple plausible targets would change the review.
    exists.
 3. Identify frozen decisions, open questions, explicit deferrals, validation
    evidence, and owner assumptions.
-4. Select only lenses justified by the artifact shape and risk.
-5. Dispatch independent passes only for separable design risks.
-6. Synthesize one readiness report with blockers, should-fix notes, accepted
+4. For code or architecture design, apply the design-principles baseline and
+   identify the material principle families before choosing detailed lenses.
+5. Select only lenses justified by the artifact shape and risk.
+6. Dispatch independent passes only for separable design risks.
+7. Synthesize one readiness report with blockers, should-fix notes, accepted
    deferrals, validation gaps, and residual unknowns.
-7. Do not declare a design ready while blocking ambiguity, contradiction, or
+8. Do not declare a design ready while blocking ambiguity, contradiction, or
    missing implementation contract remains.
 
 ## Design Lenses
 
 Use these lens families as needed:
 
+- `design_quality`: responsibility, cohesion, information hiding, contracts,
+  dependency and composition choices, ownership, state, resource safety,
+  simplicity, local reasoning, capability boundaries, consistency, resilience,
+  resource budgets, security, operability, and evolution, using the canonical
+  baseline.
 - `boundary_contracts`: module ownership, APIs, data contracts, dependency
   direction, compatibility, and non-goals.
 - `topology_readiness`: subsystem boundaries, module boundaries, directory/file
@@ -119,6 +141,8 @@ module and that simplification is explicit.
   readiness issue.
 - Treating a class diagram as sufficient detailed design when it cannot map to
   files, tests, implementation steps, and dependency constraints.
+- Treating a remembered slogan list as the design-principles baseline, or
+  reporting every baseline item without an applicability and materiality check.
 - Running every lens and burying the real blocker.
 - Rewriting the design during a review-only pass.
 - Losing accepted deferrals during synthesis.

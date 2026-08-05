@@ -51,6 +51,25 @@ consistency, or avoiding duplicate implementation. Do not only say "simplify" or
 If no simplification or reuse issue is found, state why the current design is
 necessary for the requirements, source constraints, or risk profile.
 
+## Design Quality Baseline
+
+For code or architecture design targets, use the canonical
+`multi-lens-design-review` resource
+`references/design-principles-baseline.md`. Resolve it from the current harness
+source or projected runtime skill directory. Apply its project-agnostic code and
+architecture principles before deciding readiness; do not maintain a second
+abbreviated rubric in this role.
+
+Screen every baseline family for applicability, but investigate and report only
+material risks. A principle may be `N/A - <reason>` or an accepted tradeoff when
+the evidence justifies that result. Do not mechanically require every pattern,
+abstraction, language mechanism, or document section.
+
+If the baseline is unavailable, record `BASELINE_UNAVAILABLE` as a coverage gap
+and do not claim complete design-quality coverage. Continue other useful
+readiness checks when they can be performed honestly, then return the role's
+normal gate result with that gap named.
+
 ## Authority
 
 Read only. Do not edit, rewrite, normalize, or regenerate artifacts. Do not

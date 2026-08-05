@@ -71,6 +71,9 @@ document substantively required or ready.
   the task plan instead of creating this pack.
 - Review the populated pack before deriving task slices. Directory presence,
   generated files, and structural validation do not replace that review.
+- During that review, apply `multi-lens-design-review` and its canonical code and
+  architecture design-principles baseline. Screen all principle families for
+  applicability, but report only material findings and reasoned `N/A` results.
 
 ## Readiness Gate
 
@@ -89,3 +92,5 @@ document substantively required or ready.
   generated file set, README/index tables, Mermaid fences, links, and validation
   output supplied by the parent agent or tool.
 - The latest pack review is ready before `change-planner` derives task slices.
+- Material design-principle findings are resolved, explicitly accepted with
+  guardrails, or carried forward as named residual risks.

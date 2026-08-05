@@ -1,6 +1,6 @@
 ---
 name: workflow-control
-description: Use when agent work needs an evidence-gated workflow, active change coordination, implementation slicing, council escalation, or handoff discipline.
+description: Use when agent work needs an evidence-gated workflow, continuous convergence, active change coordination, implementation slicing, council escalation, or handoff discipline.
 ---
 
 # Workflow Control
@@ -44,6 +44,67 @@ honest final verification statement.
 If a review or implementation discovery changes an accepted solution decision,
 return to solution design and reassess dependent implementation design and task
 slices. Do not repair a changed design inside a downstream artifact.
+
+## Continuous Convergence
+
+Activate continuous convergence only when the current instruction or still-active
+user context combines both signals:
+
+1. a workflow-use signal: an explicit request to use or follow a `workflow` or
+   equivalent workflow reference; and
+2. an overall-completion signal: an explicit intent to converge, continue until
+   complete, pass all acceptance criteria, close the remaining gaps, or otherwise
+   keep going until the whole objective is done.
+
+Interpret the combination semantically. Do not require a fixed phrase, word
+order, language, or exact spelling. A workflow request without overall-completion
+intent uses the ordinary workflow. Completion intent without a workflow-use
+signal does not activate this specific convergence contract.
+
+| Instruction | Result |
+|---|---|
+| `按照 workflow 收敛` | Activate continuous convergence. |
+| `使用 workflow 持续推进直到完成` | Activate continuous convergence. |
+| `走 workflow，把剩余问题全部闭环` | Activate continuous convergence. |
+| `follow the workflow until the overall goal is complete` | Activate continuous convergence. |
+| `use the workflow and continue until all acceptance criteria pass` | Activate continuous convergence. |
+| `use the workflow to inspect the current state` | Ordinary workflow; no overall-completion signal. |
+| `continue until complete` | Do not activate this contract; no workflow-use signal. |
+
+When both signals exist, treat the instruction as a terminal condition, not as a
+request for one workflow pass. Record the overall objective and its acceptance
+criteria in the context packet, then continue without asking the user to send
+another "continue" message.
+
+After each implementation, review, correction, or verification iteration:
+
+1. Evaluate the overall objective against the user request, accepted decisions,
+   and applicable acceptance criteria. Do not substitute a phase, slice, review,
+   or command gate for objective completion.
+2. If the objective is incomplete, select the smallest safe in-scope next action
+   and re-enter the appropriate workflow phase.
+3. Treat findings, failed checks, incomplete work, missing evidence, and ordinary
+   technical uncertainty as inputs to the next iteration. Diagnose, correct,
+   review, and rerun the smallest credible verification instead of stopping at
+   `NOT_READY` or returning a progress-only handoff.
+4. If downstream evidence changes an accepted decision, return to its owning
+   design artifact before continuing dependent work.
+5. Repeat until the overall objective satisfies every applicable acceptance
+   criterion or an owner-controlled decision cannot be resolved from current
+   authority and evidence.
+
+`READY` advances only the current phase. `READY_WITH_NOTES` completes the
+overall objective only when every residual note is explicitly allowed by the
+acceptance criteria; otherwise carry the notes into the next iteration.
+
+A handoff or context-compaction checkpoint preserves the objective, evidence,
+remaining gaps, and exact next action. It is not completion and must not be used
+to make the user request continuation again. Pause convergence only with
+`NEEDS_USER_DECISION`: name the owner-controlled decision, show why current
+requirements and evidence cannot resolve it, and ask the smallest necessary
+question. Existing safety, authority, and external-action boundaries still
+apply; when crossing one requires owner authorization, represent that boundary
+as the required decision rather than silently broadening scope.
 
 ## Workflow Paths
 
@@ -152,7 +213,8 @@ Use shared gate vocabulary:
 
 - `READY`: proceed.
 - `READY_WITH_NOTES`: proceed, but carry named residual notes.
-- `NOT_READY`: stop and fix missing evidence, design, validation, or scope.
+- `NOT_READY`: do not advance; fix missing evidence, design, validation, or
+  scope and re-evaluate. During continuous convergence this is not terminal.
 - `NEEDS_USER_DECISION`: user ownership is required.
 - `NEEDS_COUNCIL`: high-risk independent evidence conflicts need synthesis.
 
@@ -197,4 +259,8 @@ or missing basic context.
 - Coding from a design that has prose but no topology, file/class mapping,
   lifecycle/failure flow, implementation order, or constraints.
 - Ending after code review without running the planned verification.
+- Treating a completed phase, a `READY_WITH_NOTES` gate, or a handoff as overall
+  completion during explicit continuous convergence.
+- Returning `NOT_READY` without taking the next safe correction and verification
+  step when no owner decision is required.
 - Writing process artifacts that do not identify the current repo state.

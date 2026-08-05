@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -122,6 +123,10 @@ export async function run(test) {
       assert.match(commandText, /Activate `workflow-control`/);
       assert.match(
         commandText,
+        /combines both a workflow-use signal\s+and an overall-completion signal/i
+      );
+      assert.match(
+        commandText,
         /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
       );
       assert.match(
@@ -199,10 +204,18 @@ export async function run(test) {
       for (const text of [workflowSkill, plannerSkill, loopRule]) {
         assert.match(text, /solution-design review[\s\S]*implementation-design[\s\S]*task set/i);
       }
+      assert.match(workflowSkill, /## Continuous Convergence/);
+      assert.match(loopRule, /## Continuous Convergence/);
       assert.match(refinerSkill, /Stop at solution design, ambiguities, and validation intent/);
       assert.match(designTemplate, /Review the populated pack before deriving task slices/);
       for (const clientRoot of [".agents", ".claude", ".opencode", ".omp"]) {
         const root = path.join(target, clientRoot, "skills");
+        const designBaselinePath = path.join(
+          root,
+          "multi-lens-design-review",
+          "references",
+          "design-principles-baseline.md"
+        );
         const projectedWorkflow = fs.readFileSync(
           path.join(root, "workflow-control", "SKILL.md"),
           "utf8"
@@ -220,7 +233,16 @@ export async function run(test) {
           /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
         );
         assert.match(projectedPlanner, /Use `plan-only` for compact work/);
+        assert.match(projectedWorkflow, /Interpret the combination semantically/);
+        assert.match(projectedWorkflow, /`按照 workflow 收敛` \| Activate continuous convergence\./);
+        assert.match(
+          projectedWorkflow,
+          /`continue until complete` \| Do not activate this contract; no workflow-use signal\./
+        );
+        assert.match(projectedWorkflow, /without asking the user\s+to send\s+another "continue" message/i);
         assert.match(projectedRefiner, /Stop at solution design, ambiguities, and validation intent/);
+        assert.equal(fs.existsSync(designBaselinePath), true, `${clientRoot} design baseline missing`);
+        assert.match(fs.readFileSync(designBaselinePath, "utf8"), /## Architecture Design Principles/);
       }
       assert.equal(fs.existsSync(path.join(target, ".harness", "projection-state.json")), true);
 
@@ -292,6 +314,75 @@ export async function run(test) {
       assert.equal(verify.status, 1, verify.stdout + verify.stderr);
       const payload = JSON.parse(verify.stdout);
       assert(payload.errors.some((error) => error.includes("source hash mismatch")));
+    });
+  });
+
+  await test("render projection verify rejects output from an obsolete renderer", () => {
+    withTempTarget((target) => {
+      const project = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "opencode",
+          "--content",
+          "subagents",
+          "--json"
+        ])
+      );
+      assert.equal(project.status, 0, project.stdout + project.stderr);
+
+      const agentPath = path.join(target, ".opencode", "agents", "reviewer.md");
+      const statePath = path.join(target, ".harness", "projection-state.json");
+      const current = fs.readFileSync(agentPath, "utf8");
+      const stale = current.replace("mode: subagent\n", "");
+      assert.notEqual(stale, current, "fixture must remove current OpenCode discovery metadata");
+      fs.writeFileSync(agentPath, stale, "utf8");
+
+      const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+      const agentRecord = state.records.find(
+        (record) => record.client === "opencode" && record.asset_id === "reviewer"
+      );
+      assert(agentRecord, "reviewer projection state missing");
+      const originalSourceHash = agentRecord.source_hash;
+      const staleTargetHash = crypto.createHash("sha256").update(fs.readFileSync(agentPath)).digest("hex");
+      agentRecord.target_hash = staleTargetHash;
+      fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+
+      const recorded = JSON.parse(fs.readFileSync(statePath, "utf8")).records.find(
+        (record) => record.client === "opencode" && record.asset_id === "reviewer"
+      );
+      assert.equal(recorded.source_hash, originalSourceHash);
+      assert.equal(recorded.target_hash, staleTargetHash);
+
+      const verify = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--verify",
+          "--mode",
+          "copy",
+          "--clients",
+          "opencode",
+          "--content",
+          "subagents",
+          "--json"
+        ])
+      );
+      assert.equal(verify.status, 1, verify.stdout + verify.stderr);
+      const payload = JSON.parse(verify.stdout);
+      const reviewer = payload.records.find(
+        (record) => record.client === "opencode" && record.asset_id === "reviewer"
+      );
+      assert.equal(reviewer?.status, "mismatch");
+      assert(
+        payload.errors.some((error) => error.includes("does not match current renderer")),
+        payload.errors.join("\n")
+      );
     });
   });
 

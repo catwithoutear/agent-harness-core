@@ -20,6 +20,112 @@ export async function run(test) {
     }
   });
 
+  await test("canonical subagent roles retain independently dispatchable contracts", () => {
+    const requiredContracts = {
+      "code-worker": [
+        "## Dispatch Boundary",
+        "## Required Inputs",
+        "## Source And Evidence Rules",
+        "## Working Method",
+        "## Stop And Failure Conditions",
+        "Do not stage",
+        "NEEDS_SCOPE",
+        "PLAN_CONFLICT",
+        "## Output Packet"
+      ],
+      "council-synthesizer": [
+        "## Dispatch Boundary",
+        "## Required Inputs",
+        "## Evidence Discipline",
+        "## Synthesis Method",
+        "## Stop And Escalation Conditions",
+        "Read only",
+        "NEEDS_INDEPENDENT_EVIDENCE",
+        "minority",
+        "## Output Packet"
+      ],
+      "design-alternatives": [
+        "## Dispatch Boundary",
+        "## Required Inputs",
+        "## Repository And Evidence Rules",
+        "## Orthogonality Rules",
+        "## Working Method",
+        "Read only",
+        "NO_ORTHOGONAL_SET",
+        "Rejected non-options",
+        "## Output Packet"
+      ],
+      "harness-orchestrator": [
+        "## Dispatch Boundary",
+        "## Input Contract",
+        "## Source And Evidence Order",
+        "## Coordination Method",
+        "## Specialist Routing",
+        "## Continuous Convergence",
+        "## Gates And Stop Conditions",
+        "user or named owner retains",
+        "overall objective",
+        "without waiting",
+        "NEEDS_COUNCIL",
+        "## Output Contract"
+      ],
+      "implementation-planner": [
+        "## Dispatch Boundary",
+        "## Required Inputs",
+        "## Source And Traceability Rules",
+        "## Planning Method",
+        "## Stop Conditions",
+        "Read only and plan only",
+        "NEEDS_DESIGN",
+        "DESIGN_CONFLICT",
+        "## Output Packet"
+      ],
+      "repo-mapper": [
+        "## Dispatch Boundary",
+        "## Input Packet",
+        "## Source And Evidence Rules",
+        "## Mapping Method",
+        "## Stop Conditions",
+        "Read only",
+        "AMBIGUOUS_OWNERSHIP",
+        "closest precedents",
+        "## Output Packet"
+      ],
+      reviewer: [
+        "## Dispatch Boundary",
+        "## Required Inputs",
+        "## Source And Evidence Rules",
+        "## Review Method",
+        "## Stop Conditions",
+        "## Coverage Modes",
+        "Read only",
+        "## Output Packet"
+      ],
+      "solution-designer": [
+        "## Dispatch Boundary",
+        "## Required Inputs",
+        "## Repository And Evidence Rules",
+        "## Design Method",
+        "## Stop Conditions",
+        "Read only and design only",
+        "NEEDS_DIRECTION",
+        "DESIGN_NOT_VIABLE",
+        "## Output Packet"
+      ]
+    };
+
+    for (const [roleName, required] of Object.entries(requiredContracts)) {
+      const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", `${roleName}.md`), "utf8");
+      for (const text of required) {
+        assert.match(
+          role,
+          new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+          `${roleName} missing contract text: ${text}`
+        );
+      }
+    }
+  });
+
   await test("review verifier is read-only and isolated from reviewer findings during inventory", () => {
     const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "review-verifier.md"), "utf8");
     for (const required of [
@@ -60,6 +166,12 @@ export async function run(test) {
     assert.match(role, /proportionate to risk/);
     assert.match(role, /Do not only say "simplify" or\s+"reuse existing code/);
     assert.match(role, /why the current design is\s+necessary/);
+    assert.match(role, /## Design Quality Baseline/);
+    assert.match(role, /multi-lens-design-review/);
+    assert.match(role, /references\/design-principles-baseline\.md/);
+    assert.match(role, /Screen every baseline family for applicability/);
+    assert.match(role, /BASELINE_UNAVAILABLE/);
+    assert.match(role, /do not claim complete design-quality coverage/);
     assert.match(role, /## Authority/);
     assert.match(role, /Read only/);
     assert.match(role, /Do not edit/);
@@ -76,8 +188,9 @@ export async function run(test) {
     assert.match(role, /Return `BLOCK`, `APPROVE_WITH_NOTES`, or `APPROVE`/);
   });
 
-  await test("subagent projection renders client-native files", () => {
+  await test("all canonical subagents project with minimal client-native metadata and exact bodies", () => {
     withTempTarget((target) => {
+      const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
       const result = capture(() =>
         runHarnessProject([
           "--target",
@@ -87,27 +200,84 @@ export async function run(test) {
           "--conflict",
           "overwrite",
           "--clients",
-          "codex,claude",
+          "codex,claude,opencode,omp",
           "--content",
           "subagents",
           "--json"
         ])
       );
       assert.equal(result.status, 0, result.stdout + result.stderr);
-      const codex = fs.readFileSync(path.join(target, ".codex", "agents", "reviewer.toml"), "utf8");
-      const claude = fs.readFileSync(path.join(target, ".claude", "agents", "reviewer.md"), "utf8");
-      assert.match(codex, /name = "reviewer"/);
-      assert.match(codex, /developer_instructions = '''/);
-      assert.doesNotMatch(codex, /^prompt =/m);
-      assert.match(codex, /# Reviewer/);
-      assert.match(codex, /scope-alignment/);
-      assert.match(codex, /consumer-completeness/);
-      assert.match(codex, /validation-gap/);
-      assert.match(claude, /name: reviewer/);
-      assert.match(claude, /# Reviewer/);
-      assert.match(claude, /scope-alignment/);
-      assert.match(claude, /consumer-completeness/);
-      assert.match(claude, /validation-gap/);
+      const payload = JSON.parse(result.stdout);
+      assert.equal(payload.summary.agents, 44);
+
+      const clientTargets = {
+        codex: [".codex", "agents"],
+        claude: [".claude", "agents"],
+        opencode: [".opencode", "agents"],
+        omp: [".omp", "agents"]
+      };
+
+      for (const agent of manifest.assets.agents) {
+        const canonical = fs.readFileSync(path.join(packageRoot, agent.source), "utf8");
+        const body = stripRoleFrontMatter(canonical).trimEnd();
+        for (const [client, targetParts] of Object.entries(clientTargets)) {
+          const extension = client === "codex" ? "toml" : "md";
+          const projectedPath = path.join(target, ...targetParts, `${agent.runtimeName}.${extension}`);
+          assert.equal(fs.existsSync(projectedPath), true, `${client}/${agent.runtimeName} missing`);
+          const projected = fs.readFileSync(projectedPath, "utf8");
+          assert.equal(
+            projected,
+            expectedAgentProjection(client, agent, body),
+            `${client}/${agent.runtimeName} projection drifted`
+          );
+        }
+      }
+    });
+  });
+
+  await test("global subagent targets use each client discovery path", () => {
+    withTempTarget((target) => {
+      const previousHome = process.env.HOME;
+      process.env.HOME = target;
+      let result;
+      try {
+        result = capture(() =>
+          runHarnessProject([
+            "--target",
+            target,
+            "--scope",
+            "global",
+            "--dry-run",
+            "--clients",
+            "codex,claude,opencode,omp",
+            "--content",
+            "subagents",
+            "--json"
+          ])
+        );
+      } finally {
+        if (previousHome === undefined) {
+          delete process.env.HOME;
+        } else {
+          process.env.HOME = previousHome;
+        }
+      }
+
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      const payload = JSON.parse(result.stdout);
+      assert.equal(payload.summary.agents, 44);
+      const reviewerTargets = new Map(
+        payload.records
+          .filter((record) => record.asset_id === "reviewer")
+          .map((record) => [record.client, record.target])
+      );
+      assert.equal(reviewerTargets.get("codex"), path.join(target, ".codex", "agents", "reviewer.toml"));
+      assert.equal(reviewerTargets.get("claude"), path.join(target, ".claude", "agents", "reviewer.md"));
+      assert.equal(
+        reviewerTargets.get("opencode"),
+        path.join(target, ".config", "opencode", "agents", "reviewer.md")
+      );
+      assert.equal(reviewerTargets.get("omp"), path.join(target, ".omp", "agent", "agents", "reviewer.md"));
     });
   });
 
@@ -166,6 +336,32 @@ function withTempTarget(fn) {
   } finally {
     fs.rmSync(target, { recursive: true, force: true });
   }
+}
+
+function stripRoleFrontMatter(text) {
+  return text.replace(/^---\n[\s\S]*?\n---\n/, "");
+}
+
+function expectedAgentProjection(client, agent, body) {
+  if (client === "codex") {
+    return [
+      `name = ${JSON.stringify(agent.runtimeName)}`,
+      `description = ${JSON.stringify(agent.description)}`,
+      "developer_instructions = '''",
+      body,
+      "'''",
+      ""
+    ].join("\n");
+  }
+  const frontMatter = [
+    "---",
+    `name: ${agent.runtimeName}`,
+    `description: ${JSON.stringify(agent.description)}`,
+    ...(client === "opencode" ? ["mode: subagent"] : []),
+    "---",
+    ""
+  ].join("\n");
+  return `${frontMatter}${body}\n`;
 }
 
 function capture(fn) {

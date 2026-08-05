@@ -40,6 +40,92 @@ export async function run(test) {
     }
   });
 
+  await test("design review uses one actionable project-agnostic principles baseline", () => {
+    const skill = fs.readFileSync(
+      path.join(packageRoot, "skills", "review", "multi-lens-design-review", "SKILL.md"),
+      "utf8"
+    );
+    const baseline = fs.readFileSync(
+      path.join(
+        packageRoot,
+        "skills",
+        "review",
+        "multi-lens-design-review",
+        "references",
+        "design-principles-baseline.md"
+      ),
+      "utf8"
+    );
+    const implementationDesign = fs.readFileSync(
+      path.join(packageRoot, "templates", "changes", "implementation-design", "README.md"),
+      "utf8"
+    );
+
+    for (const required of [
+      "references/design-principles-baseline.md",
+      "single canonical baseline",
+      "applicability screen",
+      "reasoned `N/A`",
+      "design_quality"
+    ]) {
+      assert.match(skill, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const principleHeadings = [...baseline.matchAll(/^### ((?:CQ|AQ)-\d+) .+$/gm)];
+    assert.equal(principleHeadings.length, 23, "baseline principle inventory changed unexpectedly");
+    for (let index = 0; index < principleHeadings.length; index += 1) {
+      const start = principleHeadings[index].index;
+      const end = principleHeadings[index + 1]?.index ?? baseline.indexOf("## Cross-Principle Interpretation");
+      const section = baseline.slice(start, end);
+      for (const field of ["**Intent:**", "**Ask:**", "**Evidence:**", "**Warning signs and tradeoffs:**"]) {
+        assert.match(section, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${principleHeadings[index][1]} missing ${field}`);
+      }
+    }
+
+    for (const required of [
+      "high cohesion inside the boundary and low coupling",
+      "Information Hiding, Contracts, And Invariants",
+      "Dependency Direction And Abstraction Fitness",
+      "Composition, Substitutability, And Extension",
+      "Ownership, Lifetime, And Resource Safety",
+      "RAII",
+      "std::unique_ptr",
+      "Explicit State, Data Shape, And Local Reasoning",
+      "Explicit Errors And Failure Semantics",
+      "KISS and YAGNI",
+      "DRY applies to knowledge",
+      "SOLID",
+      "diagnostic vocabulary for responsibilities",
+      "Capability-Centered Boundaries",
+      "Controller, Service, Manager, Util",
+      "Data Ownership, Integrity, And Evolution",
+      "transaction boundary, idempotency identity",
+      "compensation, reconciliation",
+      "Failure Design, Recovery, And Degraded Modes",
+      "Fault Isolation, Backpressure, And Resource Governance",
+      "threads, tasks, memory, queues, connections",
+      "Observability, Diagnosability, And Operability",
+      "Quantified Performance And Capacity Budgets",
+      "throughput, latency, concurrency, memory, storage",
+      "Compatibility, Migration, And Progressive Evolution",
+      "canary/gray criteria",
+      "Testability And Verification Seams",
+      "Security, Privacy, And Trust Boundaries",
+      "Configuration, Deployment, And Environmental Independence",
+      "Policy versus mechanism",
+      "Local reasoning"
+    ]) {
+      assert.match(baseline, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `baseline missing ${required}`);
+    }
+
+    for (const forbidden of ["DBackup", "Redmine", "CNware", "/home/"]) {
+      assert.doesNotMatch(baseline, new RegExp(forbidden, "i"));
+    }
+
+    assert.match(implementationDesign, /canonical code and\s+architecture design-principles baseline/);
+    assert.match(implementationDesign, /report only material findings and reasoned `N\/A` results/);
+  });
+
   await test("ask harness resolves source and deployed runtime evidence", () => {
     const text = fs.readFileSync(path.join(packageRoot, "skills", "entry", "ask-harness", "SKILL.md"), "utf8");
     const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
@@ -132,6 +218,88 @@ export async function run(test) {
     assert.match(workflow, /No `coverage_mode`.*legacy/s);
     assert.match(workflow, /PACKET_SEAL_INVALID/);
     assert.match(review, /review-verifier/);
+  });
+
+  await test("workflow convergence requires workflow plus overall-completion intent", () => {
+    const workflowControl = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"),
+      "utf8"
+    );
+    const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
+    const workflowCommand = fs.readFileSync(
+      path.join(packageRoot, "commands", "harness", "workflow.md"),
+      "utf8"
+    );
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const workflowAsset = manifest.assets.skills.find((skill) => skill.id === "workflow-control");
+
+    assert(workflowAsset, "workflow-control manifest entry missing");
+    for (const trigger of [
+      "workflow with convergence intent",
+      "workflow with continue-until-complete intent",
+      "workflow with overall-acceptance intent"
+    ]) {
+      assert(workflowAsset.triggers.includes(trigger), `workflow-control trigger missing ${trigger}`);
+    }
+    for (const standalone of ["continue until complete", "按照 workflow 推动收敛"]) {
+      assert.equal(
+        workflowAsset.triggers.includes(standalone),
+        false,
+        `workflow-control manifest should not depend on standalone fixed trigger ${standalone}`
+      );
+    }
+
+    for (const [name, text] of [
+      ["workflow-control", workflowControl],
+      ["loop contract", loopRule],
+      ["workflow command", workflowCommand]
+    ]) {
+      const normalized = text.replace(/\s+/g, " ");
+      for (const required of [
+        "workflow-use signal",
+        "overall-completion signal",
+        "fixed phrase",
+        "overall objective",
+        "acceptance criteria",
+        "without asking the user",
+        "READY_WITH_NOTES",
+        "NEEDS_USER_DECISION",
+        "handoff",
+        "context-compaction"
+      ]) {
+        assert.match(
+          normalized,
+          new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+          `${name} missing convergence contract: ${required}`
+        );
+      }
+    }
+
+    for (const example of [
+      "按照 workflow 收敛",
+      "使用 workflow 持续推进直到完成",
+      "走 workflow，把剩余问题全部闭环",
+      "follow the workflow until the overall goal is complete",
+      "use the workflow and continue until all acceptance criteria pass"
+    ]) {
+      assert.match(
+        workflowControl,
+        new RegExp(example.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+        `workflow-control missing positive convergence example: ${example}`
+      );
+    }
+    assert.match(
+      workflowControl,
+      /`use the workflow to inspect the current state` \| Ordinary workflow; no overall-completion signal\./
+    );
+    assert.match(
+      workflowControl,
+      /`continue until complete` \| Do not activate this contract; no workflow-use signal\./
+    );
+
+    assert.match(workflowControl, /`NOT_READY`[\s\S]*not terminal/i);
+    assert.match(workflowCommand, /If it\s+is incomplete[\s\S]*re-enter the\s+appropriate phase/i);
+    assert.match(loopRule, /Finish only when every applicable acceptance criterion passes/i);
   });
 
   await test("change workspace skill documents tool entrypoints", () => {
