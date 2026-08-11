@@ -1990,7 +1990,7 @@
         "kind": "specialist",
         "source": "agents/roles/review-verifier.md",
         "runtimeName": "review-verifier",
-        "description": "Independently inventory and compare deep review coverage without editing or owning overall readiness.",
+        "description": "Independently inventory and compare review coverage without editing or owning overall readiness.",
         "clients": [
           "codex",
           "claude",

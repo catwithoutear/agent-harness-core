@@ -12,14 +12,14 @@ artifact, source path, design source, or command output that proves the risk.
 
 Require:
 
-- scope under review,
-- intended behavior,
-- relevant design or requirement,
-- diff or artifact paths,
-- validation already run,
-- scope-alignment evidence for the accepted requirement or design,
-- changed contracts, consumers, or adjacent surfaces that must be complete,
-- validation gaps and whether each gap is a finding or accepted residual risk,
+- scope under review;
+- intended behavior;
+- relevant design or requirement;
+- diff or artifact paths;
+- validation already run;
+- scope-alignment evidence for the accepted requirement or design;
+- changed contracts, consumers, or adjacent surfaces that must be complete;
+- validation gaps and whether each gap is a finding or accepted residual risk;
 - known residual risks.
 
 Reject the packet as `NOT_READY` when the scope, intended behavior, source
@@ -83,10 +83,10 @@ validation, return `NOT_READY`.
 On re-review, do not repeat the first review blindly. For each prior finding,
 state one of:
 
-- resolved with evidence,
-- still open,
-- superseded by a different fix or requirement,
-- deferred with owner and reason,
+- resolved with evidence;
+- still open;
+- superseded by a different fix or requirement;
+- deferred with owner and reason;
 - false positive with evidence.
 
 Then review the new diff introduced by the fix. Fixes can introduce new risks.
@@ -98,217 +98,162 @@ Then review the new diff introduced by the fix. Fixes can introduce new risks.
 - Accepting a packet that omits the changed artifact.
 - Losing deferred findings during re-review.
 
-## Coverage Protocol
+## Review-Run Protocol
 
-Use this only when a coordinator explicitly provides `coverage_mode`. It
-extends the existing findings-first review and does not replace correctness
-review, implementation verification, council handling, or coordinator-owned
-`overall_gate`. V1 is Markdown-only: it has no parser and no serialized schema.
+This is the sole structured review protocol. It is selected by the exact
+unversioned `protocol=review-run` field. Do not create a second route based on
+assurance labels, Markdown shape, provider, or a reviewer assertion. Requests
+that do not satisfy this contract fail closed; they are not reinterpreted as a
+legacy review.
 
-Resolve the portable target with the skill-local, read-only helper before an
-explicit mode review. It writes JSON to stdout only and never hashes local root
-paths:
+The coordinator persists one immutable dispatch contract before dispatch:
+
+```json
+{
+  "contract_digest": "sha256:<digest>",
+  "rules": [{"rule_id": "<id>", "source_ref": "<portable-ref>"}],
+  "scope": ["<portable-scope>"],
+  "dimensions": [{"dimension_id": "<id>"}],
+  "relations": [{
+    "relation_id": "<id>",
+    "unit_key": {"unit_path": "<path>", "anchor_kind": "<kind>", "anchor_value": "<value>"},
+    "dimension_id": "<id>",
+    "rule_ref": {"rule_id": "<id>", "source_ref": "<ref>"}
+  }]
+}
+```
+
+The same digest, exact rules, scope, dimensions, and target identity go to the
+reviewer and verifier. Discovery may add a target-derived relation, but it may
+not remove an assigned relation and every expansion must reference an assigned
+rule source and dimension. A relation is identified by
+`UnitKey + DimensionId + RuleRef`; a summary, narrative, or row count cannot
+replace relation-level evidence.
+
+### Target Identity
+
+For a Git worktree or artifact set, resolve the portable target before
+dispatch. The helper writes JSON to stdout and never persists local roots:
 
 ```text
-node <review-packet-gate-skill-root>/scripts/review-packet-digest.mjs target \
+node <review-packet-gate-skill-root>/scripts/review-target-digest.mjs target \
   --kind git-worktree --code-root <path> --base <commit> [--head <commit>] \
   [--untracked-scope <path>]... [--include-path <path>]... \
   --declaration <utf8-file> --json
 
-node <review-packet-gate-skill-root>/scripts/review-packet-digest.mjs target \
+node <review-packet-gate-skill-root>/scripts/review-target-digest.mjs target \
   --kind artifact-set --artifact-root <path> --include-path <path>... \
   --declaration <utf8-file> --json
-
-node <review-packet-gate-skill-root>/scripts/review-packet-digest.mjs packet \
-  --input <expected-packet.md> --json
 ```
 
-The opaque declaration is valid UTF-8 without a BOM, LF-normalized, and reduced
-to one final LF. Roles check its human semantics but never parse it. The packet
-helper accepts one `PacketDigest: sha256:self` marker to calculate a seal, then
-verifies a supplied digest. `TARGET_FINGERPRINT_UNAVAILABLE`,
-`TARGET_RECOMPUTE_UNAVAILABLE`, `PACKET_SEAL_INVALID`, and
-`PACKET_SEAL_MISMATCH` are fail-closed for deep coverage.
+The helper uses `fingerprint_format=review-target`, UTF-8 declarations with one
+final LF, and fail-closed target errors. The result is evidence for the
+request and discovery record, not a substitute for the dispatch contract.
 
-### Mode Routing
-
-| Packet condition | Required output | Forbidden claim |
-|---|---|---|
-| No `coverage_mode` | Existing findings-first review and `review_gate` only. | `coverage_gate`, helper requirement, verifier dispatch, or coverage assurance. |
-| `coverage_mode=quick` | Target identity, findings, and `review_gate`. | Independent completeness. |
-| `coverage_mode=standard` | Target identity, findings, Unit Inventory, Rule Results, Observed Rule Sources, and coordinator audit. | Verifier-backed independent coverage. |
-| `coverage_mode=deep` | Target identity, reviewer ledger, sealed Expected Coverage Packet, comparison report, and four gates. | Continuing after target, seal, or required-source failure. |
-
-Deep is mandatory for explicit independent/exhaustive review, trust or security
-boundaries, destructive behavior, public/serialized contracts, persistence or
-migration, concurrency/lifecycle semantics, unresolved cross-module impact, or
-reviewer conflict. A downgrade records the owner, reason, and residual risk;
-its coverage result cannot be unqualified `READY`.
-
-### Target Packet
-
-All explicit modes begin with the following four blocks. Repeat every typed
-argument in UTF-8 sorted order; Git with no scope writes
-`--untracked-scope | .`, and inapplicable fields use `N/A`.
-
-````text
-# Review Target Packet
-
-## Target Identity
-TargetKind: <git-worktree|artifact-set>
-FingerprintFormat: review-target-v1
-DigestAlgorithm: sha256
-HelperVersion: 1
-TargetFingerprint: sha256:<digest>
-GitObjectFormat: <sha1|sha256|N/A>
-BaseRevision: <full-object-id|N/A>
-HeadRevision: <full-object-id|N/A>
-
-| Component | Digest | Summary |
-|---|---|---|
-| committed | sha256:<digest> | base/head identities or N/A |
-| staged | sha256:<digest> | index records or N/A |
-| unstaged | sha256:<digest> | worktree records or N/A |
-| untracked | sha256:<digest> | selected scope or N/A |
-| declared-inputs | sha256:<digest> | typed paths and declaration bytes |
-
-## Target Input Arguments
-| Option | Value |
-|---|---|
-| --untracked-scope | <normalized relative path or N/A> |
-| --include-path | <normalized relative path or N/A> |
-
-## Declared Inputs
-DeclarationDigest: sha256:<digest>
-```text
-<verbatim declaration content>
-```
-
-## Execution Coordinates
-CodeRoot: <local path or N/A>
-ArtifactRoot: <local path or N/A>
-DeclarationPath: <local path or N/A>
-StateRoot: <local path or N/A>
-ActiveChange: <change id or N/A>
-````
-
-The target blocks are portable except Execution Coordinates, which let a fresh
-agent recompute the helper result. Seeds for scope and rule sources must be
-expanded from current evidence; they are not completeness authority.
-
-### Standard And Deep Ledger
-
-In `coverage_mode=standard` or `coverage_mode=deep`, findings remain first and
-these Markdown tables follow. Unit identity is the exact
-`UnitPath`/`AnchorKind`/`AnchorValue` tuple. Rule identity is the exact
-`RuleId`/`RuleSourceRef`/`RuleVersionRef` tuple; line ranges are only UnitRef
-navigation detail.
-
-#### Unit Inventory
-
-| UnitPath | AnchorKind | AnchorValue | UnitRef | Purpose | SurfaceTags | DependencyRefs | InclusionSource |
-|---|---|---|---|---|---|---|---|
-
-#### Rule Results
-
-| UnitPath | AnchorKind | AnchorValue | RuleId | RuleSourceRef | RuleVersionRef | Applicability | Disposition | EvidenceRefs | FindingRefs | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|
-
-N/A means `Applicability=not-applicable`, `Disposition=n/a`, with evidence and
-a reason. One unit summary cannot replace separate applicable-rule results.
-
-#### Observed Rule Sources
-
-| RuleSourceRef | RuleVersionRef | Disposition | EvidenceRefs | Notes |
-|---|---|---|---|---|
-
-### Deep Packets
-
-The read-only verifier has two isolated dispatches:
+### Isolated Dispatches
 
 ```text
-inventory: Review Target Packet + target fingerprint + discovery policy
-compare: sealed Expected Coverage Packet + reviewer ledger + prior finding dispositions
+reviewer: request + dispatch contract + target
+  -> correctness findings + relation-level review-ledger
+
+verifier inventory: request + dispatch contract + target
+  -> sealed discovery + shard-plan
+
+verifier compare: sealed discovery + shard closure + reviewer ledger
+  -> coverage aggregate only
+
+coordinator: aggregate + review result + implementation evidence
+  -> durable gate-result
 ```
 
-Inventory receives no reviewer ledger, findings, or prior comparison. It copies
-all four Target Packet blocks verbatim before sealing; a digest-only reference
-is insufficient. The coordinator calculates the `PacketDigest: sha256:self`
-value then reruns the helper to verify it.
+Inventory receives no reviewer ledger, findings, prior comparison, or
+conclusion. The reviewer owns correctness findings and the verifier owns
+coverage comparison. Neither role emits `overall_gate` or mutates the target.
 
-````text
-# Expected Coverage Packet
-CoverageMode: deep
-PacketDigest: sha256:self
+### Relation Ledger
 
-## Target Identity
-<verbatim copy of Target Identity, Target Input Arguments, Declared Inputs, and Execution Coordinates>
+Every expected relation has exactly one explicit status: `covered`,
+`not-covered`, or `not-applicable`. Each entry requires evidence;
+`not-applicable` additionally requires reviewer authority and a rationale. It
+can never be inferred from an omission. Missing, duplicate, unknown, stale, or
+unassigned relations remain visible as typed gaps:
+`RULE_SOURCE_GAP`, `UNIT_IDENTITY_GAP`, `RULE_COVERAGE_GAP`,
+`APPLICABILITY_GAP`, `EVIDENCE_GAP`, `STALE_REVIEW`, and
+`CONCLUSION_CONFLICT`.
 
-## Rule Source Inventory
-| SourceId | SourceRef | Authority | VersionRef | Availability | Disposition | EvidenceRef |
-|---|---|---|---|---|---|---|
+Discovery must be sealed before planning, and the sealed discovery plus shard
+closure must exist before comparison or aggregation. A failed child, unavailable
+source, target mismatch, or unresolved boundary produces `coverage_gate=NOT_READY`.
 
-## Expected Unit Inventory
-| UnitPath | AnchorKind | AnchorValue | UnitRef | Purpose | SurfaceTags | DependencyRefs | InclusionSource |
-|---|---|---|---|---|---|---|---|
+### Durable Lifecycle
 
-## Expected Rule Relations
-| UnitPath | AnchorKind | AnchorValue | RuleId | RuleSourceRef | RuleVersionRef | TriggerEvidence |
-|---|---|---|---|---|---|---|
-````
+Records are canonical JSON with a self-digest, portable relative references,
+immutable parent lineage, and fenced control revisions. The regulated document
+tool owns the run root:
 
-Comparison recomputes target and packet identities, preserves the reviewer
-ledger, and emits this report:
+```text
+harness-change-doc --state-root <state-root> --code-root <code-root> \
+  init-review-run <change> --run-id <request-id> --json
+```
 
-````text
-# Coverage Verification Report
-CoverageMode: deep
-TargetFingerprint: sha256:<digest>
-ExpectedPacketDigest: sha256:<digest>
+The protocol store owns child records below
+`.changes/<change>/review-runs/<run-id>/`; validators are read-only. The
+minimum lifecycle is:
 
-## Source Comparison
-| RuleSourceRef | ExpectedVersionRef | ObservedVersionRef | Result | EvidenceRefs | Notes |
-|---|---|---|---|---|---|
+```text
+created -> discovering -> planning -> running -> aggregating
+        -> completed | cancelled | invalidated
+```
 
-## Unit Comparison
-| UnitPath | AnchorKind | AnchorValue | Result | EvidenceRefs | Notes |
-|---|---|---|---|---|---|
-
-## Rule Relation Comparison
-| UnitPath | AnchorKind | AnchorValue | RuleId | RuleSourceRef | RuleVersionRef | Result | EvidenceRefs | Notes |
-|---|---|---|---|---|---|---|---|
-
-## Gap Report
-| GapId | GapType | Ref | EvidenceRefs | Required Resolution |
-|---|---|---|---|---|
-
-## Coverage Gate
-coverage_gate: <READY|READY_WITH_NOTES|NOT_READY|NEEDS_USER_DECISION>
-assurance: independent-deep
-````
-
-Classify omissions as `CODE_SCOPE_GAP`, `RULE_SOURCE_GAP`,
-`UNIT_IDENTITY_GAP`, `RULE_COVERAGE_GAP`, `APPLICABILITY_GAP`, `EVIDENCE_GAP`,
-`STALE_REVIEW`, or `CONCLUSION_CONFLICT`, rather than a generic missing row.
+Failed or cancelled attempts remain visible, retries are bounded, and resume
+must reread the fenced current control revision. A completed or cancelled run
+has an aggregate report, including pre-dispatch closure or cancellation
+failures.
 
 ### Separate Gates
 
 | Gate | Owner | Meaning |
 |---|---|---|
-| `coverage_gate` | deep verifier or standard coordinator audit | Scope, sources, relations, evidence, and staleness are adequate for selected mode. |
+| `coverage_gate` | verifier | Scope, rules, dimensions, relations, evidence, and staleness are adequate. |
 | `review_gate` | reviewer | Correctness findings permit or block progress. |
 | `implementation_verification_gate` | verification workflow | Tests, builds, and source/runtime checks pass independently. |
 | `overall_gate` | coordinator | Synthesis of all required decisions. |
 
-`coverage_gate=READY` can coexist with `review_gate=NOT_READY` when complete
-coverage finds a defect. Later implementation verification failure preserves
-coverage evidence but makes `implementation_verification_gate` and
-`overall_gate` `NOT_READY`.
+Every `gate-result` emits all four fields. The aggregator never invents
+correctness or implementation results. `overall_gate` is fail-closed when any
+required gate is absent or `NOT_READY`; `coverage_gate=READY` can coexist with
+`review_gate=NOT_READY` when complete coverage finds a defect.
 
-## Deterministic Fixtures
+## Output Packets
 
-`tests/fixtures/review-coverage/deep-expected-gaps.md` records a complete
-expected source/unit/relation universe. `deep-missing-relation.md` omits one
-relation and its evidence, so comparison must report `RULE_COVERAGE_GAP` and
-`EVIDENCE_GAP`. These fixtures prove protocol wiring, not model-general
-omission detection; a fresh-agent run is separately bounded evidence.
+Context packet:
+
+- goal and non-goals;
+- active change or explicit no-change reason;
+- relevant source files and current state;
+- constraints, risks, and owner questions;
+- planned validation.
+
+Review packet:
+
+- scope reviewed;
+- intended behavior and design source;
+- owning subsystem and module when implementation-design exists;
+- diff or artifact paths;
+- validation already run;
+- findings and residual risks.
+
+Handoff packet:
+
+- current phase;
+- changed files;
+- exact commands and results;
+- unresolved questions;
+- next checkpoint.
+
+## Council Handling
+
+Council is not majority vote. Use one synthesizer over multiple independent
+positions. Preserve evidence quality, minority concerns, and the final decision
+owner. Do not use council for routine disagreement, style preference, or missing
+basic context.

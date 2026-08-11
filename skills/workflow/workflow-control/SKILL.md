@@ -221,27 +221,40 @@ Use shared gate vocabulary:
 Only the coordinator should emit `NEEDS_COUNCIL`. Specialist agents can say the
 evidence conflicts and recommend escalation.
 
-## Review Coverage Routing
+## Review-Run Routing
 
-When a review packet has No `coverage_mode`, retain the legacy evidence-first
-path: reviewer findings and `review_gate` only. Do not require the helper,
-dispatch `review-verifier`, emit `coverage_gate`, or make a completeness claim.
+All structured reviews use the single unversioned `protocol=review-run` route.
+Do not select a route from assurance labels, Markdown shape, provider, or a
+reviewer assertion, and do not fall back to an older review protocol. Validate
+the request, target identity, risk facts, and immutable dispatch contract before
+dispatching either agent; malformed input is `NOT_READY`.
 
-For explicit `coverage_mode`, first resolve target identity through
-`review-packet-digest.mjs`. `quick` has target identity plus findings and no
-independent coverage claim. `standard` adds Unit Inventory, Rule Results,
-Observed Rule Sources, and a coordinator coverage audit. `deep` dispatches
-`review-verifier` inventory before the reviewer ledger exists, seals the
-Expected Coverage Packet, then dispatches compare with the sealed packet and
-ledger. `PACKET_SEAL_INVALID`, target recomputation failure, or an unavailable
-required rule source makes deep `coverage_gate=NOT_READY`.
+Persist the exact rules, scope, dimensions, and relation identities in the
+dispatch contract. Give the same contract digest and target to the reviewer and
+the verifier. The reviewer owns correctness findings and a relation-level
+ledger. The verifier inventory receives no reviewer output, seals discovery and
+the shard plan, then compares that sealed universe with the reviewer ledger.
+The coordinator alone composes `overall_gate`.
 
-Keep `coverage_gate`, `review_gate`, `implementation_verification_gate`, and
-`overall_gate` separate. The verifier owns deep coverage evidence, the reviewer
-owns correctness findings, implementation verification owns command evidence,
-and only the coordinator synthesizes `overall_gate`. Mandatory deep triggers
-may downgrade only through an owner decision with residual risk; no silent
-downgrade or unqualified `READY` is allowed.
+The `requested_assurance` values `quick`, `standard`, and `deep` control the
+amount of evidence inside this one protocol. They do not select different
+protocols. Any requested or risk-mandated independent coverage must use the
+review-run lifecycle and preserve every relation as `covered`, `not-covered`,
+or reviewer-authorized `not-applicable` with evidence.
+
+The managed lifecycle is `created -> discovering -> planning -> running ->
+aggregating -> completed|cancelled|invalidated`. Initialize the run root with
+`init-review-run`; persist canonical request, routing, discovery, shard,
+ledger, aggregate, control, and gate-result records below
+`review-runs/<run-id>/`. Discovery and shard closure are barriers before
+comparison. Failed, cancelled, stale, duplicate, and unassigned work remains
+visible, and missing target, source, or implementation evidence is fail-closed.
+
+Always carry the four independent decisions:
+`coverage_gate`, `review_gate`, `implementation_verification_gate`, and
+coordinator-owned `overall_gate`. Missing required evidence yields
+`NOT_READY`; a completed coverage comparison does not override a correctness or
+verification blocker.
 
 ## Council Handling
 
@@ -258,6 +271,7 @@ or missing basic context.
 - Treating warnings as harmless without deciding whether they block freeze.
 - Coding from a design that has prose but no topology, file/class mapping,
   lifecycle/failure flow, implementation order, or constraints.
+
 - Ending after code review without running the planned verification.
 - Treating a completed phase, a `READY_WITH_NOTES` gate, or a handoff as overall
   completion during explicit continuous convergence.

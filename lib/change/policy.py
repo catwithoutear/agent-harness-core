@@ -161,6 +161,15 @@ CHANGE_CHILD_DIRECTORIES = {
     },
 }
 
+JSON_EVIDENCE_DIRECTORIES = {
+    "review-runs": {
+        "pattern": "review-runs/<run-id>/",
+        "run_id_regex": r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+        "record_schema": "schemas/review-run.schema.json",
+        "ownership": "review-run protocol and coordinator",
+    },
+}
+
 TAG_REGISTRIES = {
     "task": {
         "file": "README.md",
@@ -183,6 +192,7 @@ COMMANDS = {
     "memory_index": "harness-change-doc memory-index --json",
     "add_implementation_design": "harness-change-doc add-implementation-design",
     "add_review": "harness-change-doc add-review",
+    "init_review_run": "harness-change-doc init-review-run <change> --run-id <request-id> --json",
     "migrate": "harness-change-doc migrate --dry-run",
     "memory_retrofit": "harness-change-doc memory-retrofit --dry-run",
 }
@@ -275,6 +285,9 @@ def projection_policy() -> dict:
                 "filename_regex": value["filename_regex"],
             }
             for name, value in sorted(CHANGE_CHILD_DIRECTORIES.items())
+        },
+        "json_evidence_directories": {
+            name: dict(value) for name, value in sorted(JSON_EVIDENCE_DIRECTORIES.items())
         },
         "commands": dict(sorted(COMMANDS.items())),
     }

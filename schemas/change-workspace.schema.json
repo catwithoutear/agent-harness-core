@@ -129,7 +129,8 @@
         "decisions",
         "timeline",
         "reviews",
-        "tasks"
+        "tasks",
+        "review-runs"
       ]
     },
     "allowed_patterns": [
@@ -140,7 +141,8 @@
       "decisions/*.md",
       "timeline/*.md",
       "reviews/*.md",
-      "tasks/*.md"
+      "tasks/*.md",
+      "review-runs/**/*.json"
     ],
     "max_files_by_mode": {
       "plan_only": 6,

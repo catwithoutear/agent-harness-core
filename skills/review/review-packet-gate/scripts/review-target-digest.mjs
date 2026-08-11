@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const FORMAT = "review-target-v1";
+const FORMAT = "review-target";
 const HELPER_VERSION = 1;
 const HEADER = Buffer.from(`${FORMAT}\0`, "ascii");
 
@@ -605,41 +605,6 @@ function targetResult({
   };
 }
 
-function packetResult(values) {
-  const packet = normalizedTextFile(
-    oneOption(values, "--input", { required: true }),
-    "PACKET_SEAL_INVALID",
-    "packet is unavailable or invalid UTF-8"
-  );
-  const text = packet.toString("utf8");
-  const matches = [...text.matchAll(/^PacketDigest: sha256:(self|[a-f0-9]{64})$/gmu)];
-  if (matches.length !== 1) {
-    fail("PACKET_SEAL_INVALID", "packet requires exactly one valid PacketDigest marker");
-  }
-  const marker = matches[0][1];
-  const canonical = Buffer.from(
-    `${text.slice(0, matches[0].index)}PacketDigest: sha256:self${text.slice(matches[0].index + matches[0][0].length)}`,
-    "utf8"
-  );
-  const packetDigest = sha256(
-    frame([
-      ["helper-version", String(HELPER_VERSION)],
-      ["packet", canonical]
-    ])
-  );
-  if (marker !== "self" && `sha256:${marker}` !== packetDigest) {
-    fail("PACKET_SEAL_MISMATCH", "packet digest does not match its canonical content");
-  }
-  return {
-    command: "packet",
-    status: "ok",
-    fingerprint_format: FORMAT,
-    helper_version: HELPER_VERSION,
-    digest_algorithm: "sha256",
-    packet_digest: packetDigest
-  };
-}
-
 function main(argv) {
   const action = argv[0];
   if (action === "target") {
@@ -665,14 +630,10 @@ function main(argv) {
     }
     fail("INVALID_ARGUMENT", "target kind is unsupported");
   }
-  if (action === "packet") {
-    const { values } = parseOptions(argv.slice(1), new Set(["--input"]));
-    return packetResult(values);
-  }
   fail("INVALID_ARGUMENT", "helper command is unsupported");
 }
 
-export function executeReviewPacketDigest(argv) {
+export function executeReviewTargetDigest(argv) {
   const action = argv[0] ?? "unknown";
   try {
     return { exitCode: 0, body: main(argv) };
@@ -687,7 +648,7 @@ export function executeReviewPacketDigest(argv) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const result = executeReviewPacketDigest(process.argv.slice(2));
+  const result = executeReviewTargetDigest(process.argv.slice(2));
   process.stdout.write(`${JSON.stringify(result.body)}\n`);
   process.exitCode = result.exitCode;
 }

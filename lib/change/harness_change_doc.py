@@ -336,6 +336,38 @@ def command_add_review(args) -> int:
     return 0
 
 
+def command_init_review_run(args) -> int:
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
+    target = ensure_change_exists(root, args.task)
+    if target is None:
+        return 2
+    run_id = args.run_id
+    contract = policy.JSON_EVIDENCE_DIRECTORIES["review-runs"]
+    if not run_id or not re.fullmatch(contract["run_id_regex"], run_id):
+        print("ERROR: init-review-run requires a portable --run-id identifier", file=sys.stderr)
+        return 2
+    run_root = target / "review-runs" / run_id
+    if run_root.exists():
+        print(f"ERROR: review run already exists: {run_root}", file=sys.stderr)
+        return 2
+    (run_root / "control" / "revisions").mkdir(parents=True)
+    (run_root / "attempts").mkdir(parents=True)
+    result = {
+        "change_id": args.task,
+        "run_id": run_id,
+        "run_root": run_root.relative_to(target).as_posix(),
+        "schema": contract["record_schema"],
+        "initialized": True,
+    }
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(run_root)
+    return 0
+
+
 def command_add_terminology(args) -> int:
     root, _context = resolve_root_or_error(args, args.task)
     if root is None:
@@ -1127,6 +1159,12 @@ def build_parser():
     review_parser.add_argument("--description")
     review_parser.add_argument("--force", action="store_true")
     review_parser.set_defaults(func=command_add_review)
+
+    init_review_run_parser = subparsers.add_parser("init-review-run")
+    init_review_run_parser.add_argument("task")
+    init_review_run_parser.add_argument("--run-id", required=True)
+    init_review_run_parser.add_argument("--json", action="store_true", required=True)
+    init_review_run_parser.set_defaults(func=command_init_review_run)
 
     task_slice_parser = subparsers.add_parser("add-task-slice")
     task_slice_parser.add_argument("task")

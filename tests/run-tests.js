@@ -41,8 +41,13 @@ if (all || requested.has("--environment-profile-vault")) {
   await module.run(run);
 }
 
-if (all || requested.has("--review-coverage")) {
-  const module = await import("./test-review-coverage.js");
+if (all || requested.has("--review-target")) {
+  const module = await import("./test-review-target.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-run")) {
+  const module = await import("./test-review-run.js");
   await module.run(run);
 }
 

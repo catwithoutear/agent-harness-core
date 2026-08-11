@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import fnmatch
+import hashlib
 import json
 import re
 import sys
@@ -17,6 +18,7 @@ LEGACY_TOP_LEVEL_CHANGE_FILES = {
     "review-log.md": "reviews/",
     "timeline.md": "timeline/",
 }
+REVIEW_RELATIVE_PATH_RE = re.compile(r"^(?![A-Za-z]:[\\/])(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+$")
 
 
 def read_text(path: Path) -> str:
@@ -529,6 +531,143 @@ def validate_v2_workspace(change_dir: Path, errors: list, warns: list):
         validate_v2_child_directory(change_dir, directory, allowed_local_tags, errors)
 
 
+def review_json_load(path: Path):
+    def pairs_hook(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate object key {key}")
+            result[key] = value
+        return result
+
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle, object_pairs_hook=pairs_hook)
+
+
+def review_digest(value: dict) -> str:
+    payload = dict(value)
+    payload["record_digest"] = "sha256:self"
+    payload["canonical_digest"] = "sha256:self"
+    encoded = json.dumps(review_canonical(payload), ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def review_canonical(value):
+    if isinstance(value, list):
+        return [review_canonical(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: review_canonical(value[key])
+            for key in sorted(value, key=lambda item: item.encode("utf-8"))
+        }
+    return value
+
+
+def review_portable(value, location="$", seen=None):
+    if seen is None:
+        seen = set()
+    if isinstance(value, str):
+        if "\x00" in value:
+            raise ValueError(f"{location} contains NUL")
+        if value.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", value):
+            raise ValueError(f"{location} must be portable")
+        if (location.endswith(".path") or location.endswith(".root") or location.endswith(".file") or location.endswith("_path")) and not REVIEW_RELATIVE_PATH_RE.fullmatch(value):
+            raise ValueError(f"{location} must be a relative portable path")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            review_portable(item, f"{location}[{index}]", seen)
+        return
+    if not isinstance(value, dict):
+        return
+    marker = id(value)
+    if marker in seen:
+        raise ValueError(f"{location} contains a cycle")
+    seen.add(marker)
+    for key, item in value.items():
+        if key in {"absolute_path", "absolute_root", "client_session", "cwd", "local_root", "provider_session", "session_id", "session_path", "run_root"} or key.startswith("absolute_"):
+            raise ValueError(f"{location}.{key} is not portable")
+        review_portable(item, f"{location}.{key}", seen)
+    seen.remove(marker)
+
+
+def validate_review_run_record(path: Path, run_id: str, errors: list):
+    try:
+        record = review_json_load(path)
+        review_portable(record)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        errors.append(f"{path}: invalid review-run JSON: {exc}")
+        return None
+    if not isinstance(record, dict):
+        errors.append(f"{path}: review-run record must be an object")
+        return None
+    if record.get("format") != "review-run" or record.get("format_version") != 1:
+        errors.append(f"{path}: unsupported record format")
+    if record.get("protocol") != "review-run":
+        errors.append(f"{path}: unsupported protocol")
+    if record.get("run_id") != run_id:
+        errors.append(f"{path}: run_id does not match directory")
+    expected_digest = review_digest(record)
+    if record.get("record_digest") != expected_digest or record.get("canonical_digest") != expected_digest:
+        errors.append(f"{path}: record_digest mismatch")
+    return record
+
+
+def validate_review_run_evidence(change_dir: Path, errors: list):
+    root = change_dir / "review-runs"
+    if not root.exists():
+        return
+    run_pattern = re.compile(policy.JSON_EVIDENCE_DIRECTORIES["review-runs"]["run_id_regex"])
+    for run_dir in sorted(root.iterdir()):
+        if not run_dir.is_dir() or not run_pattern.fullmatch(run_dir.name):
+            errors.append(f"{root}: invalid review run directory {run_dir.name}")
+            continue
+        allowed = {"request.json", "routing-decision.json", "discovery.json", "shard-plan.json", "aggregate-report.json", "gate-result.json", "attempts", "control"}
+        for entry in run_dir.iterdir():
+            if entry.name not in allowed:
+                errors.append(f"{run_dir}: unexpected review-run entry {entry.name}")
+        records = {}
+        for name in sorted(allowed - {"attempts", "control"}):
+            path = run_dir / name
+            if path.exists():
+                records[name[:-5]] = validate_review_run_record(path, run_dir.name, errors)
+        request = records.get("request")
+        if request is not None:
+            if request.get("record_type") != "request" or request.get("protocol") != "review-run":
+                errors.append(f"{run_dir / 'request.json'}: invalid request record")
+        discovery = records.get("discovery")
+        if discovery is not None and discovery.get("record_type") != "discovery":
+            errors.append(f"{run_dir / 'discovery.json'}: invalid discovery record")
+        plan = records.get("shard-plan")
+        if plan is not None and plan.get("record_type") != "shard-plan":
+            errors.append(f"{run_dir / 'shard-plan.json'}: invalid shard-plan record")
+        attempts = run_dir / "attempts"
+        if attempts.exists():
+            for attempt in sorted(attempts.iterdir()):
+                if not attempt.is_file() or attempt.suffix != ".json":
+                    errors.append(f"{attempts}: invalid attempt entry {attempt.name}")
+                    continue
+                ledger = validate_review_run_record(attempt, run_dir.name, errors)
+                if ledger is not None and ledger.get("record_type") != "review-ledger":
+                    errors.append(f"{attempt}: invalid ledger record")
+        control = run_dir / "control"
+        if control.exists():
+            current = control / "current.json"
+            if current.exists():
+                current_record = validate_review_run_record(current, run_dir.name, errors)
+                if current_record is not None and current_record.get("record_type") != "control-revision":
+                    errors.append(f"{current}: invalid control record")
+            revisions = control / "revisions"
+            if revisions.exists():
+                for revision in revisions.iterdir():
+                    if not revision.is_file() or not re.fullmatch(r"\d{6}\.json", revision.name):
+                        errors.append(f"{revisions}: invalid revision entry {revision.name}")
+                    else:
+                        revision_record = validate_review_run_record(revision, run_dir.name, errors)
+                        if revision_record is not None and revision_record.get("record_type") != "control-revision":
+                            errors.append(f"{revision}: invalid control revision record")
+
+
 def validate_change_id(change_dir: Path, schema: dict, errors: list):
     pattern = re.compile(schema["change_id"]["pattern"])
     if not pattern.match(change_dir.name):
@@ -702,6 +841,10 @@ def layout_file_status(change_dir: Path, schema: dict, mode: str, rel_path: str)
         return "expected", "allowed file for mode"
 
     directory = first_path_part(rel_path)
+    if directory in policy.JSON_EVIDENCE_DIRECTORIES:
+        if fnmatch.fnmatch(rel_path, "review-runs/**/*.json"):
+            return "expected", "allowed review-run JSON evidence record"
+        return "expected", "allowed review-run JSON evidence directory entry"
     if directory in policy.managed_change_directories():
         if rel_path == f"{directory}/README.md" or fnmatch.fnmatch(rel_path, f"{directory}/*.md"):
             return "expected", "allowed v2 managed directory file"
@@ -829,6 +972,7 @@ def validate_change(change_dir: Path, schema: dict, strict_layout: bool = False,
             validate_review_log(change_dir, schema, errors)
 
     validate_v2_workspace(change_dir, errors, warns)
+    validate_review_run_evidence(change_dir, errors)
     validate_legacy_top_level_artifacts(change_dir, errors, warns, strict_layout)
     validate_layout(change_dir, schema, mode, errors, warns, strict_layout)
     if worktrees:
