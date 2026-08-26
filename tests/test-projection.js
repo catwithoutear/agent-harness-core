@@ -422,9 +422,10 @@ export async function run(test) {
       );
       assert.equal(categoryRun.status, 0, categoryRun.stderr);
       const categoryPayload = JSON.parse(categoryRun.stdout);
-      assert.equal(categoryPayload.summary.skills, 22);
+      assert.equal(categoryPayload.summary.skills, 23);
       assert(categoryPayload.records.every((record) => record.source.includes("skills/third-party")));
       assert(categoryPayload.records.some((record) => record.asset_id === "environment-profile-vault"));
+      assert(categoryPayload.records.some((record) => record.asset_id === "pve-vm-operations"));
 
       const selectedRun = capture(() =>
         runHarnessProject([
@@ -457,11 +458,11 @@ export async function run(test) {
           "--conflict",
           "overwrite",
           "--clients",
-          "codex",
+          "codex,claude,opencode,omp",
           "--content",
           "skills",
           "--skills",
-          "environment-profile-vault",
+          "environment-profile-vault,pve-vm-operations",
           "--json"
         ])
       );
@@ -472,6 +473,33 @@ export async function run(test) {
         fs.existsSync(path.join(skillDirectory, "scripts", "environment-profile-vault.py")),
         true
       );
+      const pveSkillDirectory = path.join(target, ".agents", "skills", "pve-vm-operations");
+      assert.equal(fs.existsSync(path.join(pveSkillDirectory, "SKILL.md")), true);
+      assert.equal(
+        fs.existsSync(path.join(pveSkillDirectory, "scripts", "pve_vm.py")),
+        true
+      );
+      for (const clientSkillRoot of [
+        [".agents", "skills"],
+        [".claude", "skills"],
+        [".opencode", "skills"],
+        [".omp", "skills"]
+      ]) {
+        const projectedPveSkill = path.join(
+          target,
+          ...clientSkillRoot,
+          "pve-vm-operations"
+        );
+        assert.equal(fs.existsSync(path.join(projectedPveSkill, "SKILL.md")), true);
+        assert.equal(
+          fs.existsSync(path.join(projectedPveSkill, "scripts", "pve_vm.py")),
+          true
+        );
+        assert.equal(
+          fs.existsSync(path.join(projectedPveSkill, "scripts", "__pycache__")),
+          false
+        );
+      }
     });
   });
 

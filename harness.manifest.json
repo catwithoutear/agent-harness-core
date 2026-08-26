@@ -1788,6 +1788,41 @@
         ]
       },
       {
+        "id": "pve-vm-operations",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/pve-vm-operations",
+        "runtimeName": "pve-vm-operations",
+        "description": "Use when listing, inspecting, creating, updating, deleting, or changing the power state of QEMU virtual machines through the Proxmox VE REST API.",
+        "triggers": [
+          "Proxmox VE",
+          "PVE virtual machine",
+          "PVE VM CRUD",
+          "QEMU VM power state",
+          "PVE REST API"
+        ],
+        "negativeTriggers": [
+          "VMware-only operation",
+          "LXC container operation",
+          "PVE cluster or storage administration",
+          "virtualization migration planning only"
+        ],
+        "requires": [
+          "Python 3",
+          "PVE endpoint and environment profile or API token for authenticated calls",
+          "environment-profile-vault skill for saved-profile injection (optional when PVE_* environment variables are already injected)",
+          "explicit confirmation immediately before a live mutation"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
         "id": "redmine",
         "category": "third-party",
         "audience": "model",
