@@ -239,22 +239,27 @@ The coordinator alone composes `overall_gate`.
 The `requested_assurance` values `quick`, `standard`, and `deep` control the
 amount of evidence inside this one protocol. They do not select different
 protocols. Any requested or risk-mandated independent coverage must use the
-review-run lifecycle and preserve every relation as `covered`, `not-covered`,
-or reviewer-authorized `not-applicable` with evidence.
+review-run lifecycle. Reviewer outcomes carry `execution_status` separately
+from the derived `conclusion`; immutable `ReviewFinding` records preserve
+`blocking_class` and evidence, and no finding is hidden by a later clear retry.
 
-The managed lifecycle is `created -> discovering -> planning -> running ->
-aggregating -> completed|cancelled|invalidated`. Initialize the run root with
-`init-review-run`; persist canonical request, routing, discovery, shard,
-ledger, aggregate, control, and gate-result records below
-`review-runs/<run-id>/`. Discovery and shard closure are barriers before
-comparison. Failed, cancelled, stale, duplicate, and unassigned work remains
-visible, and missing target, source, or implementation evidence is fail-closed.
+The managed lifecycle is `created -> target-view-sealed -> run-binding-sealed ->
+dual-discovery-open -> discovery-barrier-closed -> dispatch-sealed -> reviewing ->
+review-facts-closed -> outcomes-selected -> verifier-compared -> gated ->
+completed|invalidated`. Initialize the run root with `init-review-run`; persist
+canonical subject, authority, dimension, surface, context, obligation, dispatch,
+output, finding, invalidation, and gate records below `review-runs/<run-id>/`.
+The discovery barrier closes only after both expected and observed lanes seal
+and their attestations verify. Failed, cancelled, stale, duplicate, and
+unassigned work remains visible, and missing target, source, or implementation
+evidence is fail-closed.
 
-Always carry the four independent decisions:
-`coverage_gate`, `review_gate`, `implementation_verification_gate`, and
-coordinator-owned `overall_gate`. Missing required evidence yields
-`NOT_READY`; a completed coverage comparison does not override a correctness or
-verification blocker.
+Always carry the five evidence gates — `coverage_gate`, `review_gate`,
+`independent_review_gate`, `style_gate`, and `implementation_verification_gate`
+— plus the coordinator-owned derived `overall_gate`. Missing required evidence
+yields `NOT_READY`; a completed coverage comparison does not override a
+correctness or verification blocker, and `overall_gate` is never READY unless
+all five evidence gates are READY.
 
 ## Council Handling
 

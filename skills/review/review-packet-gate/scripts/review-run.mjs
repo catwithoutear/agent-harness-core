@@ -9,11 +9,119 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import {
+  DIGEST_PREFIX,
+  PROTOCOL,
+  ReviewRunError,
+  assertCanonicalRef,
+  assertPortable,
+  canonicalJSONStringify,
+  canonicalize,
+  deriveIdentity,
+  digestValue,
+  fail,
+  finalizeRecord,
+  isCanonicalRef,
+  isPlainObject,
+  makeCanonicalRef,
+  parseJsonStrict,
+  recordDigest,
+  sha256Text,
+  verifyRecordDigest
+} from "./review-records.mjs";
 
-export const PROTOCOL = "review-run";
-export const DIGEST_PREFIX = "sha256:";
+export {
+  DIGEST_PREFIX,
+  PROTOCOL,
+  ReviewRunError,
+  assertCanonicalRef,
+  canonicalJSONStringify,
+  canonicalize,
+  deriveIdentity,
+  digestValue,
+  finalizeRecord,
+  isCanonicalRef,
+  makeCanonicalRef,
+  parseJsonStrict,
+  recordDigest,
+  sha256Text,
+  verifyRecordDigest
+} from "./review-records.mjs";
+
+// Facade re-exports of the canonical review modules (migration: the facade is
+// the single orchestration entry point; each module owns its own semantics).
+export * from "./review-subject-input.mjs";
+export * from "./review-authority.mjs";
+export * from "./review-dimensions.mjs";
+export * from "./review-changed-surface.mjs";
+export * from "./review-context.mjs";
+export * from "./review-obligations.mjs";
+export * from "./review-dispatch.mjs";
+export * from "./review-provider.mjs";
+export * from "./review-discovery.mjs";
+export * from "./review-output.mjs";
+export * from "./review-store.mjs";
+export * from "./review-retry.mjs";
+export * from "./review-gates.mjs";
+
+import { buildSubjectInputManifest } from "./review-subject-input.mjs";
+import { resolveReviewAuthority } from "./review-authority.mjs";
+import { activateDimensions } from "./review-dimensions.mjs";
+import { enumerateCandidates, decideApplicability, buildExpectedObligations } from "./review-obligations.mjs";
+import { buildAssignmentPackets, validateAssignmentClosure } from "./review-dispatch.mjs";
+import { evaluateCoverageGate } from "./review-gates.mjs";
+
+function groupAuthorityByKind(items) {
+  const byKind = {};
+  for (const item of items) {
+    (byKind[item.authority_kind] ??= []).push(item);
+  }
+  return byKind;
+}
+
+/**
+ * Facade orchestration of the machine-computable deep-coverage path
+ * (subject -> authority -> dimensions -> obligations -> dispatch -> coverage gate).
+ *
+ * Reviewer outcomes, provider lanes and independent comparison are runtime
+ * evidence and remain fail-closed until a real provider produces them; this
+ * entry point synthesizes the deterministic expected universe and its
+ * `coverage_gate`.
+ */
+export function runDeepCoverage({
+  targetSnapshot,
+  normativeSources = [],
+  userRequirements = [],
+  authorityItems = [],
+  dimensions = [],
+  anchorsByDimension = {},
+  contextGraph = { complete: true },
+  surface = {},
+  decide = () => "applicable",
+  clusterForObligation = () => ({ record_id: "cluster-1", record_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000" })
+}) {
+  const manifest = buildSubjectInputManifest(targetSnapshot, normativeSources, { userRequirements });
+  const authoritySources = normativeSources.map((source) => ({
+    source_locator: source.source_locator ?? source.locator,
+    source_kind: source.source_kind ?? "catalog",
+    scope: source.scope ?? "*",
+    precedence: source.precedence ?? 1,
+    version: source.version ?? "v1",
+    digest: source.digest,
+    availability: source.availability ?? "available"
+  }));
+  const authority = resolveReviewAuthority(authoritySources, authorityItems);
+  const dimensionAuthority = activateDimensions(authority, { dimensions });
+  const candidates = enumerateCandidates({ dimensions, anchorsByDimension, authorityItemsByKind: groupAuthorityByKind(authorityItems) });
+  const decisions = decideApplicability(candidates, decide);
+  const obligations = buildExpectedObligations(candidates, decisions);
+  const packets = buildAssignmentPackets({ obligations, clusterForObligation });
+  const dispatchValid = validateAssignmentClosure(packets, obligations).valid;
+  const coverageGate = evaluateCoverageGate({ authority, dimensionAuthority, contextGraph, surface, obligations, dispatchValid });
+  return { manifest, authority, dimensionAuthority, candidates, decisions, obligations, packets, dispatchValid, coverageGate };
+}
+
 export const MODES = new Set(["quick", "standard", "deep"]);
 export const GATES = new Set(["READY", "READY_WITH_NOTES", "NOT_READY", "NEEDS_USER_DECISION"]);
 export const LEDGER_STATUSES = new Set(["covered", "not-covered", "not-applicable"]);
@@ -29,128 +137,7 @@ export const STATES = new Set([
   "invalidated"
 ]);
 
-const FORBIDDEN_KEYS = new Set([
-  "absolute_path",
-  "absolute_root",
-  "client_session",
-  "cwd",
-  "local_root",
-  "provider_session",
-  "session_id",
-  "session_path",
-  "run_root"
-]);
-
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
-const RELATIVE_PATH_RE = /^(?![A-Za-z]:[\\/])(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+$/u;
-
-export class ReviewRunError extends Error {
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "ReviewRunError";
-    this.code = code;
-    this.details = details;
-  }
-}
-
-function fail(code, message, details = {}) {
-  throw new ReviewRunError(code, message, details);
-}
-
-export function sha256Text(value) {
-  return `${DIGEST_PREFIX}${createHash("sha256").update(value, "utf8").digest("hex")}`;
-}
-
-function isPlainObject(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function assertPortable(value, location = "$", seen = new Set()) {
-  if (typeof value === "string") {
-    if (value.includes("\0")) {
-      fail("INVALID_REVIEW_RECORD", `${location} contains NUL`);
-    }
-    if (value.startsWith("/") || /^[A-Za-z]:[\\/]/u.test(value)) {
-      fail("NON_PORTABLE_RECORD", `${location} must not contain an absolute local path`);
-    }
-    if ((location.endsWith(".path") || location.endsWith(".root") || location.endsWith(".file") || location.endsWith("_path")) && !RELATIVE_PATH_RE.test(value)) {
-      fail("NON_PORTABLE_RECORD", `${location} must be a relative portable path`);
-    }
-    return;
-  }
-  if (value === null || typeof value !== "object") {
-    return;
-  }
-  if (seen.has(value)) {
-    fail("INVALID_REVIEW_RECORD", `${location} contains a cyclic value`);
-  }
-  seen.add(value);
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => assertPortable(item, `${location}[${index}]`, seen));
-  } else {
-    for (const [key, child] of Object.entries(value)) {
-      if (FORBIDDEN_KEYS.has(key) || key.startsWith("absolute_")) {
-        fail("NON_PORTABLE_RECORD", `${location}.${key} is not portable`);
-      }
-      assertPortable(child, `${location}.${key}`, seen);
-    }
-  }
-  seen.delete(value);
-}
-
-function canonicalValue(value) {
-  if (Array.isArray(value)) {
-    return value.map(canonicalValue);
-  }
-  if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.keys(value)
-        .sort((left, right) => Buffer.from(left).compare(Buffer.from(right)))
-        .map((key) => [key, canonicalValue(value[key])])
-    );
-  }
-  return value;
-}
-
-export function canonicalize(value) {
-  assertPortable(value);
-  return canonicalValue(value);
-}
-
-export function canonicalJSONStringify(value) {
-  return JSON.stringify(canonicalize(value));
-}
-
-export function digestValue(value) {
-  return sha256Text(canonicalJSONStringify(value));
-}
-
-export function recordDigest(value) {
-  const copy = structuredClone(value);
-  copy.record_digest = "sha256:self";
-  copy.canonical_digest = "sha256:self";
-  return digestValue(copy);
-}
-
-export function finalizeRecord(value, recordId = `${value.record_type}:${value.run_id ?? "unknown"}`) {
-  const base = {
-    format: PROTOCOL,
-    format_version: 1,
-    ...value,
-    record_id: value.record_id ?? recordId,
-    created_from: value.created_from ?? []
-  };
-  base.record_digest = "sha256:self";
-  base.canonical_digest = "sha256:self";
-  const digest = recordDigest(base);
-  return { ...base, record_digest: digest, canonical_digest: digest };
-}
-
-export function verifyRecordDigest(value) {
-  const expected = recordDigest(value);
-  const actual = value.record_digest ?? value.canonical_digest;
-  return typeof actual === "string" && actual === expected && (value.record_digest === undefined || value.record_digest === actual) && (value.canonical_digest === undefined || value.canonical_digest === actual);
-}
 
 function verifyInputDigest(value, name) {
   const hasDigest = value.record_digest !== undefined || value.canonical_digest !== undefined;
@@ -158,124 +145,6 @@ function verifyInputDigest(value, name) {
   if (typeof value.record_digest !== "string" || typeof value.canonical_digest !== "string" || !verifyRecordDigest(value)) {
     fail("RECORD_DIGEST_MISMATCH", `${name} record digest does not match its content`);
   }
-}
-
-/**
- * Parse JSON while rejecting duplicate object keys. JSON.parse alone silently
- * keeps the last key, which would make the self-digest ambiguous.
- */
-export function parseJsonStrict(text, source = "input") {
-  const input = String(text);
-  let index = 0;
-
-  const error = (message) => fail("INVALID_JSON", `${source}: ${message} at byte ${index}`);
-  const skip = () => {
-    while (/\s/u.test(input[index] ?? "")) index += 1;
-  };
-  const parseString = () => {
-    if (input[index] !== '"') error("expected string");
-    const start = index;
-    index += 1;
-    let escaped = false;
-    while (index < input.length) {
-      const character = input[index];
-      if (escaped) {
-        escaped = false;
-        index += 1;
-        continue;
-      }
-      if (character === "\\") {
-        escaped = true;
-        index += 1;
-        continue;
-      }
-      if (character === '"') {
-        index += 1;
-        try {
-          return JSON.parse(input.slice(start, index));
-        } catch {
-          error("invalid string escape");
-        }
-      }
-      if (character < " ") error("control character in string");
-      index += 1;
-    }
-    error("unterminated string");
-  };
-  const parseNumber = () => {
-    const match = input.slice(index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u);
-    if (!match) error("invalid number");
-    index += match[0].length;
-    const value = Number(match[0]);
-    if (!Number.isFinite(value)) error("number is not finite");
-    return value;
-  };
-  const parseValue = () => {
-    skip();
-    const character = input[index];
-    if (character === '"') return parseString();
-    if (character === "{") {
-      index += 1;
-      const object = {};
-      const keys = new Set();
-      skip();
-      if (input[index] === "}") {
-        index += 1;
-        return object;
-      }
-      while (index < input.length) {
-        skip();
-        const key = parseString();
-        if (keys.has(key)) error(`duplicate object key ${key}`);
-        keys.add(key);
-        skip();
-        if (input[index] !== ":") error("expected colon");
-        index += 1;
-        object[key] = parseValue();
-        skip();
-        if (input[index] === "}") {
-          index += 1;
-          return object;
-        }
-        if (input[index] !== ",") error("expected comma");
-        index += 1;
-      }
-      error("unterminated object");
-    }
-    if (character === "[") {
-      index += 1;
-      const array = [];
-      skip();
-      if (input[index] === "]") {
-        index += 1;
-        return array;
-      }
-      while (index < input.length) {
-        array.push(parseValue());
-        skip();
-        if (input[index] === "]") {
-          index += 1;
-          return array;
-        }
-        if (input[index] !== ",") error("expected comma");
-        index += 1;
-      }
-      error("unterminated array");
-    }
-    for (const [literal, value] of [["true", true], ["false", false], ["null", null]]) {
-      if (input.startsWith(literal, index)) {
-        index += literal.length;
-        return value;
-      }
-    }
-    if (character === "-" || /\d/u.test(character ?? "")) return parseNumber();
-    error("unexpected token");
-  };
-
-  const result = parseValue();
-  skip();
-  if (index !== input.length) error("trailing data");
-  return result;
 }
 
 function requireObject(value, name) {
@@ -636,12 +505,18 @@ export function aggregateCoverage(discovery, ledgers, control = {}) {
   return finalizeRecord(report, `aggregate:${discovery.run_id}`);
 }
 
-export function composeGateResult({ aggregate, reviewGate = "NOT_READY", implementationVerificationGate = "NOT_READY", evidence = [], residualRisk = [] }) {
+export function composeGateResult({ aggregate, reviewGate = "NOT_READY", independentReviewGate = "NOT_READY", styleGate = "NOT_READY", implementationVerificationGate = "NOT_READY", evidence = [], residualRisk = [] }) {
   if (!aggregate || aggregate.record_type !== "aggregate-report") fail("INVALID_GATE_RESULT", "aggregate report is required");
-  for (const [name, gate] of [["coverage_gate", aggregate.coverage_gate], ["review_gate", reviewGate], ["implementation_verification_gate", implementationVerificationGate]]) {
+  for (const [name, gate] of [
+    ["coverage_gate", aggregate.coverage_gate],
+    ["review_gate", reviewGate],
+    ["independent_review_gate", independentReviewGate],
+    ["style_gate", styleGate],
+    ["implementation_verification_gate", implementationVerificationGate]
+  ]) {
     if (!GATES.has(gate)) fail("INVALID_GATE_RESULT", `${name} has invalid value ${gate}`);
   }
-  const gates = [aggregate.coverage_gate, reviewGate, implementationVerificationGate];
+  const gates = [aggregate.coverage_gate, reviewGate, independentReviewGate, styleGate, implementationVerificationGate];
   const overallGate = gates.includes("NOT_READY") ? "NOT_READY" : gates.includes("NEEDS_USER_DECISION") ? "NEEDS_USER_DECISION" : gates.includes("READY_WITH_NOTES") ? "READY_WITH_NOTES" : "READY";
   const result = {
     record_type: "gate-result",
@@ -650,6 +525,8 @@ export function composeGateResult({ aggregate, reviewGate = "NOT_READY", impleme
     aggregate_digest: aggregate.record_digest,
     coverage_gate: aggregate.coverage_gate,
     review_gate: reviewGate,
+    independent_review_gate: independentReviewGate,
+    style_gate: styleGate,
     implementation_verification_gate: implementationVerificationGate,
     overall_gate: overallGate,
     evidence,

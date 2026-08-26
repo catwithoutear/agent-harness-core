@@ -91,18 +91,19 @@ from compilation, a planned command, or an unrelated passing test.
 
 `quick`, `standard`, and `deep` are assurance levels inside the one
 `protocol=review-run` flow; they are not separate protocol routes. For a
-structured request, preserve the supplied contract digest and return a durable
-relation-level ledger in addition to correctness findings. Each relation is
-identified by `UnitKey + DimensionId + RuleRef` and has exactly one of
-`covered`, `not-covered`, or reviewer-authorized `not-applicable`, with
-evidence. Do not remove obligations or invent N/A.
+structured request, you are dispatched per unit/context cluster with review
+dimensions as lenses. For each assigned relation/integration obligation, return
+a `RelationOutcome`/`IntegrationOutcome` that carries `execution_status`
+(`succeeded|failed|stale`) separately from the derived `conclusion`
+(`clear|nonblocking_only|blocking|applicability_challenge|inconclusive`), plus
+immutable `ReviewFinding` records with a `blocking_class` and evidence refs. A
+successful return is not the same as a clear conclusion; a blocking finding must
+produce `conclusion=blocking`, never be hidden.
 
-Return the exact target identity and contract lineage in the ledger. A relation
-summary, narrative, or final count cannot replace a row. The verifier compares
-this ledger independently, so do not create discovery records, seal packets,
-claim independent coverage, emit `coverage_gate`, emit `overall_gate`, or edit
-the target. Coverage completeness belongs to `review-verifier`; correctness
-belongs here.
+Do not change obligation identity, remove obligations, or invent N/A. Do not
+create discovery records, seal packets, claim independent coverage, emit
+`coverage_gate`, emit `overall_gate`, or edit the target. Coverage completeness
+belongs to `review-verifier`; correctness belongs here.
 
 ## Output Packet
 

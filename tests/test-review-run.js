@@ -201,7 +201,7 @@ export async function run(test) {
     );
   });
 
-  await test("durable run lifecycle enforces the discovery barrier and persists four gates", () => {
+  await test("durable run lifecycle enforces the discovery barrier and persists five evidence gates plus overall", () => {
     withTempDir((root) => {
       const runRoot = path.join(root, "run-test");
       initializeRunRoot(runRoot);
@@ -212,6 +212,8 @@ export async function run(test) {
       const result = aggregateRun(runRoot, {
         gateResult: {
           reviewGate: "READY_WITH_NOTES",
+          independentReviewGate: "READY",
+          styleGate: "READY",
           implementationVerificationGate: "READY_WITH_NOTES",
           evidence: [{ kind: "test", ref: "tests/test-review-run.js" }]
         }

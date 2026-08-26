@@ -37,10 +37,11 @@ Input: `$ARGUMENTS`
    reviewer ledger or findings; it seals discovery and shard closure before
    comparison. The reviewer returns correctness findings plus a relation-level
    ledger, and the coordinator owns final synthesis.
-10. Report `coverage_gate`, `review_gate`, `implementation_verification_gate`,
-    and coordinator-owned `overall_gate` separately. `quick`, `standard`, and
-    `deep` are assurance levels within this one protocol; missing required
-    evidence remains fail-closed `NOT_READY`.
+10. Report `coverage_gate`, `review_gate`, `independent_review_gate`,
+    `style_gate`, and `implementation_verification_gate` separately, plus the
+    coordinator-owned derived `overall_gate`. `quick`, `standard`, and `deep`
+    are assurance levels within this one protocol; missing required evidence
+    remains fail-closed `NOT_READY`.
 
 ## Output
 
@@ -56,10 +57,14 @@ gaps.
 
 ## Review-Run Contract
 
-For `protocol=review-run`, create the managed run root with `init-review-run`,
-persist the immutable dispatch contract, and give the identical contract digest
-to reviewer and verifier. Record every relation as `covered`, `not-covered`, or
-reviewer-authorized `not-applicable` with evidence. Require a durable discovery
-seal and shard closure before compare or aggregate. Persist `gate-result` with
-all four fields, and fail closed when review or implementation verification is
-absent.
+For `protocol=review-run`, create the managed run root with `init-review-run`
+and seal the neutral run binding. Discover the expected and observed universes
+through two mutually-isolated lanes and close the discovery barrier before
+comparison. Resolve coding/behavioral authority and versioned dimensions,
+enumerate the changed-surface hunk/line inventory and context fixed point, and
+derive immutable relation/integration obligations with canonical `{id,digest}`
+identity. Dispatch reviewers by unit/context cluster with exactly-once primary
+ownership, conserve raw output into outcome/finding records, and derive
+`conclusion` separately from `execution_status`. Persist `gate-result` with the
+five evidence gates plus the derived `overall_gate`, and fail closed on any
+missing, stale, conflicting, or uncomparable input.

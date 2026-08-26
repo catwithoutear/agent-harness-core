@@ -46,6 +46,81 @@ if (all || requested.has("--review-target")) {
   await module.run(run);
 }
 
+if (all || requested.has("--review-records")) {
+  const module = await import("./test-review-records.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-subject-input")) {
+  const module = await import("./test-review-subject-input.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-gates")) {
+  const module = await import("./test-review-gates.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-authority")) {
+  const module = await import("./test-review-authority.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-dimensions")) {
+  const module = await import("./test-review-dimensions.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-surface")) {
+  const module = await import("./test-review-surface.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-store")) {
+  const module = await import("./test-review-store.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-retry")) {
+  const module = await import("./test-review-retry.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-context")) {
+  const module = await import("./test-review-context.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-obligations")) {
+  const module = await import("./test-review-obligations.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-dispatch")) {
+  const module = await import("./test-review-dispatch.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-provider")) {
+  const module = await import("./test-review-provider.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-discovery")) {
+  const module = await import("./test-review-discovery.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-output")) {
+  const module = await import("./test-review-output.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--review-integration")) {
+  const module = await import("./test-review-integration.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--review-run")) {
   const module = await import("./test-review-run.js");
   await module.run(run);
