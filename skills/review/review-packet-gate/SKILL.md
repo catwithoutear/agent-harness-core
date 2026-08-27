@@ -170,6 +170,17 @@ Inventory receives no reviewer ledger, findings, prior comparison, or
 conclusion. The reviewer owns correctness findings and the verifier owns
 coverage comparison. Neither role emits `overall_gate` or mutates the target.
 
+For deep review, do not hand-author the Phase-A prompt. Accept the run only
+after the provider has a current runtime conformance receipt and a complete
+capability matrix, then extract the machine-built packet with
+`review-run.mjs phase-a-packet`. Its closed schema binds the exact protocol,
+run id, phase, target fingerprint, provider, target-view capability and
+firewall policy. Unknown fields—including expected relations, dispatch,
+ledger, findings or a prior conclusion—are contamination and fail closed. A
+new run id does not sanitize an execution identity that already saw the
+expected lane; the two lane attestations must prove distinct execution,
+broker-token, read-log and result-channel identities.
+
 ### Relation Ledger
 
 Every expected relation has exactly one explicit status: `covered`,
@@ -182,8 +193,10 @@ unassigned relations remain visible as typed gaps:
 `CONCLUSION_CONFLICT`.
 
 Discovery must be sealed before planning, and the sealed discovery plus shard
-closure must exist before comparison or aggregation. A failed child, unavailable
-source, target mismatch, or unresolved boundary produces `coverage_gate=NOT_READY`.
+closure must exist before dispatch, comparison or aggregation. The runtime
+state machine rejects skipped barriers. A failed child, unavailable source,
+target mismatch, provider gap, expired attempt or unresolved boundary produces
+`coverage_gate=NOT_READY` for deep review.
 
 ### Durable Lifecycle
 
@@ -201,28 +214,40 @@ The protocol store owns child records below
 minimum lifecycle is:
 
 ```text
-created -> discovering -> planning -> running -> aggregating
-        -> completed | cancelled | invalidated
+created -> discovering -> discovery-sealed -> planning -> dispatch-ready
+        -> running -> aggregating -> completed | cancelled | invalidated
 ```
 
-Failed or cancelled attempts remain visible, retries are bounded, and resume
-must reread the fenced current control revision. A completed or cancelled run
-has an aggregate report, including pre-dispatch closure or cancellation
-failures.
+Use the machine transitions `discover`, `begin-planning`, `plan`, and
+`dispatch`; do not combine discovery with shard planning in one unsealed agent
+phase. Every request declares discovery, run, attempt, checkpoint, relation,
+shard and retry budgets. Admit each reviewer before launch, record diagnostic
+checkpoints, and sweep timeouts into typed failed ledgers. Diagnostic
+checkpoints are explicitly ineligible for coverage and independent evidence.
+Failed or cancelled attempts remain visible, retries are bounded, and terminal
+cancelled/invalidated runs require a successor rather than same-run resume. A
+completed or cancelled run has an aggregate report, including pre-dispatch
+closure or cancellation failures.
 
 ### Separate Gates
 
 | Gate | Owner | Meaning |
 |---|---|---|
-| `coverage_gate` | verifier | Scope, rules, dimensions, relations, evidence, and staleness are adequate. |
+| `coverage_gate` | protocol aggregator | Scope, rules, dimensions, relations, evidence, and staleness are adequate; deep coverage is capped when independent discovery is not closed. |
 | `review_gate` | reviewer | Correctness findings permit or block progress. |
+| `independent_review_gate` | review-verifier | Fresh independent discovery and required comparison differences are closed. |
+| `style_gate` | reviewer | Required changed-line style evidence is closed. |
 | `implementation_verification_gate` | verification workflow | Tests, builds, and source/runtime checks pass independently. |
 | `overall_gate` | coordinator | Synthesis of all required decisions. |
 
-Every `gate-result` emits all four fields. The aggregator never invents
-correctness or implementation results. `overall_gate` is fail-closed when any
-required gate is absent or `NOT_READY`; `coverage_gate=READY` can coexist with
-`review_gate=NOT_READY` when complete coverage finds a defect.
+Every `gate-result` emits all five evidence gates plus `overall_gate`. The
+aggregator accepts each non-coverage gate only from its declared owner, with a
+canonical owner receipt and the required evidence kind (`review-ledger`,
+`discovery-barrier`, `style-ledger`, or `verification-report`), and never
+invents correctness or implementation results. A coordinator source
+inspection travels separately as non-gating
+`coordinator_source_assessment`; it cannot populate `review_gate`.
+`overall_gate` is fail-closed when any required gate is absent or `NOT_READY`.
 
 ## Output Packets
 

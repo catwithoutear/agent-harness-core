@@ -184,7 +184,11 @@ export async function run(test) {
       "coverage_gate",
       "review_gate",
       "implementation_verification_gate",
+      "independent_review_gate",
+      "style_gate",
       "overall_gate",
+      "phase-a-packet",
+      "coordinator_source_assessment",
       "review-target-digest.mjs",
       "fail closed"
     ]) {
@@ -198,11 +202,15 @@ export async function run(test) {
     const review = fs.readFileSync(path.join(packageRoot, "commands", "harness", "review.md"), "utf8");
     const command = fs.readFileSync(path.join(packageRoot, "commands", "harness", "workflow.md"), "utf8");
     for (const text of [workflow, review, command]) {
-      for (const required of ["protocol=review-run", "quick", "standard", "deep", "coverage_gate", "review_gate", "implementation_verification_gate", "overall_gate"]) {
+      for (const required of ["protocol=review-run", "quick", "standard", "deep", "coverage_gate", "review_gate", "independent_review_gate", "style_gate", "implementation_verification_gate", "overall_gate"]) {
         assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       }
     }
     assert.match(review, /review-verifier/);
+    for (const text of [workflow, review, command]) {
+      assert.match(text, /Phase A/);
+      assert.match(text, /machine-built|machine transitions|machine barriers|separate machine/);
+    }
     for (const text of [workflow, review, command]) {
       assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PACKET_SEAL/);
     }

@@ -73,13 +73,15 @@ Input: `$ARGUMENTS`
 18. Route structured reviews through the single `protocol=review-run` contract.
     Assurance labels are not route selectors. Validate target identity, the
     immutable dispatch contract, risk facts, and request identity before
-    dispatch. The same rules, scope, dimensions, relation identities, contract
-    digest, and target go to reviewer and verifier. The verifier inventory gets
-    no reviewer ledger or findings; discovery and shard closure are barriers
-    before compare. Target, source, or closure failure is
+    dispatch. The reviewer gets the sealed dispatch contract. Verifier Phase A
+    gets only the machine-built neutral packet; expected rules, relations,
+    dispatch, reviewer ledger, findings and prior conclusions are forbidden
+    until both lanes seal. Discovery, planning and dispatch are separate
+    machine barriers before compare. Target, source, or closure failure is
     `coverage_gate=NOT_READY`.
-19. Carry four independent decisions: `coverage_gate`, `review_gate`,
-    `implementation_verification_gate`, and coordinator-owned `overall_gate`.
+19. Carry five evidence decisions: `coverage_gate`, `review_gate`,
+    `independent_review_gate`, `style_gate`, and
+    `implementation_verification_gate`, plus coordinator-owned `overall_gate`.
     A deep downgrade requires an owner-recorded reason and residual risk.
 20. After every implementation, review, correction, or verification iteration,
     evaluate the overall objective separately from phase and slice gates. If it
@@ -119,12 +121,12 @@ the next convergence iteration unless it requires `NEEDS_USER_DECISION`.
 
 ## Review-Run Routing
 
-For `protocol=review-run`, initialize the managed run root, persist the dispatch
-contract and routing decision, seal verifier discovery before reviewer-ledger
-compare, and retain immutable control revisions and attempts. The reviewer and
-verifier receive the same contract digest but remain isolated. Never infer N/A
-or completeness from a summary; aggregate the relation ledger and persist all
-four gates, with missing implementation evidence yielding
+For `protocol=review-run`, initialize the managed run root, pass provider
+preflight, extract the closed Phase-A packet, and enforce
+`discover -> begin-planning -> plan -> dispatch` as separate transitions before
+reviewer-ledger comparison. Retain immutable control revisions and attempts.
+Never infer N/A or completeness from a summary; aggregate the relation ledger
+and persist all five evidence gates plus overall, with missing implementation evidence yielding
 `implementation_verification_gate=NOT_READY` and `overall_gate=NOT_READY`.
 `quick`, `standard`, and `deep` are assurance levels inside this one protocol;
 they do not select a different route or compatibility parser.

@@ -32,11 +32,13 @@ Input: `$ARGUMENTS`
    contract. Assurance labels are not route selectors. Validate the target,
    immutable dispatch contract, risk facts, and request identity before
    dispatching either reviewer or verifier; malformed input is `NOT_READY`.
-9. Give reviewer and verifier the same rules, scope, dimensions, relation
-   identities, contract digest, and target. The verifier inventory receives no
-   reviewer ledger or findings; it seals discovery and shard closure before
-   comparison. The reviewer returns correctness findings plus a relation-level
-   ledger, and the coordinator owns final synthesis.
+9. Give the reviewer the sealed dispatch contract. Give verifier Phase A only
+   the closed-schema neutral packet emitted by `review-run.mjs phase-a-packet`;
+   it must not contain expected rules, relations, dispatch, reviewer ledger,
+   findings or prior conclusions. Only after both lanes seal and the discovery
+   barrier closes may verifier Phase B receive the expected universe and
+   reviewer results. The reviewer returns correctness findings plus a
+   relation-level ledger, and the coordinator owns final synthesis.
 10. Report `coverage_gate`, `review_gate`, `independent_review_gate`,
     `style_gate`, and `implementation_verification_gate` separately, plus the
     coordinator-owned derived `overall_gate`. `quick`, `standard`, and `deep`
@@ -58,7 +60,10 @@ gaps.
 ## Review-Run Contract
 
 For `protocol=review-run`, create the managed run root with `init-review-run`
-and seal the neutral run binding. Discover the expected and observed universes
+and accept the request only after provider capability/conformance preflight.
+Extract rather than hand-write the Phase-A packet. Seal discovery, enter
+planning, persist the shard plan, and dispatch through separate machine
+transitions. Discover the expected and observed universes
 through two mutually-isolated lanes and close the discovery barrier before
 comparison. Resolve coding/behavioral authority and versioned dimensions,
 enumerate the changed-surface hunk/line inventory and context fixed point, and
@@ -68,3 +73,9 @@ ownership, conserve raw output into outcome/finding records, and derive
 `conclusion` separately from `execution_status`. Persist `gate-result` with the
 five evidence gates plus the derived `overall_gate`, and fail closed on any
 missing, stale, conflicting, or uncomparable input.
+
+Admit every reviewer attempt with explicit run/attempt deadlines and retry
+budget. Persist diagnostic checkpoints as non-gating evidence, sweep expired
+attempts into typed failed ledgers, and never reuse a contaminated execution
+identity under a different run id. Keep coordinator-only source inspection in
+`coordinator_source_assessment`; it cannot populate `review_gate`.

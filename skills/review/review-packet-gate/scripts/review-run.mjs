@@ -71,6 +71,11 @@ import { activateDimensions } from "./review-dimensions.mjs";
 import { enumerateCandidates, decideApplicability, buildExpectedObligations } from "./review-obligations.mjs";
 import { buildAssignmentPackets, validateAssignmentClosure } from "./review-dispatch.mjs";
 import { evaluateCoverageGate } from "./review-gates.mjs";
+import {
+  preflightDeepDispatch,
+  selectProvider,
+  validateVerifierDiscoveryEnvelope
+} from "./review-provider.mjs";
 
 function groupAuthorityByKind(items) {
   const byKind = {};
@@ -129,13 +134,39 @@ export const ATTEMPT_STATUSES = new Set(["succeeded", "failed", "cancelled", "st
 export const STATES = new Set([
   "created",
   "discovering",
+  "discovery-sealed",
   "planning",
+  "dispatch-ready",
   "running",
   "aggregating",
   "completed",
   "cancelled",
   "invalidated"
 ]);
+
+export const ATTEMPT_FAILURE_KINDS = new Set([
+  "ATTEMPT_CANCELLED",
+  "ATTEMPT_TIMEOUT",
+  "INTERRUPT_CHANNEL_STALLED",
+  "PROVIDER_RUNTIME_GAP",
+  "RESULT_CHANNEL_STALLED",
+  "STALE_REVIEW",
+  "TARGET_UNAVAILABLE"
+]);
+
+const GATE_EVIDENCE_OWNERS = Object.freeze({
+  review_gate: "reviewer",
+  independent_review_gate: "review-verifier",
+  style_gate: "reviewer",
+  implementation_verification_gate: "verification-workflow"
+});
+
+const GATE_REQUIRED_EVIDENCE_KINDS = Object.freeze({
+  review_gate: "review-ledger",
+  independent_review_gate: "discovery-barrier",
+  style_gate: "style-ledger",
+  implementation_verification_gate: "verification-report"
+});
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 
@@ -162,6 +193,36 @@ function requireString(value, name, { id = false } = {}) {
 function requireArray(value, name) {
   if (!Array.isArray(value)) fail("INVALID_REVIEW_RECORD", `${name} must be an array`);
   return value;
+}
+
+function requirePositiveInteger(value, name) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    fail("INVALID_REVIEW_REQUEST", `${name} must be a positive integer`);
+  }
+  return value;
+}
+
+export function validateExecutionPolicy(policy) {
+  const value = requireObject(policy, "request.execution_policy");
+  const allowed = new Set([
+    "max_attempts_per_shard",
+    "attempt_timeout_ms",
+    "run_timeout_ms",
+    "discovery_timeout_ms",
+    "max_discovery_relations",
+    "max_shards",
+    "checkpoint_interval_ms"
+  ]);
+  const unknown = Object.keys(value).filter((key) => !allowed.has(key));
+  if (unknown.length > 0) fail("INVALID_REVIEW_REQUEST", `execution_policy contains unknown fields: ${unknown.join(", ")}`);
+  const normalized = Object.fromEntries([...allowed].map((key) => [key, requirePositiveInteger(value[key], `request.execution_policy.${key}`)]));
+  if (normalized.attempt_timeout_ms > normalized.run_timeout_ms || normalized.discovery_timeout_ms > normalized.run_timeout_ms) {
+    fail("INVALID_REVIEW_REQUEST", "attempt/discovery timeout must not exceed run timeout");
+  }
+  if (normalized.checkpoint_interval_ms >= normalized.attempt_timeout_ms) {
+    fail("INVALID_REVIEW_REQUEST", "checkpoint interval must be shorter than attempt timeout");
+  }
+  return normalized;
 }
 
 function uniqueIds(values, name) {
@@ -265,7 +326,13 @@ export function validateRequest(request) {
     requireObject(value.risk_facts, "request.risk_facts");
   }
   const contract = validateDispatchContract(value.dispatch_contract);
-  const copy = finalizeRecord({ ...value, run_id: value.run_id ?? value.request_id, dispatch_contract: contract }, `request:${value.request_id}`);
+  const executionPolicy = validateExecutionPolicy(value.execution_policy);
+  const copy = finalizeRecord({
+    ...value,
+    run_id: value.run_id ?? value.request_id,
+    dispatch_contract: contract,
+    execution_policy: executionPolicy
+  }, `request:${value.request_id}`);
   return copy;
 }
 
@@ -306,7 +373,39 @@ function relationMap(relations) {
   return new Map(relations.map((relation) => [relation.relation_id, relation]));
 }
 
-export function validateDiscovery(discovery, contract) {
+export function validateDispatchPreflight(preflight, request, routing) {
+  const value = requireObject(preflight, "dispatch-preflight");
+  if (value.record_type !== "dispatch-preflight" || value.passed !== true) {
+    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight must be a passed dispatch-preflight record");
+  }
+  if (value.run_id !== request.run_id || value.selected_mode !== routing.selected_mode) {
+    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight does not match the accepted run");
+  }
+  if (value.request_ref?.id !== request.record_id || value.request_ref?.digest !== request.record_digest) {
+    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight request binding is stale");
+  }
+  const provider = requireObject(value.provider_binding, "dispatch-preflight.provider_binding");
+  if (provider.record_type !== "provider-binding" || !verifyRecordDigest(provider)) {
+    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight provider binding is invalid");
+  }
+  const revalidatedProvider = selectProvider(provider);
+  if (revalidatedProvider.record_digest !== provider.record_digest) {
+    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight provider binding is not canonical");
+  }
+  if (value.routing_ref?.id !== routing.record_id || value.routing_ref?.digest !== routing.record_digest) {
+    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight routing binding is stale");
+  }
+  const providerRef = { id: provider.record_id, digest: provider.record_digest };
+  validateVerifierDiscoveryEnvelope(value.verifier_discovery_envelope, {
+    run_id: request.run_id,
+    target_fingerprint: request.target.fingerprint,
+    provider_binding_ref: providerRef
+  });
+  verifyInputDigest(value, "dispatch preflight");
+  return value;
+}
+
+export function validateDiscovery(discovery, contract, executionPolicy = null) {
   const value = requireObject(discovery, "discovery");
   if (value.record_type !== "discovery") fail("INVALID_DISCOVERY", "record_type must be discovery");
   const normalizedContract = validateDispatchContract(contract);
@@ -314,6 +413,12 @@ export function validateDiscovery(discovery, contract) {
   if (value.discovery_sealed !== true) fail("DISCOVERY_CLOSURE_FAILED", "discovery must be explicitly sealed");
   verifyInputDigest(value, "discovery");
   const relations = requireArray(value.relations, "discovery.relations");
+  if (executionPolicy && relations.length > executionPolicy.max_discovery_relations) {
+    fail("BOUNDARY_TOO_LARGE", "discovery relation budget exceeded", {
+      observed: relations.length,
+      maximum: executionPolicy.max_discovery_relations
+    });
+  }
   const expected = relationMap(normalizedContract.relations);
   const ruleSources = new Map(normalizedContract.rules.map((rule) => [rule.rule_id, rule.source_ref]));
   const dimensionIds = new Set(normalizedContract.dimensions.map((dimension) => dimension.dimension_id));
@@ -396,9 +501,23 @@ export function validateLedger(ledger, discovery, shardPlan = null) {
   if (value.discovery_digest !== discovery.record_digest) fail("DISCOVERY_CLOSURE_FAILED", "ledger discovery digest mismatch");
   verifyInputDigest(value, "ledger");
   requireString(value.attempt_id, "ledger.attempt_id", { id: true });
+  requireString(value.input_digest, "ledger.input_digest");
   const attemptStatus = value.attempt_status ?? "succeeded";
   if (!ATTEMPT_STATUSES.has(attemptStatus)) fail("INVALID_LEDGER", `unsupported attempt status ${attemptStatus}`);
   const entries = requireArray(value.entries, "ledger.entries");
+  if (attemptStatus !== "succeeded") {
+    const failure = requireObject(value.failure, "ledger.failure");
+    if (!ATTEMPT_FAILURE_KINDS.has(failure.kind)) fail("INVALID_LEDGER", `unsupported failure kind ${failure.kind}`);
+    requireString(failure.phase, "ledger.failure.phase", { id: true });
+    requireString(failure.message, "ledger.failure.message");
+    if (failure.diagnostic_checkpoint !== undefined && failure.diagnostic_checkpoint !== null) {
+      const checkpoint = requireObject(failure.diagnostic_checkpoint, "ledger.failure.diagnostic_checkpoint");
+      if (checkpoint.coverage_eligible !== false || checkpoint.independent_evidence !== false) {
+        fail("INVALID_LEDGER", "diagnostic checkpoint must be explicitly ineligible for coverage and independent evidence");
+      }
+    }
+    if (entries.length > 0) fail("INVALID_LEDGER", "non-success ledger entries must be empty diagnostic evidence");
+  }
   const expected = relationMap(discovery.relations);
   const shardAssigned = shardPlan ? new Set() : null;
   if (shardPlan) {
@@ -467,7 +586,12 @@ export function aggregateCoverage(discovery, ledgers, control = {}) {
   const entriesByRelation = new Map();
   const invalid = normalizedLedgers
     .filter((ledger) => ledger.attempt_status !== "succeeded")
-    .map((ledger) => ({ attempt_id: ledger.attempt_id, shard_id: ledger.shard_id ?? null, status: ledger.attempt_status }));
+    .map((ledger) => ({
+      attempt_id: ledger.attempt_id,
+      shard_id: ledger.shard_id ?? null,
+      status: ledger.attempt_status,
+      failure_kind: ledger.failure?.kind ?? null
+    }));
   for (const ledger of acceptedLedgers) {
     for (const entry of ledger.entries) {
       const list = entriesByRelation.get(entry.relation_id) ?? [];
@@ -495,6 +619,8 @@ export function aggregateCoverage(discovery, ledgers, control = {}) {
     control_digest: control.record_digest ?? null,
     expected_relation_count: expected.size,
     observed_relation_count: entriesByRelation.size,
+    successful_attempt_count: acceptedLedgers.length,
+    successful_attempt_refs: acceptedLedgers.map((ledger) => ({ id: ledger.record_id, digest: ledger.record_digest })),
     exact_gaps: gaps,
     invalid_attempts: invalid,
     failed_or_stale: uniqueFailureRecords([...(control.failed_or_stale ?? []), ...invalid]),
@@ -505,31 +631,150 @@ export function aggregateCoverage(discovery, ledgers, control = {}) {
   return finalizeRecord(report, `aggregate:${discovery.run_id}`);
 }
 
-export function composeGateResult({ aggregate, reviewGate = "NOT_READY", independentReviewGate = "NOT_READY", styleGate = "NOT_READY", implementationVerificationGate = "NOT_READY", evidence = [], residualRisk = [] }) {
-  if (!aggregate || aggregate.record_type !== "aggregate-report") fail("INVALID_GATE_RESULT", "aggregate report is required");
-  for (const [name, gate] of [
-    ["coverage_gate", aggregate.coverage_gate],
-    ["review_gate", reviewGate],
-    ["independent_review_gate", independentReviewGate],
-    ["style_gate", styleGate],
-    ["implementation_verification_gate", implementationVerificationGate]
-  ]) {
-    if (!GATES.has(gate)) fail("INVALID_GATE_RESULT", `${name} has invalid value ${gate}`);
+function resolveGateEvidence(gateEvidence, gateName) {
+  const expectedOwner = GATE_EVIDENCE_OWNERS[gateName];
+  const matches = gateEvidence.filter((item) => item?.gate_name === gateName);
+  if (matches.length !== 1) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      status: "NOT_READY",
+      evidence: [],
+      blocking_reasons: [matches.length === 0 ? "GATE_EVIDENCE_MISSING" : "GATE_EVIDENCE_DUPLICATE"]
+    };
   }
-  const gates = [aggregate.coverage_gate, reviewGate, independentReviewGate, styleGate, implementationVerificationGate];
+  const item = requireObject(matches[0], `gate evidence ${gateName}`);
+  if (item.owner !== expectedOwner) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      status: "NOT_READY",
+      evidence: [],
+      blocking_reasons: [`GATE_OWNER_MISMATCH:${item.owner ?? "missing"}`]
+    };
+  }
+  if (!isCanonicalRef(item.owner_receipt_ref)) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      status: "NOT_READY",
+      evidence: [],
+      blocking_reasons: ["GATE_OWNER_RECEIPT_MISSING"]
+    };
+  }
+  if (!GATES.has(item.status)) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      status: "NOT_READY",
+      evidence: [],
+      blocking_reasons: [`INVALID_GATE_STATUS:${item.status ?? "missing"}`]
+    };
+  }
+  let evidence;
+  try {
+    evidence = evidenceList(item.evidence, `gate evidence ${gateName}.evidence`);
+  } catch (error) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      status: "NOT_READY",
+      evidence: [],
+      blocking_reasons: [error.code ?? "EVIDENCE_INVALID"]
+    };
+  }
+  const requiredKind = GATE_REQUIRED_EVIDENCE_KINDS[gateName];
+  if (!evidence.some((item) => item.kind === requiredKind)) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      owner_receipt_ref: item.owner_receipt_ref,
+      status: "NOT_READY",
+      evidence,
+      blocking_reasons: [`GATE_EVIDENCE_KIND_MISSING:${requiredKind}`]
+    };
+  }
+  if (item.status === "READY_WITH_NOTES" && (!Array.isArray(item.notes) || item.notes.length === 0)) {
+    return {
+      gate_name: gateName,
+      owner: expectedOwner,
+      status: "NOT_READY",
+      evidence,
+      blocking_reasons: ["READY_WITH_NOTES_REQUIRES_NOTES"]
+    };
+  }
+  return {
+    gate_name: gateName,
+    owner: expectedOwner,
+    owner_receipt_ref: item.owner_receipt_ref,
+    status: item.status,
+    evidence,
+    notes: item.notes ?? [],
+    blocking_reasons: item.blocking_reasons ?? []
+  };
+}
+
+function normalizeCoordinatorSourceAssessment(assessment) {
+  if (assessment === undefined || assessment === null) return null;
+  const value = requireObject(assessment, "coordinator_source_assessment");
+  if (value.owner !== "coordinator") fail("GATE_OWNER_MISMATCH", "coordinator source assessment owner must be coordinator");
+  if (!GATES.has(value.status)) fail("INVALID_GATE_RESULT", `coordinator source assessment has invalid status ${value.status}`);
+  return {
+    owner: "coordinator",
+    status: value.status,
+    evidence: evidenceList(value.evidence, "coordinator_source_assessment.evidence"),
+    notes: value.notes ?? [],
+    gating: false
+  };
+}
+
+export function composeGateResult({
+  aggregate,
+  selectedMode = "standard",
+  gateEvidence = [],
+  coordinatorSourceAssessment = null,
+  residualRisk = []
+}) {
+  if (!aggregate || aggregate.record_type !== "aggregate-report") fail("INVALID_GATE_RESULT", "aggregate report is required");
+  if (!GATES.has(aggregate.coverage_gate)) fail("INVALID_GATE_RESULT", `coverage_gate has invalid value ${aggregate.coverage_gate}`);
+  if (!Array.isArray(gateEvidence)) fail("INVALID_GATE_RESULT", "gateEvidence must be an array");
+  const resolved = Object.fromEntries(Object.keys(GATE_EVIDENCE_OWNERS).map((name) => [name, resolveGateEvidence(gateEvidence, name)]));
+  if ((aggregate.successful_attempt_count ?? 0) === 0 && ["READY", "READY_WITH_NOTES"].includes(resolved.review_gate.status)) {
+    resolved.review_gate = {
+      ...resolved.review_gate,
+      status: "NOT_READY",
+      blocking_reasons: ["REVIEW_LEDGER_MISSING"]
+    };
+  }
+  const independentClosed = ["READY", "READY_WITH_NOTES"].includes(resolved.independent_review_gate.status);
+  const coverageGate = selectedMode === "deep" && !independentClosed ? "NOT_READY" : aggregate.coverage_gate;
+  const gates = [
+    coverageGate,
+    resolved.review_gate.status,
+    resolved.independent_review_gate.status,
+    resolved.style_gate.status,
+    resolved.implementation_verification_gate.status
+  ];
   const overallGate = gates.includes("NOT_READY") ? "NOT_READY" : gates.includes("NEEDS_USER_DECISION") ? "NEEDS_USER_DECISION" : gates.includes("READY_WITH_NOTES") ? "READY_WITH_NOTES" : "READY";
+  const coordinatorAssessment = normalizeCoordinatorSourceAssessment(coordinatorSourceAssessment);
   const result = {
     record_type: "gate-result",
     protocol: PROTOCOL,
     run_id: aggregate.run_id,
     aggregate_digest: aggregate.record_digest,
-    coverage_gate: aggregate.coverage_gate,
-    review_gate: reviewGate,
-    independent_review_gate: independentReviewGate,
-    style_gate: styleGate,
-    implementation_verification_gate: implementationVerificationGate,
+    coverage_gate: coverageGate,
+    coordinator_coverage_assessment: aggregate.coverage_gate,
+    review_gate: resolved.review_gate.status,
+    independent_review_gate: resolved.independent_review_gate.status,
+    style_gate: resolved.style_gate.status,
+    implementation_verification_gate: resolved.implementation_verification_gate.status,
     overall_gate: overallGate,
-    evidence,
+    gate_evidence: Object.values(resolved),
+    coordinator_source_assessment: coordinatorAssessment,
+    gate_failures: [
+      ...(selectedMode === "deep" && !independentClosed ? ["INDEPENDENT_DISCOVERY_NOT_CLOSED"] : []),
+      ...Object.values(resolved).flatMap((item) => item.blocking_reasons ?? [])
+    ],
     residual_risk: residualRisk,
     owner: "coordinator"
   };
@@ -558,6 +803,7 @@ function recordPath(runRoot, recordType) {
   const names = {
     request: "request.json",
     "routing-decision": "routing-decision.json",
+    "dispatch-preflight": "dispatch-preflight.json",
     discovery: "discovery.json",
     "shard-plan": "shard-plan.json",
     "aggregate-report": "aggregate-report.json",
@@ -593,6 +839,10 @@ function writeControl(runRoot, current, expectedEpoch = null) {
       required_slots: current.required_slots ?? [],
       accepted_attempt_digests: current.accepted_attempt_digests ?? [],
       failed_or_stale: current.failed_or_stale ?? [],
+      active_attempts: current.active_attempts ?? [],
+      run_started_at: current.run_started_at ?? null,
+      run_deadline_at: current.run_deadline_at ?? null,
+      preflight_digest: current.preflight_digest ?? null,
       terminal_reason: current.terminal_reason ?? null
     };
     const withDigest = finalizeRecord(revision, `control:${current.run_id}:${epoch}`);
@@ -631,86 +881,295 @@ function writeSingleton(runRoot, record) {
   return record;
 }
 
-export function acceptRun(runRoot, request) {
+export function acceptRun(runRoot, request, { now = Date.now } = {}) {
   const root = ensureRunRoot(runRoot);
   const normalized = validateRequest(request);
   const runId = path.basename(root);
   if (normalized.run_id !== runId) fail("REQUEST_ID_CONFLICT", "request run_id does not match run root");
   const existingRequest = fs.existsSync(recordPath(root, "request")) ? readRecord(recordPath(root, "request")) : null;
   if (existingRequest && existingRequest.record_digest !== normalized.record_digest) fail("REQUEST_ID_CONFLICT", "run already accepted a different request");
-  writeSingleton(root, normalized);
   const routing = routeRequest(normalized);
+  const preflight = preflightDeepDispatch({ request: normalized, routing });
+  const acceptedAt = now();
+  if (!Number.isFinite(acceptedAt)) fail("INVALID_REVIEW_RECORD", "clock returned an invalid timestamp");
+  writeSingleton(root, normalized);
   writeSingleton(root, routing);
+  if (preflight) writeSingleton(root, preflight);
   const control = readControl(root);
-  if (control.state === "created") writeControl(root, { ...control, state: "discovering" }, control.epoch);
-  return { request: normalized, routing, control: readControl(root) };
+  if (control.state === "created") {
+    writeControl(root, {
+      ...control,
+      state: "discovering",
+      run_started_at: acceptedAt,
+      run_deadline_at: acceptedAt + normalized.execution_policy.run_timeout_ms,
+      preflight_digest: preflight?.record_digest ?? null
+    }, control.epoch);
+  }
+  return { request: normalized, routing, preflight, control: readControl(root) };
 }
 
-export function persistDiscovery(runRoot, discovery) {
+export function verifierPhaseAPacket(runRoot) {
+  const root = ensureRunRoot(runRoot);
+  const routing = readRecord(recordPath(root, "routing-decision"));
+  if (routing.selected_mode !== "deep") fail("INVALID_STATE_TRANSITION", "Phase A packet is required only for deep review");
+  const preflight = readRecord(recordPath(root, "dispatch-preflight"));
+  const request = validateRequest(readRecord(recordPath(root, "request")));
+  return validateDispatchPreflight(preflight, request, routing).verifier_discovery_envelope;
+}
+
+export function persistDiscovery(runRoot, discovery, { now = Date.now } = {}) {
   const root = ensureRunRoot(runRoot);
   const request = validateRequest(readRecord(recordPath(root, "request")));
-  const normalized = validateDiscovery({ ...discovery, run_id: discovery.run_id ?? request.run_id }, request.dispatch_contract);
-  writeSingleton(root, normalized);
   const control = readControl(root);
-  if (!["discovering", "planning"].includes(control.state)) fail("INVALID_STATE_TRANSITION", `cannot persist discovery in ${control.state}`);
-  writeControl(root, { ...control, state: "planning" }, control.epoch);
+  if (control.state !== "discovering") fail("INVALID_STATE_TRANSITION", `cannot seal discovery in ${control.state}`);
+  if (now() > control.run_started_at + request.execution_policy.discovery_timeout_ms) {
+    fail("DISCOVERY_TIMEOUT", "discovery exceeded its declared time budget");
+  }
+  const routing = readRecord(recordPath(root, "routing-decision"));
+  if (routing.selected_mode === "deep") {
+    const preflight = readRecord(recordPath(root, "dispatch-preflight"));
+    validateDispatchPreflight(preflight, request, routing);
+  }
+  const normalized = validateDiscovery(
+    { ...discovery, run_id: discovery.run_id ?? request.run_id },
+    request.dispatch_contract,
+    request.execution_policy
+  );
+  writeSingleton(root, normalized);
+  writeControl(root, { ...control, state: "discovery-sealed" }, control.epoch);
   return normalized;
+}
+
+export function beginShardPlanning(runRoot) {
+  const root = ensureRunRoot(runRoot);
+  const control = readControl(root);
+  if (control.state !== "discovery-sealed") {
+    fail("INVALID_STATE_TRANSITION", `cannot begin shard planning in ${control.state}`);
+  }
+  return writeControl(root, { ...control, state: "planning" }, control.epoch);
 }
 
 export function persistShardPlan(runRoot, plan) {
   const root = ensureRunRoot(runRoot);
-  const discovery = readRecord(recordPath(root, "discovery"));
-  const normalized = validateShardPlan(plan, discovery);
-  writeSingleton(root, normalized);
   const control = readControl(root);
   if (control.state !== "planning") fail("INVALID_STATE_TRANSITION", `cannot persist shard plan in ${control.state}`);
-  writeControl(root, { ...control, state: "running", required_slots: normalized.shards.map((shard) => shard.shard_id) }, control.epoch);
+  const discovery = readRecord(recordPath(root, "discovery"));
+  const normalized = validateShardPlan(plan, discovery);
+  const request = validateRequest(readRecord(recordPath(root, "request")));
+  if (normalized.shards.length > request.execution_policy.max_shards) {
+    fail("BOUNDARY_TOO_LARGE", "shard plan exceeds max_shards", {
+      observed: normalized.shards.length,
+      maximum: request.execution_policy.max_shards
+    });
+  }
+  writeSingleton(root, normalized);
+  writeControl(root, { ...control, state: "dispatch-ready", required_slots: normalized.shards.map((shard) => shard.shard_id) }, control.epoch);
   return normalized;
 }
 
-export function appendLedgerAttempt(runRoot, ledger) {
+export function dispatchRun(runRoot) {
   const root = ensureRunRoot(runRoot);
-  const discovery = readRecord(recordPath(root, "discovery"));
-  const plan = fs.existsSync(recordPath(root, "shard-plan")) ? readRecord(recordPath(root, "shard-plan")) : null;
-  const normalized = validateLedger(ledger, discovery, plan);
-  const attemptPath = path.join(root, "attempts", `${normalized.attempt_id}.json`);
-  if (fs.existsSync(attemptPath)) {
-    const existing = readRecord(attemptPath);
-    if (existing.record_digest !== normalized.record_digest) fail("REQUEST_ID_CONFLICT", `attempt ${normalized.attempt_id} already exists`);
+  const control = readControl(root);
+  if (control.state !== "dispatch-ready") fail("INVALID_STATE_TRANSITION", `cannot dispatch reviewers in ${control.state}`);
+  readRecord(recordPath(root, "shard-plan"));
+  return writeControl(root, { ...control, state: "running" }, control.epoch);
+}
+
+function attemptFile(root, attemptId) {
+  return path.join(root, "attempts", `${attemptId}.json`);
+}
+
+function activeAttempt(control, attemptId) {
+  return (control.active_attempts ?? []).find((attempt) => attempt.attempt_id === attemptId) ?? null;
+}
+
+function terminalAttempts(root, shardId) {
+  return fs
+    .readdirSync(path.join(root, "attempts"))
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => readRecord(path.join(root, "attempts", name)))
+    .filter((attempt) => attempt.shard_id === shardId);
+}
+
+export function admitAttempt(runRoot, attempt, { now = Date.now } = {}) {
+  const root = ensureRunRoot(runRoot);
+  const control = readControl(root);
+  if (control.state !== "running") fail("INVALID_STATE_TRANSITION", `cannot admit attempt in ${control.state}`);
+  const value = requireObject(attempt, "attempt admission");
+  const attemptId = requireString(value.attempt_id, "attempt.attempt_id", { id: true });
+  const shardId = requireString(value.shard_id, "attempt.shard_id", { id: true });
+  const inputDigest = requireString(value.input_digest, "attempt.input_digest");
+  const phase = requireString(value.phase ?? "correctness-review", "attempt.phase", { id: true });
+  const plan = readRecord(recordPath(root, "shard-plan"));
+  if (!(plan.shards ?? []).some((shard) => shard.shard_id === shardId)) fail("INVALID_LEDGER", `attempt references unknown shard ${shardId}`);
+  if (fs.existsSync(attemptFile(root, attemptId))) fail("REQUEST_ID_CONFLICT", `attempt ${attemptId} is already terminal`);
+  const existing = activeAttempt(control, attemptId);
+  if (existing) {
+    if (existing.input_digest !== inputDigest || existing.shard_id !== shardId) {
+      fail("REQUEST_ID_CONFLICT", `attempt ${attemptId} was admitted with different inputs`);
+    }
     return existing;
   }
-  if (plan) {
-    const shard = (plan.shards ?? []).find((candidate) => candidate.shard_id === normalized.shard_id);
-    const retryBudget = shard?.retry_budget ?? plan.retry_budget ?? 2;
-    const priorAttempts = fs
-      .readdirSync(path.join(root, "attempts"))
-      .filter((name) => name.endsWith(".json"))
-      .map((name) => readRecord(path.join(root, "attempts", name)))
-      .filter((attempt) => attempt.shard_id === normalized.shard_id);
-    if (priorAttempts.length >= retryBudget + 1) fail("RETRY_EXHAUSTED", `retry budget exhausted for shard ${normalized.shard_id}`, { retry_budget: retryBudget });
+  const request = validateRequest(readRecord(recordPath(root, "request")));
+  const priorCount = terminalAttempts(root, shardId).length + (control.active_attempts ?? []).filter((item) => item.shard_id === shardId).length;
+  if (priorCount >= request.execution_policy.max_attempts_per_shard) {
+    fail("RETRY_EXHAUSTED", `attempt budget exhausted for shard ${shardId}`);
   }
-  atomicWrite(attemptPath, normalized);
+  const admittedAt = now();
+  if (admittedAt >= control.run_deadline_at) fail("RUN_DEADLINE_EXCEEDED", "review run deadline has expired");
+  const admitted = {
+    attempt_id: attemptId,
+    shard_id: shardId,
+    input_digest: inputDigest,
+    phase,
+    admitted_at: admittedAt,
+    deadline_at: Math.min(admittedAt + request.execution_policy.attempt_timeout_ms, control.run_deadline_at),
+    checkpoint: null
+  };
+  writeControl(root, { ...control, active_attempts: [...(control.active_attempts ?? []), admitted] }, control.epoch);
+  return admitted;
+}
+
+export function checkpointAttempt(runRoot, checkpoint, { now = Date.now } = {}) {
+  const root = ensureRunRoot(runRoot);
   const control = readControl(root);
+  if (control.state !== "running") fail("INVALID_STATE_TRANSITION", `cannot checkpoint attempt in ${control.state}`);
+  const value = requireObject(checkpoint, "attempt checkpoint");
+  const attemptId = requireString(value.attempt_id, "checkpoint.attempt_id", { id: true });
+  const active = activeAttempt(control, attemptId);
+  if (!active) fail("ATTEMPT_TIMEOUT", `attempt ${attemptId} is not active`);
+  const recordedAt = now();
+  if (recordedAt >= active.deadline_at) fail("ATTEMPT_TIMEOUT", `attempt ${attemptId} exceeded its deadline`);
+  const evidence = value.evidence === undefined ? [] : evidenceList(value.evidence, "checkpoint.evidence");
+  const diagnostic = {
+    checkpoint_id: requireString(value.checkpoint_id, "checkpoint.checkpoint_id", { id: true }),
+    phase: requireString(value.phase, "checkpoint.phase", { id: true }),
+    summary: requireString(value.summary, "checkpoint.summary"),
+    evidence,
+    recorded_at: recordedAt,
+    coverage_eligible: false,
+    independent_evidence: false
+  };
+  const updated = (control.active_attempts ?? []).map((item) => item.attempt_id === attemptId ? { ...item, checkpoint: diagnostic } : item);
+  writeControl(root, { ...control, active_attempts: updated }, control.epoch);
+  return diagnostic;
+}
+
+function persistFinalAttempt(root, normalized, control) {
+  atomicWrite(attemptFile(root, normalized.attempt_id), normalized);
+  const remaining = (control.active_attempts ?? []).filter((attempt) => attempt.attempt_id !== normalized.attempt_id);
   writeControl(root, {
     ...control,
     state: "running",
+    active_attempts: remaining,
     accepted_attempt_digests: normalized.attempt_status === "succeeded"
       ? [...(control.accepted_attempt_digests ?? []), normalized.record_digest]
       : control.accepted_attempt_digests ?? [],
     failed_or_stale: normalized.attempt_status === "succeeded"
       ? control.failed_or_stale ?? []
-      : [...(control.failed_or_stale ?? []), { attempt_id: normalized.attempt_id, shard_id: normalized.shard_id ?? null, status: normalized.attempt_status }]
+      : [...(control.failed_or_stale ?? []), {
+          attempt_id: normalized.attempt_id,
+          shard_id: normalized.shard_id ?? null,
+          status: normalized.attempt_status,
+          failure_kind: normalized.failure?.kind ?? null
+        }]
   }, control.epoch);
   return normalized;
 }
 
+export function appendLedgerAttempt(runRoot, ledger, { now = Date.now, allowExpired = false } = {}) {
+  const root = ensureRunRoot(runRoot);
+  const discovery = readRecord(recordPath(root, "discovery"));
+  const plan = fs.existsSync(recordPath(root, "shard-plan")) ? readRecord(recordPath(root, "shard-plan")) : null;
+  const normalized = validateLedger(ledger, discovery, plan);
+  const attemptPath = attemptFile(root, normalized.attempt_id);
+  if (fs.existsSync(attemptPath)) {
+    const existing = readRecord(attemptPath);
+    if (existing.record_digest !== normalized.record_digest) fail("LATE_RESULT_REJECTED", `attempt ${normalized.attempt_id} already has a terminal result`);
+    const control = readControl(root);
+    if (activeAttempt(control, normalized.attempt_id)) return persistFinalAttempt(root, existing, control);
+    return existing;
+  }
+  const control = readControl(root);
+  if (control.state !== "running") fail("INVALID_STATE_TRANSITION", `cannot complete attempt in ${control.state}`);
+  const active = activeAttempt(control, normalized.attempt_id);
+  if (!active) fail("ATTEMPT_NOT_ADMITTED", `attempt ${normalized.attempt_id} was not admitted`);
+  if (active.shard_id !== normalized.shard_id || active.input_digest !== normalized.input_digest) {
+    fail("INVALID_LEDGER", `attempt ${normalized.attempt_id} does not match its admission`);
+  }
+  if (!allowExpired && now() >= active.deadline_at) {
+    fail("LATE_RESULT_REJECTED", `attempt ${normalized.attempt_id} completed after its deadline`);
+  }
+  return persistFinalAttempt(root, normalized, control);
+}
+
+export function failAttempt(runRoot, failure, { now = Date.now, allowExpired = false } = {}) {
+  const root = ensureRunRoot(runRoot);
+  const control = readControl(root);
+  const value = requireObject(failure, "attempt failure");
+  const attemptId = requireString(value.attempt_id, "failure.attempt_id", { id: true });
+  const active = activeAttempt(control, attemptId);
+  if (!active) fail("ATTEMPT_NOT_ADMITTED", `attempt ${attemptId} was not admitted`);
+  if (!ATTEMPT_FAILURE_KINDS.has(value.kind)) fail("INVALID_LEDGER", `unsupported failure kind ${value.kind}`);
+  const request = validateRequest(readRecord(recordPath(root, "request")));
+  const discovery = readRecord(recordPath(root, "discovery"));
+  const ledger = {
+    record_type: "review-ledger",
+    protocol: PROTOCOL,
+    run_id: request.run_id,
+    attempt_id: attemptId,
+    shard_id: active.shard_id,
+    input_digest: active.input_digest,
+    contract_digest: request.dispatch_contract.contract_digest,
+    discovery_digest: discovery.record_digest,
+    attempt_status: value.kind === "ATTEMPT_CANCELLED" ? "cancelled" : "failed",
+    entries: [],
+    failure: {
+      kind: value.kind,
+      phase: value.phase ?? active.phase,
+      message: value.message,
+      recorded_at: now(),
+      diagnostic_checkpoint: active.checkpoint
+    }
+  };
+  return appendLedgerAttempt(root, ledger, { now, allowExpired });
+}
+
+export function expireAttempt(runRoot, attemptId, { now = Date.now } = {}) {
+  const root = ensureRunRoot(runRoot);
+  const control = readControl(root);
+  const active = activeAttempt(control, attemptId);
+  if (!active) fail("ATTEMPT_NOT_ADMITTED", `attempt ${attemptId} was not admitted`);
+  if (now() < active.deadline_at) fail("ATTEMPT_NOT_EXPIRED", `attempt ${attemptId} has not reached its deadline`);
+  return failAttempt(root, {
+    attempt_id: attemptId,
+    kind: "ATTEMPT_TIMEOUT",
+    phase: active.phase,
+    message: `attempt exceeded deadline ${active.deadline_at}`
+  }, { now, allowExpired: true });
+}
+
+export function sweepExpiredAttempts(runRoot, { now = Date.now } = {}) {
+  const root = ensureRunRoot(runRoot);
+  const control = readControl(root);
+  const observedAt = now();
+  const expired = (control.active_attempts ?? []).filter((attempt) => observedAt >= attempt.deadline_at);
+  return expired.map((attempt) => expireAttempt(root, attempt.attempt_id, { now: () => observedAt }));
+}
+
 export function aggregateRun(runRoot, options = {}) {
   const root = ensureRunRoot(runRoot);
+  sweepExpiredAttempts(root, { now: options.now ?? Date.now });
   const discovery = readRecord(recordPath(root, "discovery"));
   const attemptFiles = fs.readdirSync(path.join(root, "attempts")).filter((name) => name.endsWith(".json")).sort();
   const ledgers = attemptFiles.map((name) => readRecord(path.join(root, "attempts", name)));
   const control = readControl(root);
   if (control.state !== "running" && control.state !== "aggregating") fail("INVALID_STATE_TRANSITION", `cannot aggregate in ${control.state}`);
+  if ((control.active_attempts ?? []).length > 0) {
+    fail("ATTEMPT_STILL_RUNNING", "cannot aggregate while attempts remain active", {
+      attempt_ids: control.active_attempts.map((attempt) => attempt.attempt_id)
+    });
+  }
   const plan = fs.existsSync(recordPath(root, "shard-plan")) ? readRecord(recordPath(root, "shard-plan")) : null;
   if (!plan) fail("DISCOVERY_CLOSURE_FAILED", "cannot aggregate before shard plan is persisted");
   let report = aggregateCoverage(discovery, ledgers, control);
@@ -723,9 +1182,13 @@ export function aggregateRun(runRoot, options = {}) {
   }
   writeControl(root, { ...control, state: "aggregating" }, control.epoch);
   const storedReport = writeSingleton(root, report);
+  const routing = readRecord(recordPath(root, "routing-decision"));
   const gateResult = composeGateResult({
     aggregate: storedReport,
-    ...(options.gateResult ?? {})
+    selectedMode: routing.selected_mode,
+    gateEvidence: options.gateEvidence ?? [],
+    coordinatorSourceAssessment: options.coordinatorSourceAssessment ?? null,
+    residualRisk: options.residualRisk ?? []
   });
   writeSingleton(root, gateResult);
   const terminal = "completed";
@@ -750,6 +1213,8 @@ function persistTerminalFailure(root, control, reason) {
     control_digest: control.record_digest ?? null,
     expected_relation_count: discovery?.relations?.length ?? 0,
     observed_relation_count: 0,
+    successful_attempt_count: 0,
+    successful_attempt_refs: [],
     exact_gaps: [gap],
     invalid_attempts: [],
     failed_or_stale: control.failed_or_stale ?? [],
@@ -765,8 +1230,17 @@ function persistTerminalFailure(root, control, reason) {
 
 export function cancelRun(runRoot, reason = "RUN_CANCELLED") {
   const root = ensureRunRoot(runRoot);
-  const control = readControl(root);
+  let control = readControl(root);
   if (["completed", "cancelled"].includes(control.state)) return { control, aggregate: fs.existsSync(recordPath(root, "aggregate-report")) ? readRecord(recordPath(root, "aggregate-report")) : null };
+  for (const attempt of [...(control.active_attempts ?? [])]) {
+    failAttempt(root, {
+      attempt_id: attempt.attempt_id,
+      kind: "ATTEMPT_CANCELLED",
+      phase: attempt.phase,
+      message: reason
+    }, { allowExpired: true });
+  }
+  control = readControl(root);
   const aggregating = writeControl(root, { ...control, state: "aggregating", terminal_reason: reason }, control.epoch);
   const hasDiscovery = fs.existsSync(recordPath(root, "discovery"));
   const hasPlan = fs.existsSync(recordPath(root, "shard-plan"));
@@ -802,15 +1276,16 @@ export function checkTargetFreshness(runRoot, currentFingerprint) {
 export function resumeRun(runRoot, options = {}) {
   const root = ensureRunRoot(runRoot);
   const control = readControl(root);
-  if (!["cancelled", "invalidated", "aggregating"].includes(control.state)) return control;
+  if (["cancelled", "invalidated"].includes(control.state)) {
+    fail("RESEAL_REQUIRED", `terminal ${control.state} run requires a successor run`);
+  }
+  if (control.state !== "aggregating") return control;
   const hasDiscovery = fs.existsSync(recordPath(root, "discovery"));
   const hasPlan = fs.existsSync(recordPath(root, "shard-plan"));
-  const nextState = options.state ?? (control.state === "invalidated"
-    ? "discovering"
-    : hasDiscovery && hasPlan && fs.existsSync(recordPath(root, "aggregate-report"))
+  const nextState = options.state ?? (hasDiscovery && hasPlan && fs.existsSync(recordPath(root, "aggregate-report"))
       ? "aggregating"
       : hasDiscovery
-        ? "planning"
+        ? (hasPlan ? "dispatch-ready" : "planning")
         : "discovering");
   if (!STATES.has(nextState) || ["created", "completed"].includes(nextState)) fail("INVALID_STATE_TRANSITION", `cannot resume to ${nextState}`);
   return writeControl(root, { ...control, state: nextState, terminal_reason: null }, control.epoch);
@@ -849,10 +1324,29 @@ export function runCli(argv = process.argv.slice(2)) {
     if (!runRoot) fail("INVALID_ARGUMENT", "--run-root is required");
     let result;
     if (command === "accept") result = acceptRun(runRoot, inputRecord(values));
+    else if (command === "phase-a-packet") result = verifierPhaseAPacket(runRoot);
     else if (command === "discover") result = persistDiscovery(runRoot, inputRecord(values));
+    else if (command === "begin-planning") result = beginShardPlanning(runRoot);
     else if (command === "plan") result = persistShardPlan(runRoot, inputRecord(values));
+    else if (command === "dispatch") result = dispatchRun(runRoot);
+    else if (command === "admit-attempt") result = admitAttempt(runRoot, inputRecord(values));
+    else if (command === "checkpoint-attempt") result = checkpointAttempt(runRoot, inputRecord(values));
     else if (command === "append-attempt") result = appendLedgerAttempt(runRoot, inputRecord(values));
-    else if (command === "aggregate") result = aggregateRun(runRoot);
+    else if (command === "fail-attempt") result = failAttempt(runRoot, inputRecord(values));
+    else if (command === "expire-attempt") {
+      const attemptId = values.get("attempt-id");
+      if (!attemptId) fail("INVALID_ARGUMENT", "expire-attempt requires --attempt-id");
+      result = expireAttempt(runRoot, attemptId);
+    }
+    else if (command === "sweep-timeouts") result = sweepExpiredAttempts(runRoot);
+    else if (command === "aggregate") {
+      const options = values.has("input") ? inputRecord(values) : {};
+      result = aggregateRun(runRoot, {
+        gateEvidence: options.gate_evidence,
+        coordinatorSourceAssessment: options.coordinator_source_assessment,
+        residualRisk: options.residual_risk
+      });
+    }
     else if (command === "cancel") result = cancelRun(runRoot, values.get("reason") ?? "RUN_CANCELLED");
     else if (command === "invalidate") result = invalidateRun(runRoot, values.get("reason") ?? "STALE_REVIEW");
     else if (command === "check-target") {

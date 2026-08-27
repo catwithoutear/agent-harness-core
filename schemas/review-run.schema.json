@@ -12,6 +12,8 @@
       "enum": [
         "request",
         "routing-decision",
+        "dispatch-preflight",
+        "verifier-discovery-envelope",
         "discovery",
         "shard-plan",
         "review-ledger",
@@ -81,8 +83,13 @@
       },
       "additionalProperties": true
     },
+    "execution_policy": { "$ref": "#/$defs/executionPolicy" },
+    "provider_policy": { "$ref": "#/$defs/providerPolicy" },
+    "deep_preflight": { "$ref": "#/$defs/deepPreflightInput" },
+    "verifier_discovery_envelope": { "$ref": "#/$defs/verifierDiscoveryEnvelope" },
     "entries": { "type": "array" },
     "attempt_id": { "type": "string", "minLength": 1 },
+    "input_digest": { "type": "string", "minLength": 1 },
     "attempt_status": { "enum": ["succeeded", "failed", "cancelled", "stale", "superseded"] },
     "shard_id": { "type": "string", "minLength": 1 },
     "relations": { "type": "array", "minItems": 1 },
@@ -95,6 +102,83 @@
     "overall_gate": { "enum": ["READY", "READY_WITH_NOTES", "NOT_READY", "NEEDS_USER_DECISION"] }
   },
   "additionalProperties": true,
+  "$defs": {
+    "canonicalRef": {
+      "type": "object",
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "executionPolicy": {
+      "type": "object",
+      "required": ["max_attempts_per_shard", "attempt_timeout_ms", "run_timeout_ms", "discovery_timeout_ms", "max_discovery_relations", "max_shards", "checkpoint_interval_ms"],
+      "properties": {
+        "max_attempts_per_shard": { "type": "integer", "minimum": 1 },
+        "attempt_timeout_ms": { "type": "integer", "minimum": 1 },
+        "run_timeout_ms": { "type": "integer", "minimum": 1 },
+        "discovery_timeout_ms": { "type": "integer", "minimum": 1 },
+        "max_discovery_relations": { "type": "integer", "minimum": 1 },
+        "max_shards": { "type": "integer", "minimum": 1 },
+        "checkpoint_interval_ms": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "providerPolicy": {
+      "type": "object",
+      "required": ["provider_id", "version", "implementation_digest", "runtime_verified", "conformance_receipt_ref", "capabilities", "attestation_signing_key_ref", "lane_result_signing_key_ref"],
+      "properties": {
+        "provider_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "implementation_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "runtime_verified": { "const": true },
+        "conformance_receipt_ref": { "$ref": "#/$defs/canonicalRef" },
+        "capabilities": { "type": "object" },
+        "attestation_signing_key_ref": { "$ref": "#/$defs/canonicalRef" },
+        "lane_result_signing_key_ref": { "$ref": "#/$defs/canonicalRef" }
+      },
+      "additionalProperties": false
+    },
+    "deepPreflightInput": {
+      "type": "object",
+      "required": ["run_binding_ref", "target_view_ref", "target_view_capability_ref", "firewall_policy_ref", "policy_binding_refs"],
+      "properties": {
+        "run_binding_ref": { "$ref": "#/$defs/canonicalRef" },
+        "target_view_ref": { "$ref": "#/$defs/canonicalRef" },
+        "target_view_capability_ref": { "$ref": "#/$defs/canonicalRef" },
+        "firewall_policy_ref": { "$ref": "#/$defs/canonicalRef" },
+        "policy_binding_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/canonicalRef" } }
+      },
+      "additionalProperties": false
+    },
+    "verifierDiscoveryEnvelope": {
+      "type": "object",
+      "required": ["format", "format_version", "record_type", "record_id", "created_from", "record_digest", "canonical_digest", "protocol", "run_id", "phase", "assurance", "target_fingerprint", "run_binding_ref", "target_view_ref", "target_view_capability_ref", "provider_binding_ref", "firewall_policy_ref", "policy_binding_refs"],
+      "properties": {
+        "format": { "const": "review-run" },
+        "format_version": { "const": 1 },
+        "record_type": { "const": "verifier-discovery-envelope" },
+        "record_id": { "type": "string", "minLength": 1 },
+        "created_from": { "type": "array", "items": { "type": "string" } },
+        "record_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "canonical_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "protocol": { "const": "review-run" },
+        "run_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+        "phase": { "const": "inventory" },
+        "assurance": { "const": "deep" },
+        "target_fingerprint": { "type": "string", "minLength": 1 },
+        "run_binding_ref": { "$ref": "#/$defs/canonicalRef" },
+        "target_view_ref": { "$ref": "#/$defs/canonicalRef" },
+        "target_view_capability_ref": { "$ref": "#/$defs/canonicalRef" },
+        "provider_binding_ref": { "$ref": "#/$defs/canonicalRef" },
+        "firewall_policy_ref": { "$ref": "#/$defs/canonicalRef" },
+        "policy_binding_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/canonicalRef" } }
+      },
+      "additionalProperties": false
+    }
+  },
   "x-portable-record-rules": {
     "forbiddenKeys": ["absolute_path", "absolute_root", "cwd", "local_root", "run_root", "session_id"],
     "pathRule": "relative-only",

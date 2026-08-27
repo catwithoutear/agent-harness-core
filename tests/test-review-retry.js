@@ -24,6 +24,7 @@ export async function run(run) {
     const first = c.admit("r", "a1", "d1", policy);
     const second = c.admit("r", "a1", "d1", policy);
     assert.deepEqual(first.attempt, second.attempt);
+    assert.throws(() => c.admit("r", "a1", "different", policy), /different input/);
   });
 
   await run("attempt_deadline_at is min(attempt+deadline, run deadline)", async () => {
@@ -59,13 +60,26 @@ export async function run(run) {
     assert.equal(late.persisted, false);
   });
 
-  await run("expire cancels a past-deadline attempt", async () => {
+  await run("expire records a typed timeout failure", async () => {
     let t = 0;
     const c = createRetryController({ now: () => t });
     const admitted = c.admit("r", "a1", "d1", { max_attempts: 2, attempt_deadline: 100, run_deadline: 500 });
     t = 200;
     const expired = c.expire("r", "a1");
-    assert.equal(expired.state, "cancelled");
+    assert.equal(expired.state, "failed");
+    assert.equal(expired.failure_kind, "ATTEMPT_TIMEOUT");
     assert.ok(admitted.attempt.attempt_deadline_at < t);
+  });
+
+  await run("diagnostic checkpoint is explicitly non-gating and does not extend deadline", async () => {
+    let t = 0;
+    const c = createRetryController({ now: () => t });
+    const admitted = c.admit("r", "a1", "d1", policy);
+    const deadline = admitted.attempt.attempt_deadline_at;
+    t = 100;
+    const checkpoint = c.checkpoint("r", "a1", { phase: "source-read", summary: "partial" });
+    assert.equal(checkpoint.coverage_eligible, false);
+    assert.equal(checkpoint.independent_evidence, false);
+    assert.equal(c._attempt("r", "a1").attempt_deadline_at, deadline);
   });
 }

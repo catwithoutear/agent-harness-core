@@ -96,9 +96,16 @@ dimensions as lenses. For each assigned relation/integration obligation, return
 a `RelationOutcome`/`IntegrationOutcome` that carries `execution_status`
 (`succeeded|failed|stale`) separately from the derived `conclusion`
 (`clear|nonblocking_only|blocking|applicability_challenge|inconclusive`), plus
-immutable `ReviewFinding` records with a `blocking_class` and evidence refs. A
+  immutable `ReviewFinding` records with a `blocking_class` and evidence refs. A
 successful return is not the same as a clear conclusion; a blocking finding must
-produce `conclusion=blocking`, never be hidden.
+  produce `conclusion=blocking`, never be hidden.
+
+Start only after the protocol admits the attempt with an explicit deadline and
+retry budget. Emit bounded diagnostic checkpoints through the protocol channel;
+they support timeout diagnosis and handoff but never count as coverage,
+independent review, or a clear correctness outcome. If the result or interrupt
+channel stalls, allow the controller to persist a typed failed ledger instead
+of treating partial prose as review evidence.
 
 Do not change obligation identity, remove obligations, or invent N/A. Do not
 create discovery records, seal packets, claim independent coverage, emit
