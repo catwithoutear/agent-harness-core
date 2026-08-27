@@ -70,11 +70,14 @@ Input: `$ARGUMENTS`
 16. Verify with repository-owned commands or source evidence.
 17. Persist only high-signal results in the owning artifact. Use `reviews/` and
    `timeline/` sparingly; do not create process logs for routine steps.
-18. For explicit `coverage_mode`, apply `quick`, `standard`, or `deep` review
-    routing before implementation verification. No `coverage_mode` preserves
-    the legacy `review_gate` path. Deep requires verified target identity,
-    isolated `review-verifier` inventory, a sealed expected packet, and compare;
-    target, required-source, or seal failure is `coverage_gate=NOT_READY`.
+18. Route structured reviews through the single `protocol=review-run` contract.
+    Assurance labels are not route selectors. Validate target identity, the
+    immutable dispatch contract, risk facts, and request identity before
+    dispatch. The same rules, scope, dimensions, relation identities, contract
+    digest, and target go to reviewer and verifier. The verifier inventory gets
+    no reviewer ledger or findings; discovery and shard closure are barriers
+    before compare. Target, source, or closure failure is
+    `coverage_gate=NOT_READY`.
 19. Carry four independent decisions: `coverage_gate`, `review_gate`,
     `implementation_verification_gate`, and coordinator-owned `overall_gate`.
     A deep downgrade requires an owner-recorded reason and residual risk.
@@ -113,3 +116,15 @@ Do not report the task complete without naming the exact verification run, not
 run, blocked, or intentionally skipped and showing that every applicable
 acceptance criterion passes. A non-complete verification status remains work for
 the next convergence iteration unless it requires `NEEDS_USER_DECISION`.
+
+## Review-Run Routing
+
+For `protocol=review-run`, initialize the managed run root, persist the dispatch
+contract and routing decision, seal verifier discovery before reviewer-ledger
+compare, and retain immutable control revisions and attempts. The reviewer and
+verifier receive the same contract digest but remain isolated. Never infer N/A
+or completeness from a summary; aggregate the relation ledger and persist all
+four gates, with missing implementation evidence yielding
+`implementation_verification_gate=NOT_READY` and `overall_gate=NOT_READY`.
+`quick`, `standard`, and `deep` are assurance levels inside this one protocol;
+they do not select a different route or compatibility parser.

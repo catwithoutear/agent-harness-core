@@ -1,6 +1,6 @@
 ---
 artifact: change-index
-status: frozen
+status: superseded
 tags: [workflow, review, review-coverage]
 description: "Draft change workspace for an auditable delegated review coverage contract."
 ---
@@ -38,13 +38,14 @@ description: "Draft change workspace for an auditable delegated review coverage 
 
 ## Current Phase
 
-- Phase: V1 contract and implementation-design pack frozen after r04 `READY`
-  review.
+- Phase: Superseded on 2026-08-13 by `.changes/review-coverage-deep-rebuild/`.
 - Owner: coordinator.
-- Current authoritative review: `reviews/implementation-design-r04.md`
-  (`READY`).
-- Open blockers: none at implementation-design scope.
-- Next checkpoint: create bounded implementation task slices before source edits.
+- Disposition: historical evidence only; no runtime compatibility route or
+  independent implementation may be added from this fork.
+- Current authoritative design: `.changes/review-coverage-deep-rebuild/` and
+  its frozen decision/review chain.
+- Open blockers: none for historical preservation; all implementation work
+  follows the replacement workspace.
 
 ## Artifact Index
 

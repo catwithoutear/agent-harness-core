@@ -166,24 +166,18 @@ export async function run(test) {
     assert.doesNotMatch(text, /\bAPPROVE\b/);
   });
 
-  await test("review packet gate documents coverage packets without a ledger parser", () => {
+  await test("review packet gate documents the sole structured review-run protocol", () => {
     const text = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
     for (const required of [
-      "No `coverage_mode`",
-      "coverage_mode=quick",
-      "coverage_mode=standard",
-      "coverage_mode=deep",
-      "## Target Identity",
-      "## Target Input Arguments",
-      "## Declared Inputs",
-      "## Execution Coordinates",
-      "Expected Coverage Packet",
-      "Coverage Verification Report",
-      "PacketDigest: sha256:self",
-      "Rule Source Inventory",
-      "Unit Inventory",
-      "Rule Results",
-      "Observed Rule Sources",
+      "## Review-Run Protocol",
+      "protocol=review-run",
+      "dispatch contract",
+      "### Target Identity",
+      "review-target",
+      "### Isolated Dispatches",
+      "### Relation Ledger",
+      "canonical JSON",
+      "init-review-run",
       "RULE_SOURCE_GAP",
       "RULE_COVERAGE_GAP",
       "EVIDENCE_GAP",
@@ -191,33 +185,27 @@ export async function run(test) {
       "review_gate",
       "implementation_verification_gate",
       "overall_gate",
-      "review-packet-digest.mjs",
-      "no parser",
-      "no serialized schema"
+      "review-target-digest.mjs",
+      "fail closed"
     ]) {
       assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `review packet gate missing ${required}`);
     }
-    for (const fixture of ["deep-missing-relation.md", "deep-expected-gaps.md"]) {
-      const fixturePath = path.join(packageRoot, "tests", "fixtures", "review-coverage", fixture);
-      assert.equal(fs.existsSync(fixturePath), true, `missing review coverage fixture ${fixture}`);
-      const fixtureText = fs.readFileSync(fixturePath, "utf8");
-      assert.match(fixtureText, /\|.*\|/);
-      assert.match(fixtureText, /\|---/);
-    }
+    assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PacketDigest/);
   });
 
-  await test("workflow assets route review coverage modes and separate gates", () => {
+  await test("workflow assets route one review-run protocol and separate gates", () => {
     const workflow = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
     const review = fs.readFileSync(path.join(packageRoot, "commands", "harness", "review.md"), "utf8");
     const command = fs.readFileSync(path.join(packageRoot, "commands", "harness", "workflow.md"), "utf8");
     for (const text of [workflow, review, command]) {
-      for (const required of ["coverage_mode", "quick", "standard", "deep", "coverage_gate", "review_gate", "implementation_verification_gate", "overall_gate"]) {
+      for (const required of ["protocol=review-run", "quick", "standard", "deep", "coverage_gate", "review_gate", "implementation_verification_gate", "overall_gate"]) {
         assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       }
     }
-    assert.match(workflow, /No `coverage_mode`.*legacy/s);
-    assert.match(workflow, /PACKET_SEAL_INVALID/);
     assert.match(review, /review-verifier/);
+    for (const text of [workflow, review, command]) {
+      assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PACKET_SEAL/);
+    }
   });
 
   await test("workflow convergence requires workflow plus overall-completion intent", () => {

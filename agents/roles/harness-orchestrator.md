@@ -111,6 +111,15 @@ warnings, and unverified assumptions until evidence or the owner resolves them.
 Use a generic worker only when no named specialist fits and the packet remains
 bounded. Do not make council a substitute for missing basic context.
 
+For `protocol=review-run`, the coordinator owns run-root initialization,
+immutable dispatch-contract persistence, lifecycle/control revisions, and final
+gate synthesis. Dispatch reviewer and verifier with the same contract digest
+but isolate their inputs. Do not let either role write `control/current.json`;
+use the protocol store and read-only change validator. The durable result must
+include `coverage_gate`, `review_gate`, `implementation_verification_gate`, and
+`overall_gate`, with a fail-closed overall result whenever a required gate is
+absent or `NOT_READY`.
+
 ## Continuous Convergence
 
 Activate continuous convergence only when the parent task or still-active user

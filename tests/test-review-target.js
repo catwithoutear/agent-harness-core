@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { executeReviewPacketDigest } from "../skills/review/review-packet-gate/scripts/review-packet-digest.mjs";
+import { executeReviewTargetDigest } from "../skills/review/review-packet-gate/scripts/review-target-digest.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const helperPath = path.join(
@@ -13,7 +13,7 @@ const helperPath = path.join(
   "review",
   "review-packet-gate",
   "scripts",
-  "review-packet-digest.mjs"
+  "review-target-digest.mjs"
 );
 
 function command(args, cwd) {
@@ -27,8 +27,8 @@ function git(root, ...args) {
 }
 
 function runHelper(args) {
-  assert.equal(fs.existsSync(helperPath), true, "review coverage helper is missing");
-  const execution = executeReviewPacketDigest(args);
+  assert.equal(fs.existsSync(helperPath), true, "review target helper is missing");
+  const execution = executeReviewTargetDigest(args);
   return { result: { status: execution.exitCode }, json: execution.body };
 }
 
@@ -93,8 +93,9 @@ function assertDigest(value) {
 }
 
 export async function run(test) {
-  await test("review coverage helper exists", () => {
-    assert.equal(fs.existsSync(helperPath), true, "review coverage helper is missing");
+  await test("review target helper exists", () => {
+    assert.equal(fs.existsSync(helperPath), true, "review target helper is missing");
+    expectError(["packet", "--json"], "INVALID_ARGUMENT");
   });
 
   await test("git target fingerprints staged, unstaged, scoped, and ignored inputs without local roots", () => {
@@ -122,7 +123,7 @@ export async function run(test) {
       const second = expectOk(args);
       assert.equal(first.target_fingerprint, second.target_fingerprint);
       assert.equal(first.target_kind, "git-worktree");
-      assert.equal(first.fingerprint_format, "review-target-v1");
+      assert.equal(first.fingerprint_format, "review-target");
       assert.equal(first.helper_version, 1);
       assert.equal(first.git_object_format, "sha1");
       assert.match(first.base_revision, /^[a-f0-9]{40}$/);
@@ -275,17 +276,4 @@ export async function run(test) {
     });
   });
 
-  await test("packet sealing normalizes line endings and rejects malformed or stale seals", () => {
-    withTemp("harness-review-coverage-packet-", (root) => {
-      const packet = write(root, "expected.md", "# Expected Coverage Packet\r\nPacketDigest: sha256:self\r\n");
-      const self = expectOk(["packet", "--input", packet, "--json"]);
-      assertDigest(self.packet_digest);
-      fs.writeFileSync(packet, `# Expected Coverage Packet\nPacketDigest: ${self.packet_digest}\n`);
-      assert.equal(expectOk(["packet", "--input", packet, "--json"]).packet_digest, self.packet_digest);
-      fs.writeFileSync(packet, "# Changed\nPacketDigest: sha256:0000000000000000000000000000000000000000000000000000000000000000\n");
-      expectError(["packet", "--input", packet, "--json"], "PACKET_SEAL_MISMATCH");
-      fs.writeFileSync(packet, "PacketDigest: sha256:self\nPacketDigest: sha256:self\n");
-      expectError(["packet", "--input", packet, "--json"], "PACKET_SEAL_INVALID");
-    });
-  });
 }

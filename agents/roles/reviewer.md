@@ -37,8 +37,9 @@ Require a review packet containing:
 - applicable repository instructions and source scope;
 - known consumers, compatibility or migration constraints, and risk areas;
 - validation already run, with exact commands and results;
-- `coverage_mode` and discovery policy when standard or deep coverage is
-  requested.
+- the requested assurance (`quick`, `standard`, or `deep`) and discovery policy;
+- for `protocol=review-run`, the immutable dispatch contract containing rules,
+  scope, dimensions, relation identities, and `contract_digest`.
 
 If target identity, intended behavior, or applicable scope cannot be resolved,
 return `NEEDS_CONTEXT`. If accepted artifacts conflict about intended behavior,
@@ -86,19 +87,23 @@ from compilation, a planned command, or an unrelated passing test.
 - `PARTIAL_REVIEW`: useful correctness review is possible, but named runtime,
   generated, dependency, or environment evidence remains unavailable.
 
-## Coverage Modes
+## Review-Run Evidence
 
-When `coverage_mode` is absent or `quick`, return findings and limitations only;
-do not emit a coverage assurance, `coverage_gate`, or verifier request.
+`quick`, `standard`, and `deep` are assurance levels inside the one
+`protocol=review-run` flow; they are not separate protocol routes. For a
+structured request, you are dispatched per unit/context cluster with review
+dimensions as lenses. For each assigned relation/integration obligation, return
+a `RelationOutcome`/`IntegrationOutcome` that carries `execution_status`
+(`succeeded|failed|stale`) separately from the derived `conclusion`
+(`clear|nonblocking_only|blocking|applicability_challenge|inconclusive`), plus
+immutable `ReviewFinding` records with a `blocking_class` and evidence refs. A
+successful return is not the same as a clear conclusion; a blocking finding must
+produce `conclusion=blocking`, never be hidden.
 
-In explicit `standard` or `deep` mode, append the review-packet-gate Unit
-Inventory, Rule Results, and Observed Rule Sources tables after findings. Bind
-every row to the supplied target fingerprint, include evidence for N/A
-decisions, and return a separate `review_gate`.
-
-Do not create an Expected Coverage Packet, seal packets, claim independent
-coverage, emit `overall_gate`, or edit the target. Coverage completeness belongs
-to the coordinator or `review-verifier`, not this correctness review.
+Do not change obligation identity, remove obligations, or invent N/A. Do not
+create discovery records, seal packets, claim independent coverage, emit
+`coverage_gate`, emit `overall_gate`, or edit the target. Coverage completeness
+belongs to `review-verifier`; correctness belongs here.
 
 ## Output Packet
 

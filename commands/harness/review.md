@@ -19,6 +19,7 @@ Input: `$ARGUMENTS`
    - `multi-lens-review` for explicit multi-lens or fresh outside review.
    - `skill-judge` for skills.
    - `subagent-judge` for subagent prompts.
+   - `review-verifier` for independent structured review coverage comparison.
 2. Read the target and its intent sources before judging.
 3. Verify claims against current files, diffs, commands, or artifacts.
 4. Lead with findings ordered by severity. Avoid summary-first review output.
@@ -27,14 +28,20 @@ Input: `$ARGUMENTS`
    `workflow-control`; do not convert council into majority voting.
 7. Record review results in `reviews/` only for formal gates, council,
    re-review, or freeze decisions.
-8. When the packet has `coverage_mode`, route `quick`, `standard`, or `deep`
-   through `review-packet-gate`. No `coverage_mode` keeps legacy review with
-   `review_gate` only. Deep first verifies target identity, dispatches
-   `review-verifier` inventory without a ledger, seals the expected packet, and
-   compares it after reviewer output. Fail closed for target or seal failure.
-9. Report `coverage_gate`, `review_gate`, `implementation_verification_gate`,
-   and coordinator-owned `overall_gate` separately; quick has no independent
-   coverage claim and standard has coordinator, not verifier, coverage audit.
+8. Route every structured review through the single `protocol=review-run`
+   contract. Assurance labels are not route selectors. Validate the target,
+   immutable dispatch contract, risk facts, and request identity before
+   dispatching either reviewer or verifier; malformed input is `NOT_READY`.
+9. Give reviewer and verifier the same rules, scope, dimensions, relation
+   identities, contract digest, and target. The verifier inventory receives no
+   reviewer ledger or findings; it seals discovery and shard closure before
+   comparison. The reviewer returns correctness findings plus a relation-level
+   ledger, and the coordinator owns final synthesis.
+10. Report `coverage_gate`, `review_gate`, `independent_review_gate`,
+    `style_gate`, and `implementation_verification_gate` separately, plus the
+    coordinator-owned derived `overall_gate`. `quick`, `standard`, and `deep`
+    are assurance levels within this one protocol; missing required evidence
+    remains fail-closed `NOT_READY`.
 
 ## Output
 
@@ -47,3 +54,17 @@ Input: `$ARGUMENTS`
 
 If there are no findings, say that clearly and name remaining test or evidence
 gaps.
+
+## Review-Run Contract
+
+For `protocol=review-run`, create the managed run root with `init-review-run`
+and seal the neutral run binding. Discover the expected and observed universes
+through two mutually-isolated lanes and close the discovery barrier before
+comparison. Resolve coding/behavioral authority and versioned dimensions,
+enumerate the changed-surface hunk/line inventory and context fixed point, and
+derive immutable relation/integration obligations with canonical `{id,digest}`
+identity. Dispatch reviewers by unit/context cluster with exactly-once primary
+ownership, conserve raw output into outcome/finding records, and derive
+`conclusion` separately from `execution_status`. Persist `gate-result` with the
+five evidence gates plus the derived `overall_gate`, and fail closed on any
+missing, stale, conflicting, or uncomparable input.

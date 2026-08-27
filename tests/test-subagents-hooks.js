@@ -97,7 +97,7 @@ export async function run(test) {
         "## Source And Evidence Rules",
         "## Review Method",
         "## Stop Conditions",
-        "## Coverage Modes",
+        "## Review-Run Evidence",
         "Read only",
         "## Output Packet"
       ],
@@ -132,7 +132,8 @@ export async function run(test) {
       "Read only",
       "inventory",
       "compare",
-      "no reviewer ledger",
+      "receives no",
+      "reviewer ledger",
       "overall_gate",
       "coverage_gate",
       "READY_WITH_NOTES",
@@ -140,7 +141,8 @@ export async function run(test) {
       "RULE_COVERAGE_GAP",
       "EVIDENCE_GAP",
       "TARGET_RECOMPUTE_UNAVAILABLE",
-      "PACKET_SEAL_INVALID"
+      "protocol=review-run",
+      "discovery_origin=target-derived"
     ]) {
       assert.match(role, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
