@@ -29,8 +29,6 @@ import {
   validateRequest
 } from "../skills/review/review-packet-gate/scripts/review-run.mjs";
 
-const packageRoot = path.resolve(new URL("..", import.meta.url).pathname);
-
 function contract() {
   return {
     rules: [{ rule_id: "R1", source_ref: "rules/review.md" }],
@@ -304,11 +302,8 @@ export async function run(test) {
 
   await test("strict change validation recognizes valid review-run evidence and rejects malformed records", () => {
     withTempDir((repo) => {
-      const sourceChange = path.join(packageRoot, ".changes", "review-verifier-v2");
+      writeStructuredChange(repo);
       const change = path.join(repo, ".changes", "review-verifier-v2");
-      fs.mkdirSync(path.dirname(change), { recursive: true });
-      fs.cpSync(sourceChange, change, { recursive: true });
-      fs.rmSync(path.join(change, "review-runs"), { recursive: true, force: true });
       const runRoot = path.join(change, "review-runs", "validation-run");
       initializeRunRoot(runRoot);
       const req = request({ request_id: "validation-run", run_id: "validation-run" });
@@ -351,12 +346,20 @@ function withTempDir(callback) {
 
 function writeStructuredChange(repo) {
   const change = path.join(repo, ".changes", "review-verifier-v2");
-  fs.mkdirSync(change, { recursive: true });
+  fs.mkdirSync(path.join(change, "specs"), { recursive: true });
   fs.writeFileSync(path.join(change, "README.md"), [
     "---", "artifact: change-index", "status: draft", "tags: [workflow, review-verifier-v2]", "description: \"test\"", "---", "", "# Change", "", "## Task Tag Registry", "", "| tag | description |", "|---|---|", "| review-verifier-v2 | test |", "", "| review-scale | test |", "", "## Child Index", "", "| path | artifact | status | order | description |", "|---|---|---|---|---|", ""
   ].join("\n"));
-  fs.writeFileSync(path.join(change, "proposal.md"), "---\nartifact: proposal\nstatus: draft\ntags: [proposal]\ndescription: \"test\"\n---\n# Proposal\n\n## Problem\n\nTest.\n\n## Goals\n\nTest.\n\n## Non-Goals\n\nTest.\n\n## Alternatives Considered\n\nTest.\n\n## Risks And Mitigations\n\nTest.\n");
-  fs.writeFileSync(path.join(change, "tasks.md"), "---\nartifact: tasks\nstatus: draft\ntags: [implementation]\ndescription: \"test\"\n---\n# Tasks\n");
+  fs.writeFileSync(path.join(change, "proposal.md"), artifactFrontMatter("proposal", "proposal") + "## Why\nTest.\n## What Changes\n- Test.\n## Impact\n- Test.\n## Validation\n- Run validation.\n## Rollback\n- Revert.\n");
+  fs.writeFileSync(path.join(change, "tasks.md"), artifactFrontMatter("tasks", "implementation") + "## 1. Implementation\n- [x] Create review run.\n## 2. Validation\n- [ ] Run strict validation.\n");
+  fs.writeFileSync(path.join(change, "requirements.md"), artifactFrontMatter("requirements", "requirements") + "## Goal\nValidate review-run evidence.\n");
+  fs.writeFileSync(path.join(change, "design.md"), artifactFrontMatter("design", "design") + "## Context\nReview-run fixture.\n\n## Detailed Design Index\n\n| Area | Document |\n|---|---|\n");
+  fs.writeFileSync(path.join(change, "specs", "README.md"), artifactFrontMatter("specs-index", "workflow") + "# Specs\n");
+  fs.writeFileSync(path.join(change, "specs", "review-run.md"), artifactFrontMatter("delta-spec", "workflow") + "## Purpose\nValidate review-run evidence.\n## Traceability\n- Requirement source: requirements.md\n## ADDED Requirements\n### Requirement: Validate review-run evidence\n#### Scenario: Valid review run\nGiven a structured change workspace\nWhen strict validation runs\nThen it succeeds\n");
+}
+
+function artifactFrontMatter(artifact, tags) {
+  return `---\nartifact: ${artifact}\nstatus: draft\ntags: [${tags}]\ndescription: "test"\n---\n`;
 }
 
 function capture(fn) {
