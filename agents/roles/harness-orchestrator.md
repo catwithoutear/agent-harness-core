@@ -19,9 +19,10 @@ whose instructions explicitly select another mechanism.
 
 ## Authority
 
-Coordinate work across rules, change artifacts, memory, skills, subagents, and
-projection outputs. Do not invent project-domain facts. Do not bypass validator
-or manifest evidence.
+Coordinate work across rules, change artifacts, the project-selected durable
+knowledge provider, skills, subagents, and projection outputs. Do not select or
+invent a provider, project-domain facts, or write authority. Do not bypass
+validator or manifest evidence.
 
 The user or named owner retains decisions about requirements, architecture,
 public contracts, security policy, destructive operations, external changes,
@@ -62,7 +63,7 @@ Use this precedence:
 2. repository-local instructions and current workflow policy;
 3. authoritative active-change artifacts;
 4. current source, tests, configuration, and command output;
-5. memory or prior reports after source verification;
+5. project-selected durable knowledge or prior reports after source verification;
 6. specialist recommendations, with their assumptions and evidence quality.
 
 Do not turn planned validation into executed proof. Preserve disagreements,
@@ -113,12 +114,17 @@ bounded. Do not make council a substitute for missing basic context.
 
 For `protocol=review-run`, the coordinator owns run-root initialization,
 immutable dispatch-contract persistence, lifecycle/control revisions, and final
-gate synthesis. Dispatch reviewer and verifier with the same contract digest
-but isolate their inputs. Do not let either role write `control/current.json`;
-use the protocol store and read-only change validator. The durable result must
-include `coverage_gate`, `review_gate`, `implementation_verification_gate`, and
-`overall_gate`, with a fail-closed overall result whenever a required gate is
-absent or `NOT_READY`.
+gate synthesis. Before deep dispatch, require provider runtime-conformance
+preflight and extract the closed verifier Phase-A packet from the protocol
+store; never hand-write it or expose expected rules, relations, dispatch or
+reviewer output. Enforce discovery seal, planning, shard-plan persistence and
+dispatch as separate state transitions. Admit each reviewer attempt with an
+explicit deadline and bounded retry, sweep timeouts into typed failed ledgers,
+and keep diagnostic checkpoints non-gating. Do not let either role write
+`control/current.json`; use the protocol store and read-only change validator.
+The durable result must include all five evidence gates plus `overall_gate`.
+Coordinator source inspection is a separate non-gating assessment and cannot
+populate `review_gate`; missing or wrong-owner evidence remains fail-closed.
 
 ## Continuous Convergence
 

@@ -230,11 +230,12 @@ the request, target identity, risk facts, and immutable dispatch contract before
 dispatching either agent; malformed input is `NOT_READY`.
 
 Persist the exact rules, scope, dimensions, and relation identities in the
-dispatch contract. Give the same contract digest and target to the reviewer and
-the verifier. The reviewer owns correctness findings and a relation-level
-ledger. The verifier inventory receives no reviewer output, seals discovery and
-the shard plan, then compares that sealed universe with the reviewer ledger.
-The coordinator alone composes `overall_gate`.
+dispatch contract and give it to the reviewer. Verifier Phase A receives only
+the machine-built closed-schema neutral packet after provider capability and
+runtime-conformance preflight; expected rules, relations, dispatch, reviewer
+output and prior conclusions are forbidden. After both lanes seal, Phase B may
+compare the sealed universes and reviewer ledger. The coordinator alone
+composes `overall_gate`.
 
 The `requested_assurance` values `quick`, `standard`, and `deep` control the
 amount of evidence inside this one protocol. They do not select different
@@ -253,6 +254,13 @@ The discovery barrier closes only after both expected and observed lanes seal
 and their attestations verify. Failed, cancelled, stale, duplicate, and
 unassigned work remains visible, and missing target, source, or implementation
 evidence is fail-closed.
+
+The portable facade additionally enforces
+`created -> discovering -> discovery-sealed -> planning -> dispatch-ready ->
+running -> aggregating -> terminal`. Admit reviewer attempts with explicit
+deadlines and bounded retries. Diagnostic checkpoints remain non-gating;
+timeout sweeps persist typed failed ledgers. A different run id cannot sanitize
+a provider execution identity that already saw expected-lane data.
 
 Always carry the five evidence gates — `coverage_gate`, `review_gate`,
 `independent_review_gate`, `style_gate`, and `implementation_verification_gate`

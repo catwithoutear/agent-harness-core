@@ -777,9 +777,10 @@
         "audience": "model",
         "source": "skills/knowledge/memory-context-contract",
         "runtimeName": "memory-context-contract",
-        "description": "Use when .memory, project vocabulary, source-verified context, durable knowledge, or context packet requirements may affect a repository task.",
+        "description": "Use when a project-selected durable knowledge provider, project vocabulary, source-verified context, or context packet requirements may affect a repository task.",
         "triggers": [
           ".memory",
+          "knowledge provider",
           "context packet",
           "verified knowledge",
           "project vocabulary",
@@ -790,7 +791,7 @@
           "one-off answer with no repository context"
         ],
         "requires": [
-          ".memory/INDEX.md when available"
+          "repository instructions or explicit provider configuration when available"
         ],
         "priority": 80,
         "clients": [
@@ -2245,19 +2246,6 @@
         "source": "templates/changes/implementation-design/07-constraints.md",
         "target": ".changes/templates/implementation-design/07-constraints.md",
         "description": "Implementation design constraints and self-check template.",
-        "clients": [
-          "codex",
-          "claude",
-          "opencode",
-          "omp"
-        ]
-      },
-      {
-        "id": "memory-index",
-        "kind": "memory",
-        "source": "templates/memory/INDEX.md",
-        "target": ".memory/INDEX.md",
-        "description": "Generic memory index template.",
         "clients": [
           "codex",
           "claude",

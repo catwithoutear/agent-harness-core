@@ -575,10 +575,11 @@ export async function run(test) {
       assert.equal(dryRun.status, 0, dryRun.stderr);
       const dryRunPayload = JSON.parse(dryRun.stdout);
       const targets = dryRunPayload.records.map((record) => record.target);
-      assert.equal(dryRunPayload.summary.templates, 10);
+      assert.equal(dryRunPayload.summary.templates, 9);
       assert(targets.some((entry) => entry.endsWith(".changes/templates/README.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/README.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/07-constraints.md")));
+      assert(!targets.some((entry) => entry.endsWith(".memory/INDEX.md")));
       for (const record of dryRunPayload.records) {
         if (record.content_kind === "templates" && record.asset_id.startsWith("change-")) {
           assert(

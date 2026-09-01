@@ -16,7 +16,7 @@ export async function run(test) {
     assert.equal(result.summary.skills, 51);
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
-    assert.equal(result.summary.templates, 10);
+    assert.equal(result.summary.templates, 9);
   });
 
   await test("manifest uses core command names", () => {

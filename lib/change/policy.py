@@ -188,6 +188,7 @@ COMMANDS = {
     "resolve": "harness-change-doc resolve --json",
     "execution_map": "harness-change-doc execution-map <change> --json",
     "assign_slice": "harness-change-doc assign-slice <change> --slice <slice>",
+    "init": "harness-change-doc init <change> --json",
     "index": "harness-change-doc index",
     "memory_index": "harness-change-doc memory-index --json",
     "add_implementation_design": "harness-change-doc add-implementation-design",

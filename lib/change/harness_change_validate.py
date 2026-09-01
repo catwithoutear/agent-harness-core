@@ -19,6 +19,30 @@ LEGACY_TOP_LEVEL_CHANGE_FILES = {
     "timeline.md": "timeline/",
 }
 REVIEW_RELATIVE_PATH_RE = re.compile(r"^(?![A-Za-z]:[\\/])(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+$")
+REVIEW_EXECUTION_POLICY_FIELDS = {
+    "max_attempts_per_shard", "attempt_timeout_ms", "run_timeout_ms",
+    "discovery_timeout_ms", "max_discovery_relations", "max_shards",
+    "checkpoint_interval_ms",
+}
+REVIEW_PHASE_A_FIELDS = {
+    "format", "format_version", "record_type", "record_id", "created_from",
+    "record_digest", "canonical_digest", "protocol", "run_id", "phase",
+    "assurance", "target_fingerprint", "run_binding_ref", "target_view_ref",
+    "target_view_capability_ref", "provider_binding_ref",
+    "firewall_policy_ref", "policy_binding_refs",
+}
+REVIEW_REQUIRED_PROVIDER_CAPABILITIES = {
+    "fresh_process", "fresh_session", "no_parent_context", "no_history",
+    "no_memory_mounts", "no_direct_target_mount", "broker_only_subject_reads",
+    "complete_subject_read_log", "disjoint_lane_tokens",
+    "write_only_result_channels", "closed_tool_set", "environment_manifest",
+    "signed_receipts", "provider_lane_signed_payload",
+}
+REVIEW_ATTEMPT_FAILURE_KINDS = {
+    "ATTEMPT_CANCELLED", "ATTEMPT_TIMEOUT", "INTERRUPT_CHANNEL_STALLED",
+    "PROVIDER_RUNTIME_GAP", "RESULT_CHANNEL_STALLED", "STALE_REVIEW",
+    "TARGET_UNAVAILABLE",
+}
 
 
 def read_text(path: Path) -> str:
@@ -613,6 +637,63 @@ def validate_review_run_record(path: Path, run_id: str, errors: list):
     return record
 
 
+def review_is_canonical_ref(value):
+    return (
+        isinstance(value, dict)
+        and set(value) == {"id", "digest"}
+        and isinstance(value.get("id"), str)
+        and bool(value["id"])
+        and isinstance(value.get("digest"), str)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", value["digest"]) is not None
+    )
+
+
+def validate_review_execution_policy(request, path: Path, errors: list):
+    value = request.get("execution_policy")
+    if not isinstance(value, dict) or set(value) != REVIEW_EXECUTION_POLICY_FIELDS:
+        errors.append(f"{path}: execution_policy must contain exactly the required bounded fields")
+        return
+    if any(not isinstance(value[field], int) or isinstance(value[field], bool) or value[field] <= 0 for field in REVIEW_EXECUTION_POLICY_FIELDS):
+        errors.append(f"{path}: execution_policy fields must be positive integers")
+        return
+    if value["attempt_timeout_ms"] > value["run_timeout_ms"] or value["discovery_timeout_ms"] > value["run_timeout_ms"]:
+        errors.append(f"{path}: attempt/discovery timeout must not exceed run timeout")
+    if value["checkpoint_interval_ms"] >= value["attempt_timeout_ms"]:
+        errors.append(f"{path}: checkpoint interval must be shorter than attempt timeout")
+
+
+def validate_review_deep_preflight(request, routing, preflight, path: Path, errors: list):
+    if routing.get("selected_mode") != "deep":
+        return
+    if not isinstance(preflight, dict):
+        errors.append(f"{path}: missing deep dispatch preflight")
+        return
+    if preflight.get("record_type") != "dispatch-preflight" or preflight.get("passed") is not True:
+        errors.append(f"{path}: invalid dispatch preflight record")
+        return
+    if preflight.get("run_id") != request.get("run_id"):
+        errors.append(f"{path}: dispatch preflight run_id mismatch")
+    provider = preflight.get("provider_binding")
+    if not isinstance(provider, dict) or provider.get("runtime_verified") is not True or not review_is_canonical_ref(provider.get("conformance_receipt_ref")):
+        errors.append(f"{path}: provider runtime conformance is not attestable")
+    elif any(provider.get("capabilities", {}).get(name) is not True for name in REVIEW_REQUIRED_PROVIDER_CAPABILITIES):
+        errors.append(f"{path}: provider capability matrix is incomplete")
+    envelope = preflight.get("verifier_discovery_envelope")
+    if not isinstance(envelope, dict) or set(envelope) != REVIEW_PHASE_A_FIELDS:
+        errors.append(f"{path}: verifier discovery envelope is not closed-schema")
+        return
+    if envelope.get("protocol") != "review-run" or envelope.get("phase") != "inventory" or envelope.get("assurance") != "deep":
+        errors.append(f"{path}: verifier discovery envelope protocol/phase/assurance mismatch")
+    if envelope.get("run_id") != request.get("run_id") or envelope.get("target_fingerprint") != request.get("target", {}).get("fingerprint"):
+        errors.append(f"{path}: verifier discovery envelope identity mismatch")
+    for field in ("run_binding_ref", "target_view_ref", "target_view_capability_ref", "provider_binding_ref", "firewall_policy_ref"):
+        if not review_is_canonical_ref(envelope.get(field)):
+            errors.append(f"{path}: verifier discovery envelope {field} is not a CanonicalRef")
+    refs = envelope.get("policy_binding_refs")
+    if not isinstance(refs, list) or not refs or any(not review_is_canonical_ref(ref) for ref in refs):
+        errors.append(f"{path}: verifier discovery envelope policy_binding_refs are invalid")
+
+
 def validate_review_run_evidence(change_dir: Path, errors: list):
     root = change_dir / "review-runs"
     if not root.exists():
@@ -622,7 +703,7 @@ def validate_review_run_evidence(change_dir: Path, errors: list):
         if not run_dir.is_dir() or not run_pattern.fullmatch(run_dir.name):
             errors.append(f"{root}: invalid review run directory {run_dir.name}")
             continue
-        allowed = {"request.json", "routing-decision.json", "discovery.json", "shard-plan.json", "aggregate-report.json", "gate-result.json", "attempts", "control"}
+        allowed = {"request.json", "routing-decision.json", "dispatch-preflight.json", "discovery.json", "shard-plan.json", "aggregate-report.json", "gate-result.json", "attempts", "control"}
         for entry in run_dir.iterdir():
             if entry.name not in allowed:
                 errors.append(f"{run_dir}: unexpected review-run entry {entry.name}")
@@ -635,6 +716,16 @@ def validate_review_run_evidence(change_dir: Path, errors: list):
         if request is not None:
             if request.get("record_type") != "request" or request.get("protocol") != "review-run":
                 errors.append(f"{run_dir / 'request.json'}: invalid request record")
+            validate_review_execution_policy(request, run_dir / "request.json", errors)
+            routing = records.get("routing-decision")
+            if isinstance(routing, dict):
+                validate_review_deep_preflight(
+                    request,
+                    routing,
+                    records.get("dispatch-preflight"),
+                    run_dir / "dispatch-preflight.json",
+                    errors,
+                )
         discovery = records.get("discovery")
         if discovery is not None and discovery.get("record_type") != "discovery":
             errors.append(f"{run_dir / 'discovery.json'}: invalid discovery record")
@@ -650,6 +741,22 @@ def validate_review_run_evidence(change_dir: Path, errors: list):
                 ledger = validate_review_run_record(attempt, run_dir.name, errors)
                 if ledger is not None and ledger.get("record_type") != "review-ledger":
                     errors.append(f"{attempt}: invalid ledger record")
+                elif ledger is not None:
+                    status = ledger.get("attempt_status", "succeeded")
+                    entries = ledger.get("entries")
+                    if not isinstance(ledger.get("input_digest"), str) or not ledger["input_digest"]:
+                        errors.append(f"{attempt}: ledger input_digest is required")
+                    if status == "succeeded" and (not isinstance(entries, list) or not entries):
+                        errors.append(f"{attempt}: successful ledger entries must not be empty")
+                    if status != "succeeded":
+                        failure = ledger.get("failure")
+                        if not isinstance(entries, list) or entries:
+                            errors.append(f"{attempt}: non-success ledger entries must be empty")
+                        if not isinstance(failure, dict) or failure.get("kind") not in REVIEW_ATTEMPT_FAILURE_KINDS:
+                            errors.append(f"{attempt}: non-success ledger requires a typed failure")
+                        checkpoint = failure.get("diagnostic_checkpoint") if isinstance(failure, dict) else None
+                        if checkpoint is not None and (checkpoint.get("coverage_eligible") is not False or checkpoint.get("independent_evidence") is not False):
+                            errors.append(f"{attempt}: diagnostic checkpoint must not count as coverage evidence")
         control = run_dir / "control"
         if control.exists():
             current = control / "current.json"

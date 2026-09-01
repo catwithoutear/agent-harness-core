@@ -25,9 +25,9 @@ NEVER create speculative, overlapping, or overly broad assets. Prefer **one narr
 ## Evidence Priority
 
 1. **Recent sessions and task summaries** — highest-confidence signal. Concrete sessions, diffs, issue summaries, explicit user requests.
-2. **Memories and rollout summaries** — pattern detection across sessions; connect related work under different names.
+2. **Configured durable knowledge and rollout summaries** — pattern detection across sessions; connect related work under different names.
 3. **Chronicle, if enabled** — discovery only. Confirm important claims in source systems. Do not rely on Chronicle alone.
-4. **Existing assets** — skills, custom agents, automations, hooks, scripts, templates, memory notes. Inspect BEFORE proposing new assets.
+4. **Existing assets** — skills, custom agents, automations, hooks, scripts, templates, and configured durable knowledge records. Inspect BEFORE proposing new assets.
 
 If a source is unavailable, state the limitation and continue with available evidence.
 
@@ -112,7 +112,7 @@ Internal score → confidence label:
 Use the last 30 days of available work history. If less, use all available. Record: earliest date, latest date, unavailable sources, assumptions.
 
 Concrete methods:
-- Scan `.memory/` entries — check timestamps, look for recurring themes across entries
+- Resolve the project-selected durable knowledge provider from repository instructions, then scan its available entries or page metadata for recurring themes
 - Query Chronicle timeline if enabled — extract date ranges and topic clusters
 - Scan recent session transcripts or task records — count task types, look for repeated phrasing
 
@@ -128,7 +128,7 @@ Look for these signals using the specific methods described:
 | Repeated troubleshooting | Scan for same error class appearing in multiple sessions; same debug commands run manually |
 | Repeated command sequences | Look for 3+ commands run together more than once; check shell history if available |
 | Repeated config edits | Scan for edits to same config files across sessions with similar patterns |
-| Repeated research topics | Cross-reference `.memory/` entries and Chronicle topics for clustered themes |
+| Repeated research topics | Cross-reference configured durable knowledge records and Chronicle topics for clustered themes |
 | Repeated review criteria | Check for same checklist items or review comments appearing across MRs |
 | Repeated manual status checks | Look for recurring `git status`, `git log`, build status, or system health queries |
 | Recurring "how should I do X" | Search for explicit methodology or decision-seeking questions across sessions |
@@ -138,7 +138,7 @@ For each candidate, capture: workflow name, approximate dates, source evidence, 
 
 ### Step 3: Inspect existing assets
 
-Before recommending creation, inspect: skills, custom agents, automation definitions, hooks, scripts, templates, memory notes, AGENTS.md / CLAUDE.md equivalents.
+Before recommending creation, inspect: skills, custom agents, automation definitions, hooks, scripts, templates, configured durable knowledge records, and AGENTS.md / CLAUDE.md equivalents.
 
 For each candidate, classify existing coverage as: none, partial, adequate, duplicative, or obsolete. Do not create a new asset if adequate coverage exists.
 
@@ -182,8 +182,8 @@ Do NOT load templates if no assets will be created (Step 6 is skipped).
 
 ## Source-Awareness Rules
 
-- Prefer direct source evidence over memory summaries.
-- Use memory summaries to find patterns, not as the only proof.
+- Prefer direct source evidence over durable knowledge summaries.
+- Use durable knowledge summaries to find patterns, not as the only proof.
 - Treat Chronicle as discovery-only unless confirmed elsewhere.
 - Record uncertainty explicitly. Do not expose sensitive details unnecessarily.
 - Use dates whenever possible. Distinguish confirmed recurrence from inferred recurrence.

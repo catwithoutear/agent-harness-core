@@ -30,13 +30,15 @@ Do not use it for:
 - bug diagnosis from a concrete failure symptom; use `diagnose`;
 - choosing a solution between alternatives; use the owning design process and
   `grill-with-docs` when decisions need pressure-testing;
-- promoting speculative branch-only findings into durable memory.
+- promoting speculative branch-only findings into the project-selected durable
+  knowledge provider.
 
 ## Research Flow
 
 1. Locate the active change with `change-workspace-operator` when one exists.
-2. Read relevant `.memory`, `.specs`, rules, and current change artifacts before
-   broad source search.
+2. Read relevant entries from the project-selected durable knowledge provider,
+   plus `.specs`, rules, and current change artifacts, before broad source
+   search. If the repository selects no provider, proceed without inventing one.
 3. Use repository-native code navigation first when available, then targeted
    text search.
 4. Verify every generated, inferred, or remembered architecture claim against
@@ -70,7 +72,7 @@ the selected approach needs pressure testing before implementation.
 ```text
 Architecture scout:
 - Scope:
-- Artifacts and memory read:
+- Artifacts and durable knowledge read:
 - Source-verified entry points:
 - Runtime or artifact path:
 - Ownership boundary:
@@ -102,8 +104,8 @@ Bad scout:
 
 ## Common Mistakes
 
-- Skipping repository memory and rediscovering known paths.
+- Skipping the repository-selected durable knowledge provider and rediscovering known paths.
 - Treating central helper names as architectural importance without call-path
   evidence.
-- Updating durable memory from an unmerged worktree.
+- Updating durable knowledge from an unmerged worktree.
 - Producing architecture prose that cannot become a task slice.

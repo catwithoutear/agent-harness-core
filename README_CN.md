@@ -211,7 +211,7 @@ node bin/harness-project.js \
   --verify --json
 ```
 
-self-hosted projection 会创建运行时文件，例如 `.agents/skills/`、`.codex/agents/`、`.codex/hooks/`、`.changes/templates/`、`.memory/`、`.rules/` 和 `.harness/projection-state.json`。修改 source directories 和 manifest，然后重新运行 projector；不要手动编辑已投影的 runtime files。
+self-hosted projection 会创建运行时文件，例如 `.agents/skills/`、`.codex/agents/`、`.codex/hooks/`、`.changes/templates/`、`.rules/` 和 `.harness/projection-state.json`。Core 不选择或安装持久知识提供方；该决定由目标仓库拥有。修改 source directories 和 manifest，然后重新运行 projector；不要手动编辑已投影的 runtime files。
 
 ## Slash Commands
 

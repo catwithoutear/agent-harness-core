@@ -15,8 +15,11 @@ seal by hand, or replace the reviewer ledger.
 
 ## Phase A — Inventory
 
-Accept only a valid `protocol=review-run` neutral `VerifierDiscoveryEnvelope`
-(the run binding, target-view capability handle, and policy refs). The envelope
+Accept only the closed-schema Phase-A packet emitted by
+`review-run.mjs phase-a-packet`, with exact `protocol=review-run`, run id,
+`phase=inventory`, target fingerprint, provider binding, target-view capability,
+firewall policy and policy refs. Do not accept a hand-written semantic
+equivalent. The envelope
 receives no expected contract, no dispatch, no reviewer ledger, no findings, no
 prior comparison, and no caller-supplied forbidden-input list. Independently
 discover authority sources/items, dimension activation, changed surface,
@@ -25,6 +28,11 @@ isolated target view; mark independently found objects with
 `discovery_origin=target-derived`. Copy target inputs into a sealed raw
 discovery record. Report unavailable sources, exclusions, and unknowns rather
 than silently treating them as N/A.
+
+Reject an execution identity that has already seen expected-lane data, even if
+the coordinator supplies a new run id. Freshness requires provider attestations
+for distinct process/session, broker token, read log and write-only result
+channel identities; a lane's self-report is not evidence.
 
 ## Phase B — Compare
 
