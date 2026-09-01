@@ -19,6 +19,7 @@ export async function run(test) {
     assert.equal(policy.commands.resolve, "harness-change-doc resolve --json");
     assert.equal(policy.commands.execution_map, "harness-change-doc execution-map <change> --json");
     assert.equal(policy.commands.assign_slice, "harness-change-doc assign-slice <change> --slice <slice>");
+    assert.equal(policy.commands.init, "harness-change-doc init <change> --json");
     assert.equal(policy.commands.add_implementation_design, "harness-change-doc add-implementation-design");
     assert.equal(policy.commands.migrate, "harness-change-doc migrate <change> --dry-run | --apply");
     assert.doesNotMatch(result.stdout, /dbackup-change-/i);
@@ -31,6 +32,7 @@ export async function run(test) {
     assert.equal(pyPolicy.commands.resolve, "harness-change-doc resolve --json");
     assert.equal(pyPolicy.commands.execution_map, "harness-change-doc execution-map <change> --json");
     assert.equal(pyPolicy.commands.assign_slice, "harness-change-doc assign-slice <change> --slice <slice>");
+    assert.equal(pyPolicy.commands.init, "harness-change-doc init <change> --json");
     assert.equal(pyPolicy.commands.migrate, "harness-change-doc migrate <change> --dry-run | --apply");
   });
 
@@ -835,6 +837,176 @@ export async function run(test) {
       assert.equal(fs.existsSync(terminology), true);
       assert.match(fs.readFileSync(terminology, "utf8"), /artifact: terminology/);
     });
+  });
+
+  await test("JS and Python init create one managed structured workspace contract", () => {
+    for (const client of [
+      (args) => capture(() => runChangeDoc(args)),
+      (args) => runPythonChangeDoc(args)
+    ]) {
+      withTempRepo((repo) => {
+        const result = client([
+          "--state-root",
+          repo,
+          "--code-root",
+          repo,
+          "init",
+          "managed-workspace",
+          "--description",
+          "Managed workspace fixture.",
+          "--json"
+        ]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        const payload = JSON.parse(result.stdout);
+        assert.equal(payload.change_id, "managed-workspace");
+        assert.equal(payload.initialized, true);
+        assert.equal(payload.change_root, ".changes/managed-workspace");
+
+        const change = path.join(repo, ".changes", "managed-workspace");
+        for (const expected of [
+          "README.md",
+          "requirements.md",
+          "research.md",
+          "proposal.md",
+          "design.md",
+          "plan.md",
+          "tasks.md",
+          "specs/README.md",
+          "decisions/README.md",
+          "timeline/README.md",
+          "reviews/README.md",
+          "tasks/README.md"
+        ]) {
+          assert.equal(fs.existsSync(path.join(change, expected)), true, `${expected} missing`);
+        }
+
+        const validate = capture(() => runChangeValidate([
+          "--state-root",
+          repo,
+          "--change",
+          "managed-workspace",
+          "--strict-layout"
+        ]));
+        assert.equal(validate.status, 0, validate.stdout + validate.stderr);
+        assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=0/);
+
+        const repeated = client(["--state-root", repo, "init", "managed-workspace", "--json"]);
+        assert.equal(repeated.status, 1, repeated.stdout + repeated.stderr);
+        assert.match(repeated.stderr, /change already exists/);
+      });
+    }
+  });
+
+  await test("init rejects invalid change ids before creating a workspace", () => {
+    for (const client of [
+      (args) => capture(() => runChangeDoc(args)),
+      (args) => runPythonChangeDoc(args)
+    ]) {
+      withTempRepo((repo) => {
+        const result = client(["--state-root", repo, "init", "../escape", "--json"]);
+        assert.equal(result.status, 2, result.stdout + result.stderr);
+        assert.match(result.stderr, /invalid change id/);
+        assert.equal(fs.existsSync(path.join(repo, "escape")), false);
+      });
+    }
+  });
+
+  await test("add-review inserts only into the exact Child Index table and stays idempotent", () => {
+    for (const client of [
+      (args) => capture(() => runChangeDoc(args)),
+      (args) => runPythonChangeDoc(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "structured-one");
+        const reviews = path.join(repo, ".changes", "structured-one", "reviews");
+        fs.mkdirSync(reviews, { recursive: true });
+        const indexPath = path.join(reviews, "README.md");
+        const before = frontMatter("reviews-index", "review") + [
+          "# Reviews",
+          "",
+          "## Child Index Archive",
+          "",
+          "| path | artifact | status | order | description |",
+          "|---|---|---|---|---|",
+          "| `archive-r01.md` | review-round | superseded | r01 | Archived row. |",
+          "",
+          "## Child Index",
+          "",
+          "| path | artifact | status | order | description |",
+          "|---|---|---|---|---|",
+          "",
+          "## Review Notes",
+          "",
+          "Keep this section unchanged.",
+          ""
+        ].join("\n");
+        fs.writeFileSync(indexPath, before);
+
+        const args = [
+          "--state-root",
+          repo,
+          "add-review",
+          "structured-one",
+          "--target",
+          "implementation",
+          "--round",
+          "4",
+          "--description",
+          "Implementation review."
+        ];
+        const first = client(args);
+        assert.equal(first.status, 0, first.stdout + first.stderr);
+        const afterFirst = fs.readFileSync(indexPath, "utf8");
+        const row = "| `implementation-r04.md` | review-round | draft | r04 | Implementation review. |";
+        assert.equal(afterFirst.match(new RegExp(escapeRegExp(row), "g"))?.length, 1);
+        assert.ok(afterFirst.indexOf(row) > afterFirst.indexOf("## Child Index\n"));
+        assert.ok(afterFirst.indexOf(row) < afterFirst.indexOf("## Review Notes"));
+        assert.match(afterFirst, /## Child Index Archive[\s\S]*Archived row\.[\s\S]*## Child Index\n/);
+        assert.match(afterFirst, /## Review Notes\n\nKeep this section unchanged\.\n$/);
+
+        const second = client([...args, "--force"]);
+        assert.equal(second.status, 0, second.stdout + second.stderr);
+        assert.equal(fs.readFileSync(indexPath, "utf8"), afterFirst);
+      });
+    }
+  });
+
+  await test("add-review fails closed for missing, ambiguous, or malformed Child Index sections", () => {
+    const invalidBodies = [
+      "# Reviews\n\n## Findings\n\nNo child index.\n",
+      "# Reviews\n\n## Child Index\n\n| path | artifact |\n|---|---|\n\n## Child Index\n\n| path | artifact | status | order | description |\n|---|---|---|---|---|\n",
+      "# Reviews\n\n## Child Index\n\n| path | artifact | status | description |\n|---|---|---|---|\n"
+    ];
+    for (const client of [
+      (args) => capture(() => runChangeDoc(args)),
+      (args) => runPythonChangeDoc(args)
+    ]) {
+      for (const body of invalidBodies) {
+        withTempRepo((repo) => {
+          writeStructuredProposal(repo, "structured-one");
+          const reviews = path.join(repo, ".changes", "structured-one", "reviews");
+          fs.mkdirSync(reviews, { recursive: true });
+          const indexPath = path.join(reviews, "README.md");
+          const original = frontMatter("reviews-index", "review") + body;
+          fs.writeFileSync(indexPath, original);
+
+          const result = client([
+            "--state-root",
+            repo,
+            "add-review",
+            "structured-one",
+            "--target",
+            "implementation",
+            "--round",
+            "4"
+          ]);
+          assert.equal(result.status, 1, result.stdout + result.stderr);
+          assert.match(result.stderr, /valid unique Child Index table/);
+          assert.equal(fs.readFileSync(indexPath, "utf8"), original);
+          assert.equal(fs.existsSync(path.join(reviews, "implementation-r04.md")), false);
+        });
+      }
+    }
   });
 
   await test("doc tool creates implementation design topology pack", () => {

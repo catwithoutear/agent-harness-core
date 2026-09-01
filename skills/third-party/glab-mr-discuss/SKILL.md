@@ -197,6 +197,44 @@ glab api projects/:id/merge_requests/<MR>/discussions --output=json | jq '.[0].i
 
 A successful response returns the discussion ID. An HTTP 400 with `line_code` error means the file is not in the MR diff — fall back to regular discussion.
 
+## Reply And Resolution Are Separate
+
+Reply to an existing inline discussion in that discussion; do not replace it
+with an MR-level summary note:
+
+```bash
+glab api \
+  "projects/:id/merge_requests/<MR>/discussions/<discussion-id>/notes" \
+  --method POST \
+  -H 'Content-Type: application/json' \
+  --input /tmp/reply.json
+```
+
+Payload:
+
+```json
+{"body":"Disposition, code/source evidence, changed revision, and validation."}
+```
+
+Resolving is a different state transition and needs separate authority:
+
+```bash
+glab api \
+  "projects/:id/merge_requests/<MR>/discussions/<discussion-id>" \
+  --method PUT \
+  -H 'Content-Type: application/json' \
+  --input /tmp/resolve.json
+```
+
+where `/tmp/resolve.json` is `{"resolved":true}`.
+
+Verify both by reading the discussion back. Record `replied`, `modified`,
+`verified`, and GitLab `resolved` separately. For a true finding, an author
+normally replies after the change but leaves resolution to the reviewer. For a
+false finding, reply in the original inline discussion with type, API, call
+path, or build evidence; do not hide the disproof in a summary comment. Never
+reply or resolve without explicit mutation authorization.
+
 ## Multi-Comment Batching
 
 Prepare all payloads first, then post. Use parallel Bash calls for speed:

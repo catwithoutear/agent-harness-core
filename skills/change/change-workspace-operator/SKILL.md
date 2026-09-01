@@ -27,6 +27,7 @@ from dirty git status or `--all-active` validator output.
 | Need | Command |
 |---|---|
 | Read policy | `harness-change-doc --state-root <state-root> policy --json` |
+| Create a structured workspace | `harness-change-doc --state-root <state-root> --code-root <code-root> init <change-id> --description "..." --json` |
 | Resolve roots | `harness-change-doc --state-root <state-root> --code-root <code-root> resolve --change <change> --json` |
 | Index a change | `harness-change-doc --state-root <state-root> index <change-id> --json` |
 | List artifacts | `harness-change-doc --state-root <state-root> list <change-id> --json` |

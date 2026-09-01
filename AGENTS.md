@@ -9,8 +9,8 @@ project-agnostic and reusable across target repositories.
   capability contract.
 - Treat `skills/`, `agents/roles/`, `rules/`, `hooks/intents/`, `commands/`,
   `templates/`, `lib/`, and `schemas/` as source.
-- Treat `.agents/`, `.codex/`, `.changes/templates/`, `.memory/`, `.rules/`,
-  and `.harness/` as projected runtime output when they exist. Do not hand-edit
+- Treat `.agents/`, `.codex/`, `.changes/templates/`, `.rules/`, and
+  `.harness/` as projected runtime output when they exist. Do not hand-edit
   projected files.
 - For non-trivial work, use the evidence-gated workflow: observe, gather
   source-verified context, plan, review the plan when risk warrants it,
@@ -21,7 +21,9 @@ project-agnostic and reusable across target repositories.
 - Do not add project-specific product facts, build commands, private endpoints,
   issue tracker assumptions, or domain workflows to core assets.
 - If an instruction only applies to one target repository, it belongs in that
-  repository's overlay, memory, rules, or skills.
+  repository's overlay, selected durable knowledge provider, rules, or skills.
+- Core may describe how to resolve and verify durable knowledge, but it must not
+  select, install, name, configure, or grant write authority to a provider.
 - Do not rely on native client recursive discovery. Source skills may be
   categorized, but runtime skill projection must remain flat.
 - Keep third-party utility skills under `skills/third-party/`, mark them

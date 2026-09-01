@@ -3,7 +3,9 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 
@@ -172,19 +174,45 @@ def append_child_index(index_path: Path, directory: str, rel_path: str, artifact
         "description": description,
     }
     row = "| " + " | ".join(values.get(column, "") for column in columns) + " |"
-    if row in text:
-        return
-    if "## Child Index" not in text:
-        text = (
-            text.rstrip()
-            + "\n\n## Child Index\n\n| "
-            + " | ".join(columns)
-            + " |\n|"
-            + "|".join("---" for _ in columns)
-            + "|\n"
-        )
-    text = text.rstrip() + "\n" + row + "\n"
-    write_text(index_path, text)
+    updated = insert_markdown_table_row_after_heading(text, "Child Index", columns, row)
+    if updated != text:
+        write_text(index_path, updated)
+
+
+def insert_markdown_table_row_after_heading(text: str, heading: str, expected_columns, row: str) -> str:
+    lines = text.split("\n")
+    heading_text = f"## {heading}"
+    heading_indexes = [index for index, line in enumerate(lines) if line.strip() == heading_text]
+
+    def invalid(reason: str):
+        raise ValueError(f"document requires one valid unique {heading} table: {reason}")
+
+    if len(heading_indexes) != 1:
+        invalid(f"found {len(heading_indexes)} exact headings")
+
+    header_index = heading_indexes[0] + 1
+    while header_index < len(lines) and not lines[header_index].strip():
+        header_index += 1
+    if header_index >= len(lines) or not lines[header_index].strip().startswith("|"):
+        invalid("table header is missing")
+    actual_columns = split_table_row(lines[header_index])
+    if list(actual_columns) != list(expected_columns):
+        invalid(f"expected columns {', '.join(expected_columns)}")
+
+    divider_index = header_index + 1
+    if divider_index >= len(lines) or not lines[divider_index].strip().startswith("|"):
+        invalid("table divider is missing")
+    divider_cells = split_table_row(lines[divider_index])
+    if len(divider_cells) != len(expected_columns) or any(not re.fullmatch(r":?-{3,}:?", cell) for cell in divider_cells):
+        invalid("table divider is malformed")
+
+    table_end = divider_index + 1
+    while table_end < len(lines) and lines[table_end].strip().startswith("|"):
+        table_end += 1
+    if any(candidate.strip() == row.strip() for candidate in lines[divider_index + 1 : table_end]):
+        return text
+    lines.insert(table_end, row)
+    return "\n".join(lines)
 
 
 def next_number(directory_path: Path, pattern: str) -> int:
@@ -230,6 +258,65 @@ def command_policy(args) -> int:
     payload = policy.projection_policy()
     payload["commands"]["migrate"] = "harness-change-doc migrate <change> --dry-run | --apply"
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+CHANGE_WORKSPACE_TEMPLATES = [
+    ("README.md", "change-index", ["workflow"], "Change workspace index."),
+    ("requirements.md", "requirements", ["requirements"], "Settled requirements and constraints."),
+    ("research.md", "research", ["research"], "Source-backed change research."),
+    ("proposal.md", "proposal", ["proposal"], "Change proposal."),
+    ("design.md", "design", ["design"], "Change design."),
+    ("plan.md", "plan", ["workflow"], "Change implementation plan."),
+    ("tasks.md", "tasks", ["implementation"], "Change task checklist."),
+    ("specs/README.md", "specs-index", ["workflow"], "Change specification index."),
+]
+
+
+def command_init(args) -> int:
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", args.task):
+        print(f"ERROR: invalid change id: {args.task}", file=sys.stderr)
+        return 2
+    target = change_dir(root, args.task)
+    if target.exists():
+        print(f"ERROR: change already exists: {target}", file=sys.stderr)
+        return 1
+
+    changes_root = root / ".changes"
+    changes_root.mkdir(parents=True, exist_ok=True)
+    if changes_root.is_symlink() or not changes_root.is_dir():
+        print(f"ERROR: managed changes root must be a real directory: {changes_root}", file=sys.stderr)
+        return 1
+
+    temporary = Path(tempfile.mkdtemp(prefix=f".init-{args.task}-", dir=changes_root))
+    try:
+        workspace_description = args.description or "Change workspace index."
+        for rel_path, artifact, tags, default_description in CHANGE_WORKSPACE_TEMPLATES:
+            description = workspace_description if rel_path == "README.md" else default_description
+            body = strip_front_matter(read_text(PACKAGE_ROOT / "templates" / "changes" / rel_path))
+            if rel_path == "README.md":
+                body = body.replace("- Task:", f"- Task: `{args.task}`")
+            write_text(temporary / rel_path, front_matter(artifact, "draft", tags, description) + body)
+        for directory in policy.CHANGE_CHILD_DIRECTORIES:
+            ensure_child_index(temporary / directory, directory)
+        temporary.rename(target)
+    except Exception as exc:
+        shutil.rmtree(temporary, ignore_errors=True)
+        print(f"ERROR: failed to initialize change workspace: {exc}", file=sys.stderr)
+        return 1
+
+    result = {
+        "change_id": args.task,
+        "change_root": target.relative_to(root).as_posix(),
+        "initialized": True,
+    }
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(target)
     return 0
 
 
@@ -316,6 +403,11 @@ def command_add_review(args) -> int:
 
     tags = split_csv(args.tags) if args.tags else ["review"]
     description = args.description or f"{args.target} review round {args.round}"
+    try:
+        append_child_index(reviews_dir / "README.md", "reviews", filename, "review-round", args.status, round_id, description)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     body = front_matter("review-round", args.status, tags, description) + "\n".join(
         [
             f"# {args.target} Review Round {args.round}",
@@ -331,7 +423,6 @@ def command_add_review(args) -> int:
         ]
     ) + "\n"
     write_text(path, body)
-    append_child_index(reviews_dir / "README.md", "reviews", filename, "review-round", args.status, round_id, description)
     print(path)
     return 0
 
@@ -547,10 +638,14 @@ def add_child_document(args, directory: str, artifact: str, filename_builder, or
 
     tags = split_csv(args.tags) if args.tags else default_tags_for_artifact(artifact)
     description = args.description or title
+    try:
+        append_child_index(directory_path / "README.md", directory, filename, artifact, args.status, order_builder(path), description)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     body = front_matter(artifact, args.status, tags, description)
     body += f"# {title}\n\n" + "\n\n".join(sections) + "\n"
     write_text(path, body)
-    append_child_index(directory_path / "README.md", directory, filename, artifact, args.status, order_builder(path), description)
     print(path)
     return 0
 
@@ -1069,6 +1164,12 @@ def build_parser():
     resolve_parser.add_argument("--change")
     resolve_parser.add_argument("--json", action="store_true")
     resolve_parser.set_defaults(func=command_resolve)
+
+    init_parser = subparsers.add_parser("init")
+    init_parser.add_argument("task")
+    init_parser.add_argument("--description")
+    init_parser.add_argument("--json", action="store_true")
+    init_parser.set_defaults(func=command_init)
 
     index_parser = subparsers.add_parser("index")
     index_parser.add_argument("task")

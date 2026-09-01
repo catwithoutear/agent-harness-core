@@ -19,6 +19,12 @@ description: "Change workspace index."
 - Owner:
 - Next checkpoint:
 
+## Task Tag Registry
+
+| tag | description |
+|---|---|
+| `change-scope` | Evidence and decisions specific to this change. |
+
 ## Artifact Index
 
 | Artifact | Status | Purpose |

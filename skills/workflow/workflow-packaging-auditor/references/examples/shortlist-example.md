@@ -8,8 +8,8 @@ generic engineering team's agent-assisted workflow.
 ## Review Window
 
 - Coverage: 2026-03-26 to 2026-04-26 (30 days)
-- Sources used: session transcripts (12 sessions), memory entries (28), issue
-  summaries
+- Sources used: session transcripts (12 sessions), configured durable knowledge
+  records (28), issue summaries
 - Sources unavailable: shell history (not logged)
 - Assumptions: available sessions represent the main repeated workflows
 

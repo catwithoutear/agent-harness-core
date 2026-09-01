@@ -91,6 +91,14 @@ state one of:
 
 Then review the new diff introduced by the fix. Fixes can introduce new risks.
 
+For MR findings, load `references/mr-finding-lifecycle.md`. Classify each as
+`defect`, `project-style`, or `false`; keep `replied`, `modified`, `verified`,
+and `reviewer_resolved` as independent states. A request to fix similar issues
+requires complete-task-diff scan evidence, and every dispositioned finding is
+screened for a detailed knowledge retrospective. Project-specific skills own
+project semantics; this skill owns disposition evidence, review gating, and the
+retrospective trigger.
+
 ## Common Mistakes
 
 - Approving because tests passed while the design requirement was not checked.

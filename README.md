@@ -255,9 +255,11 @@ node bin/harness-project.js \
 ```
 
 The self-hosted projection creates runtime files such as `.agents/skills/`,
-`.codex/agents/`, `.codex/hooks/`, `.changes/templates/`, `.memory/`, `.rules/`,
-and `.harness/projection-state.json`. Edit the source directories and manifest,
-then re-run the projector; do not hand-edit projected runtime files.
+`.codex/agents/`, `.codex/hooks/`, `.changes/templates/`, `.rules/`, and
+`.harness/projection-state.json`. Core does not select or install a durable
+knowledge provider; the target repository owns that decision. Edit the source
+directories and manifest, then re-run the projector; do not hand-edit projected
+runtime files.
 
 ## Slash Commands
 

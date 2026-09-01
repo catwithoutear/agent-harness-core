@@ -66,6 +66,47 @@ export async function run(run) {
     }
   });
 
+  await run("explicit committed range preserves rename identity and excludes working-tree state", async () => {
+    const root = initRepo();
+    try {
+      git(root, ["mv", "a.txt", "renamed.cpp"]);
+      fs.appendFileSync(path.join(root, "renamed.cpp"), "committed\n");
+      git(root, ["commit", "-q", "-am", "rename"]);
+      fs.appendFileSync(path.join(root, "renamed.cpp"), "unstaged\n");
+      fs.writeFileSync(path.join(root, "untracked.cpp"), "untracked\n");
+
+      const { files } = collectChangedSurface(root, {
+        base: "HEAD~1",
+        head: "HEAD",
+        includeWorkingTree: false
+      });
+      assert.equal(files.length, 1);
+      assert.equal(files[0].status, "renamed");
+      assert.equal(files[0].old_path, "a.txt");
+      assert.equal(files[0].path, "renamed.cpp");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await run("default inventory still includes staged, unstaged, and untracked state", async () => {
+    const root = initRepo();
+    try {
+      fs.writeFileSync(path.join(root, "staged.cpp"), "staged\n");
+      git(root, ["add", "staged.cpp"]);
+      fs.appendFileSync(path.join(root, "a.txt"), "unstaged\n");
+      fs.writeFileSync(path.join(root, "untracked.cpp"), "untracked\n");
+
+      const { files } = collectChangedSurface(root, { base: "HEAD", head: "HEAD" });
+      assert.deepEqual(
+        files.map((file) => file.path).sort(),
+        ["a.txt", "staged.cpp", "untracked.cpp"]
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   await run("inventory digest is stable for identical state", async () => {
     const root = initRepo();
     try {

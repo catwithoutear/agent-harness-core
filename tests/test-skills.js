@@ -197,6 +197,41 @@ export async function run(test) {
     assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PacketDigest/);
   });
 
+  await test("MR finding lifecycle separates disposition, state, and knowledge promotion", () => {
+    const skill = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
+    const lifecycle = fs.readFileSync(
+      path.join(packageRoot, "skills", "review", "review-packet-gate", "references", "mr-finding-lifecycle.md"),
+      "utf8"
+    );
+    const discuss = fs.readFileSync(path.join(packageRoot, "skills", "third-party", "glab-mr-discuss", "SKILL.md"), "utf8");
+    for (const required of [
+      "defect",
+      "project-style",
+      "false",
+      "replied",
+      "modified",
+      "verified",
+      "reviewer_resolved",
+      "complete-task-diff",
+      "Project Rule",
+      "Review Heuristic",
+      "Code Analysis Method",
+      "Workflow Guard",
+      "Local Decision",
+      "Rejected Candidate",
+      "LOCAL_ONLY",
+      "CANDIDATE",
+      "READY_TO_PROMOTE",
+      "REJECTED"
+    ]) {
+      assert.match(lifecycle, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `lifecycle missing ${required}`);
+    }
+    assert.match(skill, /references\/mr-finding-lifecycle\.md/);
+    assert.match(discuss, /discussions\/<discussion-id>\/notes/);
+    assert.match(discuss, /"resolved":true/);
+    assert.match(discuss, /explicit mutation authorization/);
+  });
+
   await test("workflow assets route one review-run protocol and separate gates", () => {
     const workflow = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
     const review = fs.readFileSync(path.join(packageRoot, "commands", "harness", "review.md"), "utf8");
@@ -309,6 +344,7 @@ export async function run(test) {
       "resolve",
       "execution-map",
       "assign-slice",
+      "init <change-id>",
       "--worktrees",
       "--inventory",
       "--suggest-cleanup",
@@ -641,6 +677,17 @@ export async function run(test) {
     }
   });
 
+  await test("workflow packaging auditor resolves durable knowledge without selecting a provider", () => {
+    const text = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "workflow-packaging-auditor", "SKILL.md"),
+      "utf8"
+    );
+    assert.match(text, /project-selected durable knowledge provider/);
+    assert.match(text, /configured durable knowledge records/);
+    assert.doesNotMatch(text, /\.memory\//);
+    assert.doesNotMatch(text, /Agent Wiki/);
+  });
+
   await test("design code explainer template does not ship sample evidence", () => {
     const template = fs.readFileSync(
       path.join(packageRoot, "skills", "knowledge", "design-code-explainer", "assets", "report-template.html"),
@@ -916,5 +963,19 @@ export async function run(test) {
     assert(byId["grill-diff"].negativeTriggers.includes("findings-first review"));
     assert(byId["grill-diff"].negativeTriggers.includes("review packet or gate review"));
     assert(byId["grill-diff"].negativeTriggers.includes("broad risk-ordered review"));
+  });
+
+  await test("durable knowledge contract is provider-neutral", () => {
+    const skill = fs.readFileSync(
+      path.join(packageRoot, "skills", "knowledge", "memory-context-contract", "SKILL.md"),
+      "utf8"
+    );
+    assert.match(skill, /project-selected durable knowledge provider/);
+    assert.match(skill, /Core does not select, install, or name a provider/);
+    assert.match(skill, /If none is selected, do not guess or initialize one/);
+
+    const manifestJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const memoryAsset = manifestJson.assets.templates.find((asset) => asset.id === "memory-index");
+    assert.equal(memoryAsset, undefined);
   });
 }

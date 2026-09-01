@@ -5,8 +5,9 @@ import { digestValue, fail, finalizeRecord, sha256Text } from "./review-records.
  * Deterministic changed-surface inventory (R-008, R-009).
  *
  * Shells out to git to enumerate changed files, hunks and changed lines from
- * the declared base/head plus index/worktree/untracked state, then seals an
- * immutable `ChangedSurface` with a stable inventory digest.
+ * the declared base/head and, by default, index/worktree/untracked state, then
+ * seals an immutable `ChangedSurface` with a stable inventory digest. Callers
+ * that need an isolated committed task range set `includeWorkingTree: false`.
  */
 
 function git(root, args, { allowFailure = false } = {}) {
@@ -31,7 +32,7 @@ const STATUS_KIND = {
   T: "modified"
 };
 
-function collectChangedFiles(root, { base, head }) {
+function collectChangedFiles(root, { base, head, includeWorkingTree }) {
   const byPath = new Map();
   const add = (statusCode, path, oldPath) => {
     const kind = STATUS_KIND[statusCode] ?? "modified";
@@ -42,46 +43,56 @@ function collectChangedFiles(root, { base, head }) {
       status: kind,
       binary: false,
       generated: false
-    }, `file:${digestValue({ path, status: kind })}`);
+    }, `file:${digestValue({ path, old_path: oldPath, status: kind })}`);
     byPath.set(path, file);
     return file;
   };
+  const addNameStatus = (line) => {
+    if (!line) return;
+    const [code, ...paths] = line.split("\t");
+    if (!code) return;
+    if (["R", "C"].includes(code[0]) && paths.length >= 2) {
+      add(code[0], paths.at(-1), paths.slice(0, -1).join("\t"));
+    } else if (paths.length > 0) {
+      add(code[0], paths.join("\t"));
+    }
+  };
 
   // committed base..head
-  for (const line of git(root, ["diff", "--name-status", "--no-renames", `${base}..${head}`, "--"]).split("\n")) {
-    if (!line) continue;
-    const [code, ...rest] = line.split("\t");
-    const path = rest.join("\t");
-    if (code && path) add(code[0], path);
+  for (const line of git(root, ["diff", "--name-status", "--find-renames", `${base}..${head}`, "--"]).split("\n")) {
+    addNameStatus(line);
   }
-  // staged (index)
-  for (const line of git(root, ["diff", "--name-status", "--cached", "--no-renames", "--"]).split("\n")) {
-    if (!line) continue;
-    const [code, ...rest] = line.split("\t");
-    if (code && rest.length) add(code[0], rest.join("\t"));
-  }
-  // unstaged (worktree)
-  for (const line of git(root, ["diff", "--name-status", "--no-renames", "--"]).split("\n")) {
-    if (!line) continue;
-    const [code, ...rest] = line.split("\t");
-    if (code && rest.length) add(code[0], rest.join("\t"));
-  }
-  // untracked
-  for (const path of git(root, ["ls-files", "--others", "--exclude-standard"]).split("\n")) {
-    if (path) add("A", path);
+  if (includeWorkingTree) {
+    // staged (index)
+    for (const line of git(root, ["diff", "--name-status", "--cached", "--find-renames", "--"]).split("\n")) {
+      addNameStatus(line);
+    }
+    // unstaged (worktree)
+    for (const line of git(root, ["diff", "--name-status", "--find-renames", "--"]).split("\n")) {
+      addNameStatus(line);
+    }
+    // untracked
+    for (const path of git(root, ["ls-files", "--others", "--exclude-standard"]).split("\n")) {
+      if (path) add("A", path);
+    }
   }
 
   return [...byPath.values()];
 }
 
-function collectHunks(root, file, { base, head }) {
+function collectHunks(root, file, { base, head, includeWorkingTree }) {
   const path = file.path;
   if (file.status === "deleted" || file.binary) return [];
 
   const committed = git(root, ["diff", "-U0", `${base}..${head}`, "--", path], { allowFailure: true });
-  const staged = git(root, ["diff", "-U0", "--cached", "--", path], { allowFailure: true });
-  const unstaged = git(root, ["diff", "-U0", "--", path], { allowFailure: true });
-  const diff = [committed, staged, unstaged].filter(Boolean).join("\n");
+  const diffs = [committed];
+  if (includeWorkingTree) {
+    diffs.push(
+      git(root, ["diff", "-U0", "--cached", "--", path], { allowFailure: true }),
+      git(root, ["diff", "-U0", "--", path], { allowFailure: true })
+    );
+  }
+  const diff = diffs.filter(Boolean).join("\n");
   const results = [];
   let current = null;
   let newLine = 0;
@@ -129,13 +140,14 @@ function finalizeHunk(file, hunk) {
 export function collectChangedSurface(repoRoot, options = {}) {
   const base = options.base ?? "HEAD";
   const head = options.head ?? "HEAD";
+  const includeWorkingTree = options.includeWorkingTree ?? true;
 
-  const files = collectChangedFiles(repoRoot, { base, head });
+  const files = collectChangedFiles(repoRoot, { base, head, includeWorkingTree });
   const hunks = [];
   const lines = [];
 
   for (const file of files) {
-    const fileHunks = collectHunks(repoRoot, file, { base, head });
+    const fileHunks = collectHunks(repoRoot, file, { base, head, includeWorkingTree });
     for (const { hunk, lines: rawLines } of fileHunks) {
       hunks.push(hunk);
       for (const rawLine of rawLines) {
