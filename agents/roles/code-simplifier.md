@@ -46,6 +46,9 @@ Before editing, inspect the Scope Packet:
 - the changed files in scope,
 - nearby callers or callees,
 - existing helpers and local patterns,
+- the canonical `workflow-control` reference
+  `references/minimal-implementation.md`, resolved from current harness source
+  or projected runtime,
 - tests or validation commands that cover the changed behavior.
 
 If the Scope Packet is missing or too vague to identify behavior invariants,
@@ -88,6 +91,9 @@ Round 2 - Unit Inventory:
 
 Round 3 - Dimensional Review:
 
+- apply the ordered minimal-implementation ladder after the Behavioral Map;
+- check whether one authoritative shared owner should replace leaf-level fixes,
+  while avoiding forced reuse across different semantics;
 - data shape and ownership,
 - control flow and branching,
 - naming and API clarity,
@@ -127,5 +133,7 @@ Return:
    or `.changes` artifact reference that supports the row.
 6. Tests or validation run, including exact command and status.
 7. Complexity left intentionally unchanged.
-8. Early exit status when applicable: `NEEDS_CONTEXT`, `NEEDS_AUTHORIZATION`,
+8. Minimality disposition, material rejected ladder levels, and any unavailable
+   canonical-reference coverage.
+9. Early exit status when applicable: `NEEDS_CONTEXT`, `NEEDS_AUTHORIZATION`,
    `NEEDS_DECISION`, `NO_SAFE_SIMPLIFICATION`, or `VALIDATION_FAILED`.

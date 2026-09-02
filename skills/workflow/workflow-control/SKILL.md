@@ -26,20 +26,22 @@ honest final verification statement.
 
 1. Observe the current state before planning.
 2. Build a compact context packet from verified sources.
-3. Choose the lightest path that fits the work.
-4. When the solution is not settled, draft and challenge a proposal, then write
+3. When custom code is proposed, apply the Minimal Implementation Gate after
+   understanding the behavior and before selecting the implementation approach.
+4. Choose the lightest path that fits the work.
+5. When the solution is not settled, draft and challenge a proposal, then write
    and review the solution design.
-5. After the solution-design review is ready, apply the
+6. After the solution-design review is ready, apply the
    implementation-design trigger rule.
-6. When the trigger applies, create and review the implementation-design pack
+7. When the trigger applies, create and review the implementation-design pack
    before task slicing.
-7. Create bounded task slices with validation and rollback, then review the
+8. Create bounded task slices with validation and rollback, then review the
    task set before implementation.
-8. Implement only the current slice.
-9. Run a behavior-preserving simplify pass for non-trivial code edits.
-10. Review the slice against the packet and plan.
-11. Verify with commands or source evidence.
-12. Persist the result in the owning artifact or handoff.
+9. Implement only the current slice.
+10. Run a behavior-preserving simplify pass for non-trivial code edits.
+11. Review the slice against the packet and plan.
+12. Verify with commands or source evidence.
+13. Persist the result in the owning artifact or handoff.
 
 If a review or implementation discovery changes an accepted solution decision,
 return to solution design and reassess dependent implementation design and task
@@ -141,6 +143,27 @@ Write non-trivial findings into the owning `.changes` artifact. These skills
 produce evidence for `change-planner`, `review-packet-gate`, and handoff; they
 do not replace task slicing, review, or implementation.
 
+## Minimal Implementation Gate
+
+When a design, plan, task slice, or implementation would add custom code, read
+[`references/minimal-implementation.md`](references/minimal-implementation.md).
+Apply its ordered decision ladder only after the current behavior, callers,
+ownership, invariants, and failure boundaries are understood. Prefer the first
+safe level that completely satisfies the current requirement.
+
+Carry the compact disposition into the plan or task slice when the choice is
+material. Reuse `diagnose` for unproven root cause and `verification-first` for
+the narrowest credible runnable check; do not recreate either protocol inside
+the gate.
+
+## Harness Behavior Evaluation
+
+When evaluating a minimality instruction or role change itself, read
+[`references/minimality-behavior-evaluation.md`](references/minimality-behavior-evaluation.md).
+Use its fair isolated A/B contract after the candidate instruction paths are
+settled. Keep instrument self-check, repository validation, and a real live agent
+A/B result distinct; none substitutes for another.
+
 ## Implementation-Design Trigger Rule
 
 Assess whether an `implementation-design/` topology pack is required only after
@@ -187,6 +210,7 @@ Context packet:
 - goal and non-goals,
 - active change or explicit no-change reason,
 - relevant source files and current state,
+- minimal-implementation disposition when custom code is proposed,
 - constraints, risks, and owner questions,
 - planned validation.
 
@@ -279,6 +303,7 @@ or missing basic context.
 ## Common Mistakes
 
 - Starting from a remembered plan without re-reading current files.
+- Selecting custom code before applying the Minimal Implementation Gate.
 - Expanding the slice while implementing.
 - Skipping the simplify pass after meaningful code edits.
 - Treating warnings as harmless without deciding whether they block freeze.

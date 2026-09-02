@@ -161,6 +161,11 @@ export async function run(test) {
     assert.match(role, /error handling, logging, resource management/);
     assert.match(role, /Further simplification:/);
     assert.match(role, /reduce branches, state, abstraction layers/);
+    assert.match(role, /`over_engineering` as an independent review lens/);
+    assert.match(role, /workflow-control\/references\/minimal-implementation\.md/);
+    assert.match(role, /Do not copy the ladder into this role/);
+    assert.match(role, /canonical ladder owns\s+the order for choosing a concrete mechanism/);
+    assert.match(role, /does not approve correctness, safety, completeness/);
     assert.match(role, /unnecessary abstractions/);
     assert.match(role, /speculative\s+generality/);
     assert.match(role, /duplicate local\s+mechanisms/);

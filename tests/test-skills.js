@@ -652,6 +652,134 @@ export async function run(test) {
     assert.match(verificationFirst, /review-packet-gate/);
   });
 
+  await test("workflow control applies one safe ordered minimal-implementation gate", () => {
+    const workflowControl = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"),
+      "utf8"
+    );
+    const gate = fs.readFileSync(
+      path.join(
+        packageRoot,
+        "skills",
+        "workflow",
+        "workflow-control",
+        "references",
+        "minimal-implementation.md"
+      ),
+      "utf8"
+    );
+    const behaviorEvaluation = fs.readFileSync(
+      path.join(
+        packageRoot,
+        "skills",
+        "workflow",
+        "workflow-control",
+        "references",
+        "minimality-behavior-evaluation.md"
+      ),
+      "utf8"
+    );
+
+    for (const required of [
+      "references/minimal-implementation.md",
+      "before selecting the implementation approach",
+      "minimal-implementation disposition",
+      "Reuse `diagnose`",
+      "`verification-first`"
+    ]) {
+      assert.match(workflowControl, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const ladder = [
+      "No implementation",
+      "Repository capability",
+      "Standard library or runtime",
+      "Native platform capability",
+      "Approved installed dependency",
+      "Direct local expression",
+      "Minimum custom code"
+    ];
+    let previous = -1;
+    for (const level of ladder) {
+      const index = gate.indexOf(level);
+      assert(index > previous, `${level} is missing or out of order`);
+      previous = index;
+    }
+    for (const required of [
+      "Understand Before Choosing",
+      "Root Cause And Shared Ownership",
+      "Safety Floor",
+      "Runnable check",
+      "stop at the first level",
+      "A new dependency is a separate architecture choice",
+      "Reuse follows semantics",
+      "Never rank source lines, file count, or dependency count"
+    ]) {
+      assert.match(gate, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    assert.doesNotMatch(gate, /\b(?:browser|DOM|HTML|CSS|React|frontend|UI component)\b/i);
+
+    const simplify = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"),
+      "utf8"
+    );
+    for (const required of [
+      "## Minimality Decision",
+      "workflow-control",
+      "references/minimal-implementation.md",
+      "ordered minimal-implementation ladder",
+      "coverage gap",
+      "Minimality disposition"
+    ]) {
+      assert.match(simplify, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const designReview = fs.readFileSync(
+      path.join(packageRoot, "skills", "review", "multi-lens-design-review", "SKILL.md"),
+      "utf8"
+    );
+    for (const required of [
+      "`over_engineering`",
+      "independently test",
+      "CQ-09/CQ-10",
+      "workflow-control/references/minimal-implementation.md",
+      "does not prove correctness, safety, completeness, or readiness",
+      "second design-quality baseline"
+    ]) {
+      assert.match(designReview, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    for (const required of [
+      "references/minimality-behavior-evaluation.md",
+      "fair isolated A/B contract",
+      "instrument self-check",
+      "real live agent"
+    ]) {
+      assert.match(workflowControl, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    for (const required of [
+      "same agent client",
+      "fresh isolated workspace",
+      "shared-owner-fix",
+      "native-platform-reuse",
+      "safety-floor",
+      "complete safe reference",
+      "plausible short or leaf-only reference",
+      "Correctness",
+      "Safety and compatibility",
+      "Completeness",
+      "Minimality signals",
+      "LIVE_AB_NOT_RUN",
+      "null result"
+    ]) {
+      assert.match(behaviorEvaluation, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+    assert.doesNotMatch(
+      behaviorEvaluation,
+      /\b(?:browser|DOM|HTML|CSS|React|frontend|UI component)\b/i
+    );
+  });
+
   await test("core skills include behavior-calibrating examples", () => {
     const expected = [
       ["entry", "ask-harness", "## Example Routes"],
@@ -935,6 +1063,10 @@ export async function run(test) {
       "remove",
       "coverage complete",
       "EvidenceRef is",
+      "references/minimal-implementation.md",
+      "ordered minimal-implementation ladder",
+      "authoritative shared owner",
+      "Minimality disposition",
       "reviewer",
       "grill-diff"
     ]) {
