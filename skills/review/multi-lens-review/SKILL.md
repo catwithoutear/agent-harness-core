@@ -81,6 +81,26 @@ the evidence sources the reviewer may inspect. Do not include suspected bugs,
 prior reviewer opinions, expected fixes, or "focus on X because I think Y is
 wrong."
 
+### Independent Code-Only Pass
+
+When one fresh, independent code perspective is useful, replace the usual
+outside-voice context with only the code target (including necessary nearby code
+and tests) and general review rules. Start it with no prior turns when the
+client supports that: use `fork_turns=none` for Codex and the client's fresh
+subagent or session equivalent elsewhere.
+
+Use this prompt:
+
+> Act as an independent reviewer. Read only code and assess design,
+> architecture, correctness, and maintainability from its structure, logic, and
+> semantics. Do not read or reference pre-written requirements, proposals,
+> designs, implementation-designs, tasks, reviews, or prior findings, so their
+> conclusions do not bias your assessment.
+
+This is an optional fresh lens, not a new role, protocol, or gate. Synthesize
+its evidence with the normal review; it does not replace intent-aware review or
+`review-verifier` coverage comparison.
+
 ## Synthesis
 
 The coordinator owns the final report:

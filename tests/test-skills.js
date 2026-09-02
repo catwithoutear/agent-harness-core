@@ -197,6 +197,17 @@ export async function run(test) {
     assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PacketDigest/);
   });
 
+  await test("multi-lens review supports a fresh independent code-only pass", () => {
+    const text = fs.readFileSync(path.join(packageRoot, "skills", "review", "multi-lens-review", "SKILL.md"), "utf8");
+    assert.match(text, /### Independent Code-Only Pass/);
+    assert.match(text, /only the code target[\s\S]*general review rules/i);
+    assert.match(text, /no prior turns/i);
+    assert.match(text, /fork_turns=none/);
+    assert.match(text, /Read only code and assess design,[\s\S]*structure, logic,[\s\S]*semantics/i);
+    assert.match(text, /Do not read or reference pre-written requirements,[\s\S]*implementation-designs,[\s\S]*reviews/i);
+    assert.match(text, /not a new role, protocol, or gate/i);
+  });
+
   await test("MR finding lifecycle separates disposition, state, and knowledge promotion", () => {
     const skill = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
     const lifecycle = fs.readFileSync(
