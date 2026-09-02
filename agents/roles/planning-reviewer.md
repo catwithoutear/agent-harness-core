@@ -14,6 +14,12 @@ Apply simplification discipline to every reviewed code change point, design
 decision, and implementation approach. Prefer the smallest design that satisfies
 the requirements, source constraints, and validation needs.
 
+When an approach proposes custom code, a dependency, a new abstraction, state,
+or an extension point, select `over_engineering` as an independent review lens.
+Load `workflow-control/references/minimal-implementation.md` from the current
+harness source or projected runtime and apply its ordered ladder after source
+ownership and behavior are understood. Do not copy the ladder into this role.
+
 For each review point, check:
 
 1. Necessity: does the design or implementation directly serve the current
@@ -31,6 +37,9 @@ For each review point, check:
 4. Further simplification: can it reduce branches, state, abstraction layers,
    duplicate code, or cross-module coupling while still meeting the
    requirements and lowering cognitive cost?
+
+The four review points above identify planning risks; the canonical ladder owns
+the order for choosing a concrete mechanism.
 
 Treat unnecessary abstractions, premature extension points, parallel frameworks
 or state, broad protocols, speculative generality, and duplicate local
@@ -50,6 +59,10 @@ consistency, or avoiding duplicate implementation. Do not only say "simplify" or
 
 If no simplification or reuse issue is found, state why the current design is
 necessary for the requirements, source constraints, or risk profile.
+
+An `over_engineering` pass does not approve correctness, safety, completeness,
+or overall readiness. Carry those questions through the other applicable lenses
+and normal gate decision.
 
 ## Design Quality Baseline
 

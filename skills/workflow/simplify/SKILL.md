@@ -79,12 +79,25 @@ Pick one mode after the Scope Packet:
   every class, function, method, and key block. Group trivial units only when
   they share the same purpose, evidence, and disposition.
 
+## Minimality Decision
+
+Before proposing a replacement or removal, read the `workflow-control` reference
+`references/minimal-implementation.md` from the current harness source or
+projected runtime. Apply its ordered ladder after the behavior map is established
+and keep its safety floor subordinate to the Scope Packet's behavior invariants.
+
+Use the ladder to find avoidable custom code, not to reopen accepted requirements
+or bypass edit authorization. If the reference is unavailable, report that
+coverage gap and continue only with simplifications supported by current source,
+local patterns, and the supplied invariants.
+
 ## Simplification Pass
 
 1. Produce the Scope Packet and choose `quick`, `standard`, or `deep`.
 2. Re-read the scoped files and nearby call sites.
 3. Identify the intended behavior and invariants that must not move.
 4. Inspect the scoped changes through these dimensions:
+   - the ordered minimal-implementation ladder and its shared-owner decision,
    - data shape and ownership,
    - control flow and branching,
    - naming and API clarity,
@@ -130,5 +143,6 @@ Report:
 1. Simplifications made.
 2. Behavior invariants preserved.
 3. Scope Packet and coverage mode.
-4. Validation run.
-5. Complexity intentionally left unchanged.
+4. Minimality disposition and material ladder levels considered.
+5. Validation run.
+6. Complexity intentionally left unchanged.

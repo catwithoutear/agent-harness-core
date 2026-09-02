@@ -523,9 +523,27 @@ export async function run(test) {
       assert.equal(project.status, 0, project.stdout + project.stderr);
 
       const simplifyPath = path.join(target, ".agents", "skills", "simplify", "SKILL.md");
+      const minimalImplementationPath = path.join(
+        target,
+        ".agents",
+        "skills",
+        "workflow-control",
+        "references",
+        "minimal-implementation.md"
+      );
+      const minimalityEvaluationPath = path.join(
+        target,
+        ".agents",
+        "skills",
+        "workflow-control",
+        "references",
+        "minimality-behavior-evaluation.md"
+      );
       const grillDiffPath = path.join(target, ".agents", "skills", "grill-diff", "SKILL.md");
       const simplifierAgentPath = path.join(target, ".codex", "agents", "code-simplifier.toml");
       assert.equal(fs.existsSync(simplifyPath), true);
+      assert.equal(fs.existsSync(minimalImplementationPath), true);
+      assert.equal(fs.existsSync(minimalityEvaluationPath), true);
       assert.equal(fs.existsSync(grillDiffPath), true);
       assert.equal(fs.existsSync(simplifierAgentPath), true);
 
@@ -538,6 +556,19 @@ export async function run(test) {
       assert.match(simplify, /requested_mode=opportunities/);
       assert.match(simplify, /Pass the Scope Packet to `code-simplifier`/);
       assert.match(simplify, /Do not treat an empty current diff as an empty review/);
+      assert.match(simplify, /references\/minimal-implementation\.md/);
+
+      const minimalImplementation = fs.readFileSync(minimalImplementationPath, "utf8");
+      assert.match(minimalImplementation, /Ordered Decision Ladder/);
+      assert.match(minimalImplementation, /Native platform capability/);
+      assert.match(minimalImplementation, /Root Cause And Shared Ownership/);
+      assert.match(minimalImplementation, /Safety Floor/);
+
+      const minimalityEvaluation = fs.readFileSync(minimalityEvaluationPath, "utf8");
+      assert.match(minimalityEvaluation, /Fair A\/B Contract/);
+      assert.match(minimalityEvaluation, /fresh isolated workspace/);
+      assert.match(minimalityEvaluation, /Instrument Self-Check/);
+      assert.match(minimalityEvaluation, /LIVE_AB_NOT_RUN/);
 
       const grillDiff = fs.readFileSync(grillDiffPath, "utf8");
       assert.match(grillDiff, /Read-only by default/);
@@ -552,6 +583,8 @@ export async function run(test) {
       assert.match(simplifierAgent, /Unit Inventory/);
       assert.match(simplifierAgent, /every class, function, method, and key block/);
       assert.match(simplifierAgent, /coverage complete/);
+      assert.match(simplifierAgent, /references\/minimal-implementation\.md/);
+      assert.match(simplifierAgent, /authoritative shared owner/);
 
       for (const projected of [
         path.join(target, ".claude", "agents", "code-simplifier.md"),

@@ -61,6 +61,10 @@ Use these lens families as needed:
   simplicity, local reasoning, capability boundaries, consistency, resilience,
   resource budgets, security, operability, and evolution, using the canonical
   baseline.
+- `over_engineering`: independently test whether proposed custom code,
+  dependencies, abstractions, state, files, or extension points are necessary.
+  Apply CQ-09/CQ-10 from the design baseline and the ordered gate in
+  `workflow-control/references/minimal-implementation.md`.
 - `boundary_contracts`: module ownership, APIs, data contracts, dependency
   direction, compatibility, and non-goals.
 - `topology_readiness`: subsystem boundaries, module boundaries, directory/file
@@ -79,6 +83,12 @@ Use these lens families as needed:
 
 Do not run all lenses by default. Select the smallest set that can falsify the
 readiness claim.
+
+`over_engineering` is independently selectable when avoidable implementation
+cost is the material risk. It may run alone for that question or alongside other
+lenses, but it does not prove correctness, safety, completeness, or readiness by
+itself. The minimal-implementation reference is a decision procedure, not a
+second design-quality baseline; do not copy either rubric into this skill.
 
 ## Evidence Rules
 
