@@ -29,7 +29,7 @@ English: [README.md](README.md)。
 ```bash
 npx @catwithoutear/agent-harness-core harness-project \
   --target /path/to/repo \
-  --clients codex,claude,opencode,omp \
+  --clients codex,claude,opencode,omp,zcode \
   --content rules,templates,skills,subagents,hooks
 ```
 
@@ -54,6 +54,29 @@ npx @catwithoutear/agent-harness-core harness-project \
   --content rules,templates,skills,subagents,hooks \
   --verify --json
 ```
+
+## ZCode 投影
+
+ZCode 是一等投影目标。下面的路径和能力以已安装的 ZCode Desktop 3.10.2 及其内置 CLI 0.16.5 为准。ZCode 公共 Hooks 文档可能落后于这个已安装运行时；不能根据该页面推断其他版本的支持范围。
+
+| 内容 | 项目目标 | 用户全局目标 | 行为 |
+|---|---|---|---|
+| Skills | `.agents/skills/<runtimeName>/` | `~/.agents/skills/<runtimeName>/` | 使用共享公共路径；不复制或链接到 `.zcode/skills`。 |
+| Commands | `.agents/commands/<runtimeName>.md` | `~/.agents/commands/<runtimeName>.md` | 共享 command source，按字节复制。 |
+| Subagents | `.zcode/agents/<runtimeName>.md` | `~/.zcode/agents/<runtimeName>.md` | 使用 ZCode front matter 和 canonical role body；覆盖更新时保留已有模型与思考程度元数据。 |
+| Hooks | `.zcode/config.json#hooks` | `~/.zcode/cli/config.json#hooks` | 只合并受管理的 JSON；adapter 位于对应作用域的 `.zcode/harness/hooks/`。 |
+
+Skills 和 commands 有意使用共享的 `.agents` 路径。Codex 和 ZCode 同时选择同一个 skill 时，projector 记录两个逻辑消费者，但只执行一次物理物化；不会在 `.zcode/skills` 下创建副本。
+
+ZCode 对共享 command 文件保持字节不变。已安装 CLI 能发现嵌套 command，例如 `harness:route`，并保留其 description 和 argument hint。它会警告 canonical front matter 中的 `name` key 未知；保留该 warning，因为共享 command 必须与其他客户端保持一致。
+
+当前 Native Hook 支持仅覆盖以下五个 intent：
+
+- `session-bootstrap`、`active-change-guard` 和 `projection-health-check` 使用 `SessionStart`，adapter 只注入上下文。
+- `tool-safety-guard` 和 `regulated-structure-guard` 使用 `PreToolUse`，matcher 为 `Bash|Write|Edit|ApplyPatch`，adapter 只注入上下文。
+- ZCode 没有受支持的原生事件对应 `pre-compact-handoff`，因此该 intent 保持 unsupported。
+
+Adapter 只输出 `additionalContext`。如果 `hooks.enabled` 缺失，只有在显式选择 Hooks 时 projector 才会将其设为 `true`。已有的 `hooks.enabled: false` 保持为 false，并产生 `configured-disabled` warning。项目级 Hook 的 trust 和 admission 仍由 ZCode 管理；projector 只写入声明，不会 grant 或 revoke trust。
 
 ## 可选第三方技能
 
@@ -99,7 +122,7 @@ do not overwrite unrelated user changes. Then run a dry-run:
 
 node <agent-harness-core>/bin/harness-project.js \
   --target <repo> \
-  --clients codex,claude,opencode,omp \
+  --clients codex,claude,opencode,omp,zcode \
   --scope project \
   --content rules,templates,skills,subagents,hooks,commands \
   --mode copy \
@@ -129,7 +152,7 @@ First run:
 
 node <agent-harness-core>/bin/harness-project.js \
   --target <state-target> \
-  --clients codex,claude,opencode,omp \
+  --clients codex,claude,opencode,omp,zcode \
   --scope global \
   --content skills,subagents,hooks,commands \
   --mode copy \
@@ -236,6 +259,7 @@ core package 在 `commands/harness/` 下提供 workflow command prompts。`harne
 | OMP | `.omp/commands/harness-*.md` 或 `~/.omp/agent/commands/harness-*.md` | `/harness-workflow` |
 | Codex | 仅 global：`~/.codex/prompts/harness-*.md` | `/prompts:harness-workflow` |
 | OpenCode | 尚未 file-projected；OpenCode 使用 `opencode.json` 的 `command` entries | 使用 projected skills |
+| ZCode | `.agents/commands/harness/*.md` 或 `~/.agents/commands/harness/*.md` | `/harness:workflow` |
 
 Codex custom prompts 已被 Codex 标记为 deprecated，应视为 personal shortcuts，而不是主要的共享 workflow surface。OpenCode command support 需要 config merge semantics 后，core 才能安全投影。
 

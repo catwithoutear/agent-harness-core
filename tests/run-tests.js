@@ -131,6 +131,11 @@ if (all || requested.has("--subagents") || requested.has("--hooks")) {
   await module.run(run);
 }
 
+if (all || requested.has("--zcode-hooks")) {
+  const module = await import("./test-zcode-hooks.js");
+  await module.run(run);
+}
+
 if (failures > 0) {
   process.stderr.write(`${failures} test(s) failed\n`);
   process.exit(1);

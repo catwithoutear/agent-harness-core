@@ -21,6 +21,7 @@
     "bin/",
     "harness.manifest.json",
     "commands/",
+    "hooks/",
     "lib/",
     "rules/",
     "schemas/",
