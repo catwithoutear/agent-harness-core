@@ -893,7 +893,15 @@
           "verified knowledge",
           "project vocabulary",
           "durable knowledge",
-          "memory promotion"
+          "memory promotion",
+          "context retrieval receipt",
+          "receipt validation",
+          "context gap",
+          "CONTEXT_READY",
+          "NO_RELEVANT_HIT",
+          "DEGRADED",
+          "QUERY_FAILED",
+          "PLANNED"
         ],
         "negativeTriggers": [
           "one-off answer with no repository context"

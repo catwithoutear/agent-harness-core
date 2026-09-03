@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "codebase-build.context-retrieval-receipt",
+  "title": "Codebase context retrieval receipt",
+  "description": "The closed receipt emitted by Codebase lib/context-retrieval.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "receipt_type",
+    "claim_id",
+    "lane",
+    "query",
+    "created_at",
+    "route",
+    "worktree",
+    "ok",
+    "state",
+    "execution",
+    "transport",
+    "query_outcome",
+    "provider",
+    "search",
+    "read",
+    "error",
+    "digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "codebase-build.context-retrieval-receipt"
+    },
+    "version": {
+      "const": 1
+    },
+    "receipt_type": {
+      "const": "retrieval"
+    },
+    "claim_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lane": {
+      "enum": [
+        "architecture",
+        "reuse",
+        "governance",
+        "risk"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheme", "host", "path"],
+      "properties": {
+        "scheme": { "enum": ["http", "https"] },
+        "host": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "pattern": "^/" }
+      }
+    },
+    "worktree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_root", "head", "dirty_digest"],
+      "properties": {
+        "project_root": { "type": "string", "pattern": "^/" },
+        "head": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "dirty_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "state": {
+      "enum": [
+        "CONTEXT_READY",
+        "NO_RELEVANT_HIT",
+        "DEGRADED",
+        "QUERY_FAILED",
+        "PLANNED"
+      ]
+    },
+    "execution": {
+      "enum": ["EXECUTED", "PLANNED"]
+    },
+    "transport": {
+      "enum": ["mcp", "unavailable"]
+    },
+    "query_outcome": {
+      "enum": [
+        "PLANNED",
+        "FAILED",
+        "NO_HIT",
+        "READ_SELECTION_REQUIRED",
+        "HIT_READ"
+      ]
+    },
+    "provider": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "websiteUrl": { "type": "string", "minLength": 1 },
+        "icons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["src"],
+            "properties": {
+              "src": { "type": "string", "minLength": 1 },
+              "mimeType": { "type": "string" },
+              "sizes": { "type": "array", "items": { "type": "string" } },
+              "theme": { "enum": ["light", "dark"] }
+            }
+          }
+        }
+      }
+    },
+    "search": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["tool", "candidate_uris"],
+      "properties": {
+        "tool": { "const": "find" },
+        "candidate_uris": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "read": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["uri", "bytes", "content_digest"],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^viking://" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "content_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "error": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["code"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 }
+      }
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

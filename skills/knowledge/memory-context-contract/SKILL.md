@@ -25,6 +25,38 @@ project.
 Skip durable knowledge only for self-contained tasks that clearly do not depend on repo
 history, vocabulary, architecture, prior decisions, or reusable commands.
 
+## Context Retrieval Receipt
+
+When context retrieval is attempted or planned, carry a validated
+`codebase-build.context-retrieval-receipt` v1 in the context packet. The closed
+producer shape and digest rules are in
+`references/context-retrieval-receipt.schema.json` and
+`references/context-retrieval-receipt.md`; validate it with the deployed
+client-neutral shared skill script
+`.agents/skills/memory-context-contract/scripts/context-retrieval-receipt.mjs`
+before using its gate result. For project or user scope, use the packet's
+absolute shared-skill path or resolve it from `HOME`; never substitute a
+client-specific path such as `.zcode/skills`.
+
+The receipt is evidence of the retrieval attempt, not a provider-selection or
+provider-invocation instruction. Unknown fields and a missing or mismatched
+`digest` fail closed. The validator maps states as follows:
+
+| Receipt state | Context gate | Meaning |
+|---|---|---|
+| `CONTEXT_READY` | `READY` | 已读取 |
+| `NO_RELEVANT_HIT` | `READY_WITH_NOTES` | 仅尝试 |
+| `DEGRADED` / `QUERY_FAILED` | `READY_WITH_NOTES` | context gap |
+| `PLANNED` | `NOT_READY` (non-zero) | 未执行检索 |
+
+`CONTEXT_READY` must contain an executed search and a read object with `uri`.
+`NO_RELEVANT_HIT` must contain an executed search with `read=null`.
+`DEGRADED` and `QUERY_FAILED` require executed retrieval and preserve a
+context gap. `PLANNED` requires `execution=PLANNED`, `search=null`, and
+`read=null`; it cannot be used as evidence that retrieval occurred. Receipt
+validation only translates evidence; it does not invoke a provider, write a
+spool, run hooks, or classify an automatic lane.
+
 ## What Belongs Where
 
 | Content | Owner |

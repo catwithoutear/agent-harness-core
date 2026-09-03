@@ -1,0 +1,35 @@
+{
+  "schema": "codebase-build.context-retrieval-receipt",
+  "version": 1,
+  "receipt_type": "retrieval",
+  "claim_id": "fixture-no-relevant-hit",
+  "lane": "risk",
+  "query": "unknown topic",
+  "created_at": "2026-09-03T00:00:00.000Z",
+  "route": {
+    "scheme": "http",
+    "host": "127.0.0.1:1933",
+    "path": "/mcp"
+  },
+  "worktree": {
+    "project_root": "/tmp/project",
+    "head": "0123456789abcdef0123456789abcdef01234567",
+    "dirty_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "ok": true,
+  "state": "NO_RELEVANT_HIT",
+  "execution": "EXECUTED",
+  "transport": "mcp",
+  "query_outcome": "NO_HIT",
+  "provider": {
+    "name": "fixture-provider",
+    "version": "1.0.0"
+  },
+  "search": {
+    "tool": "find",
+    "candidate_uris": []
+  },
+  "read": null,
+  "error": null,
+  "digest": "sha256:7341259ade5567de6400f8df3b93c08e48cd37934480fd3565f86b5d48b5c77a"
+}
