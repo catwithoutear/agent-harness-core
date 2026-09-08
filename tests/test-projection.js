@@ -123,7 +123,7 @@ export async function run(test) {
       assert.match(commandText, /Activate `workflow-control`/);
       assert.match(
         commandText,
-        /combines both a workflow-use signal\s+and an overall-completion signal/i
+        /no workflow keyword or fixed phrase is required/i
       );
       assert.match(
         commandText,
@@ -233,11 +233,11 @@ export async function run(test) {
           /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
         );
         assert.match(projectedPlanner, /Use `plan-only` for compact work/);
-        assert.match(projectedWorkflow, /Interpret the combination semantically/);
-        assert.match(projectedWorkflow, /`按照 workflow 收敛` \| Activate continuous convergence\./);
+        assert.match(projectedWorkflow, /No workflow keyword or fixed phrase is\s+required/);
+        assert.match(projectedWorkflow, /`按照 workflow 收敛` \| Continue authorized work to the overall objective\./);
         assert.match(
           projectedWorkflow,
-          /`continue until complete` \| Do not activate this contract; no workflow-use signal\./
+          /`continue until complete` \| Continue authorized work to the overall objective\./
         );
         assert.match(projectedWorkflow, /without asking the user\s+to send\s+another "continue" message/i);
         assert.match(projectedRefiner, /Stop at solution design, ambiguities, and validation intent/);

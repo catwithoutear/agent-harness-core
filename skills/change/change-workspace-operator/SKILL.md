@@ -22,6 +22,14 @@ For linked worktrees, run
 or record why the active change is unresolved. Do not select a change solely
 from dirty git status or `--all-active` validator output.
 
+## Write Authority
+
+Tool availability and non-trivial task scope do not authorize artifact writes.
+For read-only investigation or review, read existing records as needed and keep
+new evidence in the response unless a file deliverable or existing task-record
+authorization covers writing. When writing is authorized, resolve the canonical
+state root and use the regulated commands below.
+
 ## Commands
 
 | Need | Command |

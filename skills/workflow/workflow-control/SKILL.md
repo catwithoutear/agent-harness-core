@@ -49,34 +49,20 @@ slices. Do not repair a changed design inside a downstream artifact.
 
 ## Continuous Convergence
 
-Activate continuous convergence only when the current instruction or still-active
-user context combines both signals:
-
-1. a workflow-use signal: an explicit request to use or follow a `workflow` or
-   equivalent workflow reference; and
-2. an overall-completion signal: an explicit intent to converge, continue until
-   complete, pass all acceptance criteria, close the remaining gaps, or otherwise
-   keep going until the whole objective is done.
-
-Interpret the combination semantically. Do not require a fixed phrase, word
-order, language, or exact spelling. A workflow request without overall-completion
-intent uses the ordinary workflow. Completion intent without a workflow-use
-signal does not activate this specific convergence contract.
+For execution requests, continue authorized work until the overall objective
+satisfies its acceptance criteria. No workflow keyword or fixed phrase is
+required. Respect explicit plan-only, review-only, budget, and staged-stop
+requests; completion never grants additional action authority or scheduling.
 
 | Instruction | Result |
 |---|---|
-| `按照 workflow 收敛` | Activate continuous convergence. |
-| `使用 workflow 持续推进直到完成` | Activate continuous convergence. |
-| `走 workflow，把剩余问题全部闭环` | Activate continuous convergence. |
-| `follow the workflow until the overall goal is complete` | Activate continuous convergence. |
-| `use the workflow and continue until all acceptance criteria pass` | Activate continuous convergence. |
-| `use the workflow to inspect the current state` | Ordinary workflow; no overall-completion signal. |
-| `continue until complete` | Do not activate this contract; no workflow-use signal. |
+| `按照 workflow 收敛` | Continue authorized work to the overall objective. |
+| `continue until complete` | Continue authorized work to the overall objective. |
+| `use the workflow to inspect the current state` | Complete the inspection only; no implementation authority. |
+| `plan first and wait for approval` | Deliver the plan and stop before implementation. |
 
-When both signals exist, treat the instruction as a terminal condition, not as a
-request for one workflow pass. Record the overall objective and its acceptance
-criteria in the context packet, then continue without asking the user to send
-another "continue" message.
+Record the overall objective and its acceptance criteria in the context packet,
+then continue without asking the user to send another "continue" message.
 
 After each implementation, review, correction, or verification iteration:
 
@@ -101,12 +87,16 @@ acceptance criteria; otherwise carry the notes into the next iteration.
 
 A handoff or context-compaction checkpoint preserves the objective, evidence,
 remaining gaps, and exact next action. It is not completion and must not be used
-to make the user request continuation again. Pause convergence only with
+to make the user request continuation again. When a decision needs user
+authority, pause dependent work with
 `NEEDS_USER_DECISION`: name the owner-controlled decision, show why current
 requirements and evidence cannot resolve it, and ask the smallest necessary
 question. Existing safety, authority, and external-action boundaries still
 apply; when crossing one requires owner authorization, represent that boundary
-as the required decision rather than silently broadening scope.
+as the required decision rather than silently broadening scope. If an external
+blocker persists after reasonable safe attempts, report partial status, the
+missing capability/input, and the next action; do not loop indefinitely or claim
+completion. Continue independent authorized work when possible.
 
 ## Workflow Paths
 
@@ -122,8 +112,9 @@ as the required decision rather than silently broadening scope.
   implementation-design assessment, a reviewed pack when required, and a
   reviewed task set before implementation.
 
-Uncertainty about behavior, compatibility, ownership, lifecycle, migration, or
-dependency order disqualifies the fast and compact paths.
+Resolve ordinary technical uncertainty through bounded source inspection first.
+Escalate from the fast or compact path only when material behavior, compatibility,
+ownership, lifecycle, migration, or dependency decisions remain unresolved.
 
 ## Evidence Skills
 
@@ -139,8 +130,9 @@ role:
 - `verification-first`: during planning, implementation, review, and handoff to
   select or report the smallest credible validation loop.
 
-Write non-trivial findings into the owning `.changes` artifact. These skills
-produce evidence for `change-planner`, `review-packet-gate`, and handoff; they
+Write non-trivial findings into the owning `.changes` artifact only when task
+record writes are authorized. For read-only work, return evidence in the
+response unless the user requests a file deliverable. These skills produce evidence for `change-planner`, `review-packet-gate`, and handoff; they
 do not replace task slicing, review, or implementation.
 
 ## Minimal Implementation Gate
@@ -247,7 +239,10 @@ evidence conflicts and recommend escalation.
 
 ## Review-Run Routing
 
-All structured reviews use the single unversioned `protocol=review-run` route.
+Ordinary source review and optional fresh lenses may produce a report without
+formal coverage assurance. Do not require review-run to report a source-proven
+defect. Formal structured reviews use the single unversioned
+`protocol=review-run` route.
 Do not select a route from assurance labels, Markdown shape, provider, or a
 reviewer assertion, and do not fall back to an older review protocol. Validate
 the request, target identity, risk facts, and immutable dispatch contract before
@@ -263,8 +258,11 @@ composes `overall_gate`.
 
 The `requested_assurance` values `quick`, `standard`, and `deep` control the
 amount of evidence inside this one protocol. They do not select different
-protocols. Any requested or risk-mandated independent coverage must use the
-review-run lifecycle. Reviewer outcomes carry `execution_status` separately
+protocols. Requested or risk-mandated formal independent coverage assurance uses
+the review-run lifecycle. A fresh independent perspective alone is not a request
+for formal coverage assurance. Never downgrade an applicable formal gate
+without owner authorization or claim equivalent assurance from a plain review.
+Reviewer outcomes carry `execution_status` separately
 from the derived `conclusion`; immutable `ReviewFinding` records preserve
 `blocking_class` and evidence, and no finding is hidden by a later clear retry.
 
@@ -286,7 +284,8 @@ deadlines and bounded retries. Diagnostic checkpoints remain non-gating;
 timeout sweeps persist typed failed ledgers. A different run id cannot sanitize
 a provider execution identity that already saw expected-lane data.
 
-Always carry the five evidence gates — `coverage_gate`, `review_gate`,
+For formal review-run results, always carry the five evidence gates —
+`coverage_gate`, `review_gate`,
 `independent_review_gate`, `style_gate`, and `implementation_verification_gate`
 — plus the coordinator-owned derived `overall_gate`. Missing required evidence
 yields `NOT_READY`; a completed coverage comparison does not override a

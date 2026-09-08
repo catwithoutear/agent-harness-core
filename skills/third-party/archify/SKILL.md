@@ -13,21 +13,21 @@ Use this bounded path for ordinary generation. Do not read the optional Viewer R
 
 1. Choose `architecture`, `workflow`, `sequence`, `dataflow`, or `lifecycle` from the question.
 2. Read one matching schema in `schemas/`, `schemas/common.schema.json`, and one matching JSON example in `examples/`. Read only those files. Fresh authorship means new stable IDs, domain wording, and layout; use the example for field shape, not facts.
-3. Artifact first: the next tool action must write the candidate. Write the candidate before inspecting renderer internals. Do not plan exact coordinates in prose. Start with one clear main path, short side branches, sparse labels, and at most 12 primary nodes. Set `meta.quality_profile` to `"showcase"` unless the user explicitly requests a dense `standard` map. Start with automatic routes and labels. Do not add `via`, `channelX`, `channelY`, or `labelAt` before a diagnostic calls for one; apply at most one diagnosed geometry control per repair.
+3. Artifact first: once the required source facts and authorized output path are known, write the first candidate promptly. Resolve missing facts or output authority before writing. Write the candidate before inspecting renderer internals. Do not plan exact coordinates in prose. Start with one clear main path, short side branches, sparse labels, and at most 12 primary nodes. Set `meta.quality_profile` to `"showcase"` unless the user explicitly requests a dense `standard` map. Start with automatic routes and labels. Do not add `via`, `channelX`, `channelY`, or `labelAt` before a diagnostic calls for one; apply at most one diagnosed geometry control per repair.
 4. Validate after every candidate edit and immediately before handoff:
 
    ```bash
    node bin/archify.mjs validate <type> <candidate.json> --quality showcase --json
    ```
 
-   A receipt with only 4 artifact checks is basic validation, never showcase acceptance. A showcase pass must report all 9 artifact checks with 0 composition errors and 0 warnings. If the candidate omits or misspells the exact `meta.quality_profile` field, fix it before geometry. A passing final validation freezes the candidate: never edit it afterward.
+   A receipt with only 4 artifact checks is basic validation, never showcase acceptance. A showcase pass must report all 9 artifact checks with 0 composition errors and 0 warnings. If the candidate omits or misspells the exact `meta.quality_profile` field, fix it before geometry. A passing final validation freezes that candidate version. If later visual inspection or feedback requires changes, create a revised candidate and rerun validation and delivery; never reuse the old receipt for changed bytes.
 5. For a delivered HTML, `deliver` is the final acceptance command:
 
    ```bash
    node bin/archify.mjs deliver <type> <candidate.json> <output.html> --quality showcase --json
    ```
 
-   A non-zero exit can never be described as success. If validation fails, change only the diagnosed `subject`, verify `evidence`, choose from `supportedFixes`, and rerun. Continue focused correction while the objective error count reaches a new minimum. If two consecutive rounds do not improve that best count, stop and report the unresolved diagnostics truthfully.
+   A non-zero exit can never be described as success. If validation fails, change only the diagnosed `subject`, verify `evidence`, choose from `supportedFixes`, and rerun. Continue focused correction while the objective error count reaches a new minimum. If two consecutive rounds do not improve that best count, stop repeating the same repair strategy and reassess the diagnostics, source facts, or layout. Continue bounded safe repair within the task budget; if blocked or the budget is exhausted, report partial status and the unresolved diagnostics truthfully.
 
 Do not read `renderers/shared/geometry.mjs`, renderer source, validator source, tests, or benchmarks before the first candidate. Inspect implementation only for an unsupported internal diagnostic or after two focused repairs fail.
 

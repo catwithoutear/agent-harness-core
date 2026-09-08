@@ -12,15 +12,11 @@ Input: `$ARGUMENTS`
 
 ## Required Behavior
 
-1. Activate `workflow-control` when it is installed. Enable continuous
-   convergence only when the active request combines both a workflow-use signal
-   and an overall-completion signal such as converge, continue until complete,
-   close all remaining gaps, or continue until acceptance criteria pass.
-   Invoking this workflow command supplies the workflow-use signal. Interpret
-   the completion signal semantically rather than requiring a fixed phrase,
-   word order, or language. If both signals exist, continue until the overall
-   objective passes its acceptance criteria; do not interpret the request as a
-   single workflow pass or wait for another "continue" message.
+1. Activate `workflow-control` when it is installed. For execution requests,
+   continue authorized work until the overall objective satisfies its acceptance
+   criteria; no workflow keyword or fixed phrase is required. Respect plan-only,
+   review-only, budget, and staged-stop requests. Do not wait for another
+   "continue" message when a safe in-scope next action remains.
 2. Resolve `state_root`, `code_root`, and `active_change` explicitly before any
    regulated write. Prefer
    `harness-change-doc --state-root <state-root> --code-root <code-root> resolve --change <change> --json`
@@ -70,7 +66,9 @@ Input: `$ARGUMENTS`
 16. Verify with repository-owned commands or source evidence.
 17. Persist only high-signal results in the owning artifact. Use `reviews/` and
    `timeline/` sparingly; do not create process logs for routine steps.
-18. Route structured reviews through the single `protocol=review-run` contract.
+18. Ordinary reviews and fresh perspectives may report source-proven findings
+    without formal coverage assurance. Route formal structured reviews through
+    the single `protocol=review-run` contract.
     Assurance labels are not route selectors. Validate target identity, the
     immutable dispatch contract, risk facts, and request identity before
     dispatch. The reviewer gets the sealed dispatch contract. Verifier Phase A
@@ -79,7 +77,8 @@ Input: `$ARGUMENTS`
     until both lanes seal. Discovery, planning and dispatch are separate
     machine barriers before compare. Target, source, or closure failure is
     `coverage_gate=NOT_READY`.
-19. Carry five evidence decisions: `coverage_gate`, `review_gate`,
+19. For formal review-run results, carry five evidence decisions:
+    `coverage_gate`, `review_gate`,
     `independent_review_gate`, `style_gate`, and
     `implementation_verification_gate`, plus coordinator-owned `overall_gate`.
     A deep downgrade requires an owner-recorded reason and residual risk.
@@ -95,10 +94,13 @@ Input: `$ARGUMENTS`
     notes as open work.
 22. A handoff or context-compaction checkpoint must preserve the objective,
     current evidence, remaining gaps, and exact next action, then continuation
-    resumes from that action. Pause only with `NEEDS_USER_DECISION` when an
+    resumes from that action. Pause dependent work with `NEEDS_USER_DECISION` when
+    an
     owner-controlled decision cannot be resolved from accepted requirements and
     current evidence. State the decision and ask the smallest necessary
-    question instead of returning a progress-only handoff.
+    question. An external blocker persisting after reasonable safe attempts may
+    require a partial handoff with the missing capability and exact next action;
+    continue independent authorized work and never imply completion.
 
 ## Output
 
@@ -117,7 +119,8 @@ Input: `$ARGUMENTS`
 Do not report the task complete without naming the exact verification run, not
 run, blocked, or intentionally skipped and showing that every applicable
 acceptance criterion passes. A non-complete verification status remains work for
-the next convergence iteration unless it requires `NEEDS_USER_DECISION`.
+the next convergence iteration unless an explicit stop boundary or an unresolved
+external blocker prevents it.
 
 ## Review-Run Routing
 

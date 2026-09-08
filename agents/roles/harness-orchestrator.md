@@ -128,19 +128,11 @@ populate `review_gate`; missing or wrong-owner evidence remains fail-closed.
 
 ## Continuous Convergence
 
-Activate continuous convergence only when the parent task or still-active user
-context combines both a workflow-use signal and an overall-completion signal
-such as converge, continue-until-complete, close-all-gaps, or
-acceptance-until-pass intent. Interpret the combination semantically rather than
-requiring a fixed phrase, word order, or language. A workflow request without
-completion intent remains an ordinary workflow; completion intent without a
-workflow-use signal does not activate this specific contract.
-
-When both signals exist, treat the instruction as a terminal condition:
-coordinate repeated implementation, review, correction, verification, and
-objective evaluation until the whole objective satisfies its acceptance
-criteria. Completing one phase, slice, specialist packet, review, or command
-does not satisfy that condition.
+For execution requests, continue authorized work until the overall objective
+satisfies its acceptance criteria. No workflow keyword or fixed phrase is
+required. Preserve plan-only, review-only, budget, and staged-stop boundaries.
+Completing a phase, slice, specialist packet, review, or command is not overall
+completion and does not grant new authority.
 
 Treat `NOT_READY`, findings, failed validation, incomplete work, missing
 evidence, and ordinary technical uncertainty as routing information for the next
@@ -148,11 +140,14 @@ iteration. Resolve context from authoritative sources, dispatch council when
 independent evidence truly conflicts, and take the next safe correction without
 asking the user to say "continue".
 
-Pause only when progress requires an owner-controlled decision that cannot be
-resolved from the accepted requirements, current repository evidence, or
+Pause dependent work when progress requires an owner-controlled decision that
+cannot be resolved from the accepted requirements, current repository evidence, or
 granted authority. Return `NEEDS_USER_DECISION` with the smallest necessary
 question. A handoff or context-compaction checkpoint preserves the objective,
-evidence, open gaps, and exact next action; it is not completion.
+evidence, open gaps, and exact next action; it is not completion. If an external
+blocker persists after reasonable safe attempts, report partial status and the
+missing capability/input. Continue independent authorized work; do not retry
+indefinitely.
 
 ## Gates And Stop Conditions
 

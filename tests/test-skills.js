@@ -280,86 +280,44 @@ export async function run(test) {
     }
   });
 
-  await test("workflow convergence requires workflow plus overall-completion intent", () => {
-    const workflowControl = fs.readFileSync(
-      path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"),
-      "utf8"
-    );
-    const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
-    const workflowCommand = fs.readFileSync(
-      path.join(packageRoot, "commands", "harness", "workflow.md"),
-      "utf8"
-    );
-    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
-    const workflowAsset = manifest.assets.skills.find((skill) => skill.id === "workflow-control");
-
-    assert(workflowAsset, "workflow-control manifest entry missing");
-    for (const trigger of [
-      "workflow with convergence intent",
-      "workflow with continue-until-complete intent",
-      "workflow with overall-acceptance intent"
+  await test("execution completion is consistent across workflow surfaces without magic words", () => {
+    for (const file of [
+      "skills/workflow/workflow-control/SKILL.md",
+      "rules/loop-contract.md",
+      "commands/harness/workflow.md",
+      "agents/roles/harness-orchestrator.md"
     ]) {
-      assert(workflowAsset.triggers.includes(trigger), `workflow-control trigger missing ${trigger}`);
-    }
-    for (const standalone of ["continue until complete", "按照 workflow 推动收敛"]) {
-      assert.equal(
-        workflowAsset.triggers.includes(standalone),
-        false,
-        `workflow-control manifest should not depend on standalone fixed trigger ${standalone}`
-      );
-    }
-
-    for (const [name, text] of [
-      ["workflow-control", workflowControl],
-      ["loop contract", loopRule],
-      ["workflow command", workflowCommand]
-    ]) {
-      const normalized = text.replace(/\s+/g, " ");
-      for (const required of [
-        "workflow-use signal",
-        "overall-completion signal",
-        "fixed phrase",
-        "overall objective",
-        "acceptance criteria",
-        "without asking the user",
-        "READY_WITH_NOTES",
-        "NEEDS_USER_DECISION",
-        "handoff",
-        "context-compaction"
-      ]) {
-        assert.match(
-          normalized,
-          new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
-          `${name} missing convergence contract: ${required}`
-        );
+      const text = fs.readFileSync(path.join(packageRoot, file), "utf8").replace(/\s+/g, " ");
+      assert.match(text, /no workflow keyword or fixed phrase is required/i, file);
+      for (const boundary of ["plan-only", "review-only", "budget", "staged-stop", "acceptance criteria", "external blocker"]) {
+        assert(text.includes(boundary), `${file} missing ${boundary}`);
       }
+      assert.doesNotMatch(text, /both signals|combines both|no workflow-use signal/i, file);
+      assert.match(text, /NEEDS_USER_DECISION/, file);
     }
+  });
 
-    for (const example of [
-      "按照 workflow 收敛",
-      "使用 workflow 持续推进直到完成",
-      "走 workflow，把剩余问题全部闭环",
-      "follow the workflow until the overall goal is complete",
-      "use the workflow and continue until all acceptance criteria pass"
-    ]) {
-      assert.match(
-        workflowControl,
-        new RegExp(example.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-        `workflow-control missing positive convergence example: ${example}`
-      );
-    }
-    assert.match(
-      workflowControl,
-      /`use the workflow to inspect the current state` \| Ordinary workflow; no overall-completion signal\./
-    );
-    assert.match(
-      workflowControl,
-      /`continue until complete` \| Do not activate this contract; no workflow-use signal\./
-    );
-
-    assert.match(workflowControl, /`NOT_READY`[\s\S]*not terminal/i);
-    assert.match(workflowCommand, /If it\s+is incomplete[\s\S]*re-enter the\s+appropriate phase/i);
-    assert.match(loopRule, /Finish only when every applicable acceptance criterion passes/i);
+  await test("authorization and specialist stops preserve task scope", () => {
+    const read = (file) => fs.readFileSync(path.join(packageRoot, file), "utf8").replace(/\s+/g, " ");
+    const constitution = read("templates/user-global/AGENTS.md");
+    assert.match(constitution, /Existing authorization covering the target, scope, and side effects remains valid/);
+    assert.match(constitution, /Preserve stricter operation-specific confirmation requirements/);
+    assert.match(constitution, /Never interpret silence, a timeout, or a suggested answer as approval/);
+    assert.doesNotMatch(constitution, /By default, read the whole target file/);
+    const simplify = read("skills/workflow/simplify/SKILL.md");
+    assert.match(simplify, /Choose edit mode from current authorization/);
+    assert.doesNotMatch(simplify, /if you did not just make/);
+    const review = read("skills/review/review-packet-gate/SKILL.md");
+    assert.match(review, /Never silently downgrade a required formal gate/);
+    assert.match(review, /Phase A receives only the machine-built neutral packet/);
+    const clarify = read("skills/workflow/clarify/SKILL.md");
+    assert.match(clarify, /少量彼此独立且必要的问题可以一次提出/);
+    assert.match(clarify, /未收到回答、超时或预选项均不构成答案或审批/);
+    const archify = read("skills/third-party/archify/SKILL.md");
+    assert.match(archify, /never reuse the old receipt for changed bytes/);
+    assert.match(archify, /stop repeating the same repair strategy/);
+    const pve = read("skills/third-party/pve-vm-operations/SKILL.md");
+    assert.match(pve, /Ask for explicit user confirmation immediately before execution/);
   });
 
   await test("change workspace skill documents tool entrypoints", () => {
