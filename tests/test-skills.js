@@ -40,6 +40,24 @@ export async function run(test) {
     }
   });
 
+  await test("archify bundle is self-contained and vendored with its runtime", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const archify = manifest.assets.skills.find((skill) => skill.id === "archify");
+    assert(archify, "archify manifest entry missing");
+    const skillRoot = path.join(packageRoot, archify.source);
+    for (const required of [
+      "SKILL.md",
+      "bin/archify.mjs",
+      "schemas/architecture.schema.json",
+      "schemas/workflow.schema.json",
+      "examples/web-app.architecture.json",
+      "LICENSE"
+    ]) {
+      assert.equal(fs.existsSync(path.join(skillRoot, required)), true, `archify missing ${required}`);
+    }
+    assert.equal(fs.existsSync(path.join(skillRoot, "scripts", "check-update.mjs")), false, "archify must stay offline-safe");
+  });
+
   await test("design review uses one actionable project-agnostic principles baseline", () => {
     const skill = fs.readFileSync(
       path.join(packageRoot, "skills", "review", "multi-lens-design-review", "SKILL.md"),
@@ -846,6 +864,27 @@ export async function run(test) {
     }
     assert.match(template, /\{\{REPORT_TITLE\}\}/);
     assert.match(template, /\{\{TRACEABILITY_TABLE\}\}/);
+  });
+
+  await test("design code explainer routes visuals without duplicating renderer contracts", () => {
+    const skill = fs.readFileSync(
+      path.join(packageRoot, "skills", "knowledge", "design-code-explainer", "SKILL.md"),
+      "utf8"
+    );
+    const contract = fs.readFileSync(
+      path.join(packageRoot, "skills", "knowledge", "design-code-explainer", "references", "report-contract.md"),
+      "utf8"
+    );
+    for (const text of [skill, contract]) {
+      assert.match(text, /`show-me`/);
+      assert.match(text, /`archify`/);
+      assert.match(text, /inline SVG|simple HTML/);
+    }
+    assert.match(skill, /do not duplicate its JSON IR, schema, or validation contract here/);
+    assert.match(
+      skill,
+      /source-grounded:[\s\S]*show-me's view choice and archify's\s+rendering never substitute for design or code evidence/
+    );
   });
 
   await test("design doc refiner preserves review-only boundary", () => {

@@ -402,7 +402,9 @@ export async function run(test) {
       );
       assert.equal(defaultRun.status, 0, defaultRun.stderr);
       const defaultPayload = JSON.parse(defaultRun.stdout);
-      assert.equal(defaultPayload.summary.skills, 28);
+      assert.equal(defaultPayload.summary.skills, 29);
+      assert(defaultPayload.records.some((record) => record.asset_id === "show-me"));
+      assert(!defaultPayload.records.some((record) => record.asset_id === "archify"));
       assert(!defaultPayload.records.some((record) => record.asset_id === "glab"));
       assert(!defaultPayload.records.some((record) => record.source.includes("skills/third-party")));
 

@@ -836,9 +836,12 @@
         "audience": "model",
         "source": "skills/knowledge/design-code-explainer",
         "runtimeName": "design-code-explainer",
-        "description": "Use when mapping implementation code back to design artifacts, producing architecture/layout/I-O traceability, or generating Markdown/HTML/PDF handoff reports.",
+        "description": "Use when tracing implementation code back to design intent, mapping design decisions to source anchors, producing architecture/layout/I-O traceability, or generating source-grounded Markdown/HTML/PDF handoff reports.",
         "triggers": [
           "design-code mapping",
+          "design to code mapping",
+          "code to design traceability",
+          "source-grounded handoff",
           "implementation handoff",
           "traceability report",
           "architecture walkthrough",
@@ -890,6 +893,43 @@
           "intended audience"
         ],
         "priority": 75,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
+        "id": "show-me",
+        "category": "knowledge",
+        "audience": "model",
+        "source": "skills/knowledge/show-me",
+        "runtimeName": "show-me",
+        "description": "Use when helping a user understand the current topic visually via the smallest fitting view: pseudocode, call tree, component tree, file tree, Mermaid, diff, or a focused HTML artifact.",
+        "triggers": [
+          "show me",
+          "explain visually",
+          "visualize this",
+          "draw the structure",
+          "diagram this",
+          "make it visual",
+          "show the flow",
+          "understand at a glance",
+          "present the topic visually"
+        ],
+        "negativeTriggers": [
+          "show me the code or diff",
+          "implementation task",
+          "raw Mermaid source or theme rendering",
+          "typed JSON IR authoring",
+          "design-code traceability report"
+        ],
+        "requires": [
+          "conversation topic or repository context to explain",
+          "archify skill when a polished HTML artifact is requested"
+        ],
+        "priority": 80,
         "clients": [
           "codex",
           "claude",
@@ -1299,25 +1339,35 @@
         ]
       },
       {
-        "id": "architecture-diagram",
+        "id": "archify",
         "category": "third-party",
         "audience": "model",
-        "source": "skills/third-party/architecture-diagram",
-        "runtimeName": "architecture-diagram",
-        "description": "Use when creating standalone HTML/SVG architecture, cloud, infrastructure, service, database, or deployment diagrams.",
+        "source": "skills/third-party/archify",
+        "runtimeName": "archify",
+        "description": "Use when creating polished, validated architecture, workflow, sequence, data-flow, or lifecycle/state diagrams as explorable standalone HTML, or when converting pasted Mermaid input or repository evidence into such an artifact.",
         "triggers": [
-          "architecture diagram",
-          "cloud diagram",
-          "infrastructure diagram",
-          "service topology",
-          "deployment diagram"
+          "archify",
+          "validated architecture diagram",
+          "interactive architecture map",
+          "infrastructure or cloud topology diagram",
+          "service or deployment topology",
+          "workflow diagram",
+          "API sequence or request lifecycle diagram",
+          "data flow, pipeline, or lineage diagram",
+          "state machine or lifecycle diagram",
+          "convert Mermaid to interactive HTML diagram",
+          "architecture delta compare"
         ],
         "negativeTriggers": [
-          "Mermaid source requested",
-          "design-code traceability report"
+          "raw Mermaid source or Mermaid theme rendering",
+          "simple inline ASCII or code-shape sketch",
+          "non-diagram prose"
         ],
         "requires": [
-          "system components and relationships"
+          "Node.js >= 18 to run bundled bin/archify.mjs",
+          "typed JSON IR intent, Mermaid input, or system description",
+          "repository evidence when the diagram must reflect real code",
+          "Chrome/Chromium only for optional visual-check captures"
         ],
         "priority": 30,
         "enabledByDefault": false,

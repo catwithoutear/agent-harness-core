@@ -1,6 +1,6 @@
 ---
 name: design-code-explainer
-description: Use when mapping implementation code back to design artifacts, producing architecture/layout/I-O traceability, or generating Markdown/HTML/PDF handoff reports.
+description: Use when tracing implementation code back to design intent, mapping design decisions to source anchors, producing architecture/layout/I-O traceability, or generating source-grounded Markdown/HTML/PDF handoff reports.
 ---
 
 # Design Code Explainer
@@ -39,6 +39,9 @@ the boundary. Do not infer a design-to-code relationship from only one side.
 5. Trace each material runtime path: input, validation, state change, side
    effects, output, errors, cleanup, and observability.
 6. Select the smallest diagram and excerpt set that makes the mapping clear.
+   Route the visual form: `show-me` when the explanation stays in chat or
+   Markdown, `archify` (opt-in) when a polished validated HTML diagram is
+   wanted, `mermaid-diagrams` (opt-in) when Mermaid source must be rendered.
 7. Read `references/report-contract.md` before producing a multi-section or
    file report.
 8. For HTML output, use `assets/report-template.html` as the Chinese default
@@ -101,6 +104,18 @@ prose:
 - pair each important diagram with 1-3 short code excerpts,
 - use paths and line numbers as provenance, not as the only explanation.
 
+### Renderer routing
+
+| Need | Use |
+|---|---|
+| Small chat/Markdown visual (pseudocode, call tree, component tree, diff) | `show-me` (default) |
+| Polished, validated, interactive, or exportable HTML diagram | `archify` (opt-in) — follow its SKILL.md and do not duplicate its JSON IR, schema, or validation contract here |
+| Raw Mermaid source, theme, or batch rendering | `mermaid-diagrams` (opt-in) |
+| No renderer available | self-contained inline SVG or simple HTML per report contract |
+
+Keep every diagram source-grounded: show-me's view choice and archify's
+rendering never substitute for design or code evidence.
+
 Do not include raw diagram source or renderer notes by default. Add them only
 when requested, when rendering failed, or when debugging report generation.
 
@@ -126,6 +141,12 @@ Bad report block:
 
 - Use `design-doc-refiner` before implementation when the design is too rough
   to implement.
+- Use `show-me` when the user wants the smallest visual form in chat or
+  Markdown for the current topic.
+- Use `archify` (opt-in) when a polished, validated, standalone interactive
+  HTML diagram is needed; follow its SKILL.md.
+- Use `mermaid-diagrams` (opt-in) for Mermaid source rendering, themes, or
+  batch conversion.
 - Use `multi-lens-design-review` when the goal is design correctness or
   readiness review.
 - Use `multi-lens-review` when the goal is bug/risk findings on code or diffs.
