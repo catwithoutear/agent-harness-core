@@ -57,6 +57,12 @@ context gap. `PLANNED` requires `execution=PLANNED`, `search=null`, and
 validation only translates evidence; it does not invoke a provider, write a
 spool, run hooks, or classify an automatic lane.
 
+For a receipt with another schema, use that producer's documented validator
+and gate mapping; do not pass it to the `codebase-build` validator. If no
+matching validator is available, report the retrieval claim as an unverified
+context gap. Keep producer-specific schema and digest rules with the producer
+or its integration.
+
 ## What Belongs Where
 
 | Content | Owner |
