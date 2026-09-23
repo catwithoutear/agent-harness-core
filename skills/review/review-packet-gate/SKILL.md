@@ -8,9 +8,20 @@ description: Use when preparing or judging review packets, gate decisions, re-re
 Review from evidence. A finding is valid only when it cites the changed
 artifact, source path, design source, or command output that proves the risk.
 
+## Review Scope
+
+For ordinary reviews, gather the target, diff, and available context yourself
+before asking for missing input. Report source-proven defects even when design
+intent or execution evidence is unavailable; qualify the conclusions that depend
+on those gaps. A report is not formal gate approval or coverage assurance.
+
+Use the formal review-run protocol only when requested or required by applicable
+project policy. Optional fresh perspectives do not themselves require formal
+coverage assurance. Never silently downgrade a required formal gate.
+
 ## Packet
 
-Require:
+For a formal readiness decision, require:
 
 - scope under review;
 - intended behavior;
@@ -65,8 +76,10 @@ routing examples; tests added in `tests/test-skills.js`; `npm test` passed."
 Decision: `READY_WITH_NOTES` when examples improve routing and no blocker
 remains, but note that forward-testing with a fresh agent was not run.
 
-If the packet only says "review the skill changes" with no diff path, intent, or
-validation, return `NOT_READY`.
+If the request says "review the skill changes", inspect the worktree and collect
+available evidence first. Ask only if material target ambiguity remains. Missing
+evidence can make formal approval `NOT_READY` without preventing a qualified
+ordinary review report.
 
 ## Finding Rules
 
@@ -131,8 +144,11 @@ The coordinator persists one immutable dispatch contract before dispatch:
 }
 ```
 
-The same digest, exact rules, scope, dimensions, and target identity go to the
-reviewer and verifier. Discovery may add a target-derived relation, but it may
+The reviewer receives the dispatch digest, exact rules, scope, dimensions, and
+target identity. The deep verifier Phase A receives only the machine-built
+neutral packet described below, never the expected-lane dispatch. After both
+lanes seal, Phase B may compare the dispatch and sealed reviewer evidence.
+Discovery may add a target-derived relation, but it may
 not remove an assigned relation and every expansion must reference an assigned
 rule source and dimension. A relation is identified by
 `UnitKey + DimensionId + RuleRef`; a summary, narrative, or row count cannot
