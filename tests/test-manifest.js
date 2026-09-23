@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateCurrentManifest } from "../lib/manifest/validate.js";
+import { validateCurrentManifest, validateManifest } from "../lib/manifest/validate.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -11,12 +11,123 @@ export async function run(test) {
     const result = validateCurrentManifest(packageRoot);
     assert.deepEqual(result.errors, []);
     assert.equal(result.ok, true);
-    assert.equal(result.summary.clients, 4);
+    assert.equal(result.summary.clients, 5);
     assert.equal(result.summary.commands, 6);
     assert.equal(result.summary.skills, 51);
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
     assert.equal(result.summary.templates, 9);
+  });
+
+  await test("ZCode descriptor uses shared public paths and native agent paths", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    const zcode = manifest.clients.zcode;
+    assert(zcode, "ZCode client descriptor missing");
+    assert.deepEqual(zcode.targets.project.skills, [".agents/skills/<runtimeName>/"]);
+    assert.deepEqual(zcode.targets.global.skills, ["~/.agents/skills/<runtimeName>/"]);
+    assert.deepEqual(zcode.targets.project.commands, [".agents/commands/<runtimeName>.md"]);
+    assert.deepEqual(zcode.targets.global.commands, ["~/.agents/commands/<runtimeName>.md"]);
+    assert.deepEqual(zcode.targets.project.agents, [".zcode/agents/<runtimeName>.md"]);
+    assert.deepEqual(zcode.targets.global.agents, ["~/.zcode/agents/<runtimeName>.md"]);
+    assert.deepEqual(zcode.targets.project.config, [".zcode/config.json"]);
+    assert.deepEqual(zcode.targets.global.config, ["~/.zcode/cli/config.json"]);
+    assert.deepEqual(zcode.targets.project.hooks, [".zcode/config.json#hooks"]);
+    assert.deepEqual(zcode.targets.global.hooks, ["~/.zcode/cli/config.json#hooks"]);
+    assert.equal(zcode.capabilities.skills, true);
+    assert.equal(zcode.capabilities.subagents, true);
+    assert.deepEqual(zcode.capabilities.commands, { project: true, global: true });
+    assert.equal(zcode.capabilities.config, true);
+
+    for (const kind of ["rules", "commands", "skills", "agents", "templates"]) {
+      for (const asset of manifest.assets[kind]) {
+        assert(asset.clients.includes("zcode"), `${kind}/${asset.id} misses ZCode binding`);
+      }
+    }
+    const supportedZCodeHooks = new Set([
+      "session-bootstrap",
+      "active-change-guard",
+      "tool-safety-guard",
+      "regulated-structure-guard",
+      "projection-health-check"
+    ]);
+    for (const hook of manifest.assets.hooks) {
+      assert.equal(
+        hook.clients.includes("zcode"),
+        supportedZCodeHooks.has(hook.id),
+        `${hook.id} has an unexpected ZCode support state`
+      );
+    }
+    assert(
+      manifest.assets.skills.every((skill) =>
+        !skill.clients.includes("zcode") ||
+        zcode.targets.project.skills.every((target) => !target.includes(".zcode/skills"))
+      )
+    );
+  });
+
+  await test("Hook metadata accepts the reviewed generic shape and rejects invalid enums", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    const metadata = {
+      support: "native",
+      event: "SessionStart",
+      matcher: null,
+      effect: "additionalContext",
+      adapter_runtime_name: "zcode-context-adapter@1"
+    };
+    const validManifest = {
+      ...manifest,
+      clients: {
+        ...manifest.clients,
+        zcode: {
+          ...manifest.clients.zcode,
+          capabilities: {
+            ...manifest.clients.zcode.capabilities,
+            hooks: {
+              ...manifest.clients.zcode.capabilities.hooks,
+              "session-bootstrap": metadata
+            }
+          }
+        }
+      }
+    };
+    const valid = validateManifest(validManifest, { packageRoot });
+    assert.equal(valid.ok, true, valid.errors.join("\n"));
+
+    for (const [field, value] of [
+      ["support", "future"],
+      ["event", "PreCompact"],
+      ["matcher", 42],
+      ["effect", "deny"],
+      ["adapter_runtime_name", ""]
+    ]) {
+      const invalidManifest = {
+        ...validManifest,
+        clients: {
+          ...validManifest.clients,
+          zcode: {
+            ...validManifest.clients.zcode,
+            capabilities: {
+              ...validManifest.clients.zcode.capabilities,
+              hooks: {
+                ...validManifest.clients.zcode.capabilities.hooks,
+                "session-bootstrap": { ...metadata, [field]: value }
+              }
+            }
+          }
+        }
+      };
+      const invalid = validateManifest(invalidManifest, { packageRoot });
+      assert.equal(invalid.ok, false, `${field} should be rejected`);
+      assert(
+        invalid.errors.some((error) =>
+          error.includes(`client zcode capabilities.hooks.session-bootstrap.${field}`)
+        )
+      );
+    }
   });
 
   await test("manifest uses core command names", () => {
