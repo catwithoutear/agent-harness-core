@@ -78,6 +78,18 @@ Raw diagram source policy:
 - Include raw source or renderer notes only when requested, when rendering
   failed, or when report generation itself is being debugged.
 
+Renderer routing:
+
+- `show-me`, when installed, chooses the smallest visual form when the
+  explanation stays in chat or Markdown.
+- `archify`, when installed, renders polished, validated, interactive, or
+  exportable HTML diagrams; follow its SKILL.md and do not duplicate its JSON
+  IR, schema, or validation contract here.
+- `mermaid-diagrams`, when available, renders, themes, or batch-converts raw
+  Mermaid source.
+- If no renderer is available, fall back to inline SVG or simple HTML and state
+  the fallback in the report.
+
 ## Traceability Table
 
 Use this table for the core mapping:
@@ -164,8 +176,9 @@ write only to a user-specified path.
   non-Chinese reports before handoff.
 - Keep all 12 report sections from Output Shape.
 - Keep the report self-contained when practical.
-- Render diagrams in the main body; if a renderer is unavailable, create an
-  equivalent inline SVG or simple HTML diagram.
+- Render diagrams in the main body; use `archify` when a polished validated
+  diagram is needed and available, otherwise create an equivalent inline SVG or
+  simple HTML diagram.
 - Make diagrams clickable/expandable for close reading.
 - Use a collapsible floating table of contents for long reports.
 - Make source paths monospace and line-wrappable.

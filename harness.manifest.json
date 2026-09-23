@@ -954,7 +954,7 @@
         "audience": "model",
         "source": "skills/knowledge/design-code-explainer",
         "runtimeName": "design-code-explainer",
-        "description": "Use when mapping implementation code back to design artifacts, producing architecture/layout/I-O traceability, or generating Markdown/HTML/PDF handoff reports.",
+        "description": "Use when tracing implementation code back to design intent, mapping design decisions to source anchors, producing architecture/layout/I-O traceability, or generating source-grounded Markdown/HTML/PDF handoff reports.",
         "triggers": [
           "design-code mapping",
           "implementation handoff",
