@@ -20,6 +20,28 @@ export async function run(test) {
     });
   });
 
+  await test("incompatible projection state fails before changing a target", () => {
+    withTempTarget((target) => {
+      const statePath = path.join(target, ".harness", "projection-state.json");
+      fs.mkdirSync(path.dirname(statePath), { recursive: true });
+      const original = `${JSON.stringify({ schema_version: 2, operations: [] })}\n`;
+      fs.writeFileSync(statePath, original, "utf8");
+      const skillPath = path.join(target, ".agents", "skills", "ask-harness");
+
+      const result = capture(() =>
+        runHarnessProject([
+          "--target", target, "--clients", "codex", "--content", "skills",
+          "--skills", "ask-harness", "--conflict", "overwrite", "--json"
+        ])
+      );
+
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(JSON.parse(result.stdout).errors[0], /incompatible projection state/);
+      assert.equal(fs.existsSync(skillPath), false);
+      assert.equal(fs.readFileSync(statePath, "utf8"), original);
+    });
+  });
+
   await test("dry-run reports slash command targets", () => {
     withTempTarget((target) => {
       const result = capture(() =>

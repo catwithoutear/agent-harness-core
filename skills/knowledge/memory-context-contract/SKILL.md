@@ -25,6 +25,16 @@ project.
 Skip durable knowledge only for self-contained tasks that clearly do not depend on repo
 history, vocabulary, architecture, prior decisions, or reusable commands.
 
+## Retrieval Evidence
+
+When the selected provider supplies a machine-readable retrieval receipt, use
+its documented validator before relying on a gate result. A planned query is
+not evidence that retrieval occurred. Distinguish a completed read from a
+completed search with no relevant hit, and preserve failures or degraded
+transport as context gaps. Keep receipt schemas, digest rules, and validator
+scripts with the provider or its integration; Core does not define a provider's
+receipt format.
+
 ## What Belongs Where
 
 | Content | Owner |
