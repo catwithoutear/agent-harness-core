@@ -403,6 +403,45 @@ export async function run(test) {
     });
   });
 
+  await test("isolated ZCode projection aligns the orchestrator receipt path with the deployed shared skill", () => {
+    withTempTarget((target) => {
+      const result = capture(() =>
+        runHarnessProject([
+          "--target", target,
+          "--mode", "copy",
+          "--conflict", "overwrite",
+          "--clients", "zcode",
+          "--content", "skills,subagents",
+          "--skills", "memory-context-contract",
+          "--json"
+        ])
+      );
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+
+      const rolePath = path.join(target, ".zcode", "agents", "harness-orchestrator.md");
+      const receiptScriptPath = path.join(
+        target,
+        ".agents",
+        "skills",
+        "memory-context-contract",
+        "scripts",
+        "context-retrieval-receipt.mjs"
+      );
+      assert.equal(fs.existsSync(rolePath), true, "ZCode orchestrator projection missing");
+      assert.equal(fs.existsSync(receiptScriptPath), true, "deployed receipt validator missing");
+      const role = fs.readFileSync(rolePath, "utf8");
+      const roleReceiptPath = role.match(
+        /`(\.agents\/skills\/memory-context-contract\/scripts\/context-retrieval-receipt\.mjs)`/u
+      )?.[1];
+      assert.equal(roleReceiptPath, path.relative(target, receiptScriptPath));
+      assert.doesNotMatch(
+        role,
+        /skills\/knowledge\/memory-context-contract\/scripts\/context-retrieval-receipt\.mjs/u
+      );
+      assert.equal(fs.existsSync(path.join(target, ".zcode", "skills")), false);
+    });
+  });
+
   await test("dry-run reports slash command targets", () => {
     withTempTarget((target) => {
       const result = capture(() =>
