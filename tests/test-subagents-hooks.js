@@ -288,6 +288,261 @@ export async function run(test) {
     });
   });
 
+  await test("ZCode subagents use project and global Markdown targets without permission overrides", () => {
+    withTempTarget((target) => {
+      const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+      const project = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "zcode",
+          "--content",
+          "subagents",
+          "--json"
+        ])
+      );
+      assert.equal(project.status, 0, project.stdout + project.stderr);
+      const projectPayload = JSON.parse(project.stdout);
+      assert.equal(projectPayload.summary.agents, manifest.assets.agents.length);
+      assert.equal(projectPayload.records.every((record) => record.client === "zcode"), true);
+
+      for (const agent of manifest.assets.agents) {
+        const canonical = fs.readFileSync(path.join(packageRoot, agent.source), "utf8");
+        const body = stripRoleFrontMatter(canonical).trimEnd();
+        const projectPath = path.join(target, ".zcode", "agents", `${agent.runtimeName}.md`);
+        assert.equal(fs.existsSync(projectPath), true, `${agent.id} project profile missing`);
+        assert.equal(
+          fs.readFileSync(projectPath, "utf8"),
+          expectedZCodeAgentProjection(agent, body),
+          `${agent.id} project profile drifted`
+        );
+        assert.doesNotMatch(fs.readFileSync(projectPath, "utf8"), /permissionMode/i);
+      }
+      assert.equal(fs.existsSync(path.join(target, ".zcode", "skills")), false);
+
+      const globalTarget = path.join(target, "global-home");
+      fs.mkdirSync(globalTarget, { recursive: true });
+      const previousHome = process.env.HOME;
+      process.env.HOME = globalTarget;
+      let global;
+      try {
+        global = capture(() =>
+          runHarnessProject([
+            "--target",
+            globalTarget,
+            "--scope",
+            "global",
+            "--mode",
+            "copy",
+            "--conflict",
+            "overwrite",
+            "--clients",
+            "zcode",
+            "--content",
+            "subagents",
+            "--json"
+          ])
+        );
+      } finally {
+        if (previousHome === undefined) {
+          delete process.env.HOME;
+        } else {
+          process.env.HOME = previousHome;
+        }
+      }
+      assert.equal(global.status, 0, global.stdout + global.stderr);
+      const globalPayload = JSON.parse(global.stdout);
+      assert.equal(globalPayload.summary.agents, manifest.assets.agents.length);
+      const reviewerPath = path.join(globalTarget, ".zcode", "agents", "reviewer.md");
+      assert.equal(fs.existsSync(reviewerPath), true);
+      assert.equal(
+        fs.readFileSync(reviewerPath, "utf8"),
+        expectedZCodeAgentProjection(
+          manifest.assets.agents.find((agent) => agent.id === "reviewer"),
+          stripRoleFrontMatter(
+            fs.readFileSync(
+              path.join(packageRoot, manifest.assets.agents.find((agent) => agent.id === "reviewer").source),
+              "utf8"
+            )
+          ).trimEnd()
+        )
+      );
+    });
+  });
+
+  await test("ZCode subagent overwrite preserves existing model and reasoning metadata", () => {
+    withTempTarget((target) => {
+      const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+      const reviewer = manifest.assets.agents.find((agent) => agent.id === "reviewer");
+      const reviewerPath = path.join(target, ".zcode", "agents", "reviewer.md");
+      fs.mkdirSync(path.dirname(reviewerPath), { recursive: true });
+      fs.writeFileSync(reviewerPath, [
+        "---",
+        "name: stale-reviewer",
+        "description: \"stale description\"",
+        "model: \"custom:preserve-me\"",
+        "reasoningEffort: \"high\"",
+        "model_reasoning_effort: \"xhigh\"",
+        "permissionMode: \"write\"",
+        "---",
+        "",
+        "stale body",
+        ""
+      ].join("\n"), "utf8");
+
+      const result = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--mode",
+          "copy",
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "zcode",
+          "--content",
+          "subagents",
+          "--json"
+        ])
+      );
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      const projected = fs.readFileSync(reviewerPath, "utf8");
+      assert.match(projected, /^name: reviewer$/m);
+      assert.match(projected, new RegExp(`^description: ${escapeRegExp(JSON.stringify(reviewer.description))}$`, "m"));
+      assert.match(projected, /^model: \"custom:preserve-me\"$/m);
+      assert.match(projected, /^reasoningEffort: \"high\"$/m);
+      assert.match(projected, /^model_reasoning_effort: \"xhigh\"$/m);
+      assert.doesNotMatch(projected, /permissionMode|stale body/);
+      assert.match(projected, /Review implemented changes for defects and regressions/);
+    });
+  });
+
+  await test("ZCode user-owned model metadata may change after global deployment", () => {
+    withTempTarget((target) => {
+      const reviewerPath = path.join(target, ".zcode", "agents", "reviewer.md");
+      fs.mkdirSync(path.dirname(reviewerPath), { recursive: true });
+      fs.writeFileSync(reviewerPath, [
+        "---",
+        "name: reviewer",
+        "description: \"stale\"",
+        "model: \"custom:initial\"",
+        "thinking: \"high\"",
+        "---",
+        "",
+        "stale body",
+        ""
+      ].join("\n"), "utf8");
+
+      const previousHome = process.env.HOME;
+      process.env.HOME = target;
+      try {
+        const apply = capture(() =>
+          runHarnessProject([
+            "--target", target,
+            "--scope", "global",
+            "--conflict", "overwrite",
+            "--clients", "zcode",
+            "--content", "subagents",
+            "--json"
+          ])
+        );
+        assert.equal(apply.status, 0, apply.stdout + apply.stderr);
+
+        const changed = fs.readFileSync(reviewerPath, "utf8")
+          .replace('model: "custom:initial"', 'model: "custom:user-selected"')
+          .replace('thinking: "high"', 'thinking: "max"');
+        fs.writeFileSync(reviewerPath, changed, "utf8");
+
+        const verify = capture(() =>
+          runHarnessProject([
+            "--target", target,
+            "--scope", "global",
+            "--verify",
+            "--clients", "zcode",
+            "--content", "subagents",
+            "--json"
+          ])
+        );
+        assert.equal(verify.status, 0, verify.stdout + verify.stderr);
+
+        const reapply = capture(() =>
+          runHarnessProject([
+            "--target", target,
+            "--scope", "global",
+            "--clients", "zcode",
+            "--content", "subagents",
+            "--json"
+          ])
+        );
+        assert.equal(reapply.status, 0, reapply.stdout + reapply.stderr);
+        const projected = fs.readFileSync(reviewerPath, "utf8");
+        assert.match(projected, /^model: "custom:user-selected"$/m);
+        assert.match(projected, /^thinking: "max"$/m);
+      } finally {
+        if (previousHome === undefined) {
+          delete process.env.HOME;
+        } else {
+          process.env.HOME = previousHome;
+        }
+      }
+    });
+  });
+
+  await test("ZCode subagent overwrite fails closed on malformed existing frontmatter", () => {
+    withTempTarget((target) => {
+      const reviewerPath = path.join(target, ".zcode", "agents", "reviewer.md");
+      fs.mkdirSync(path.dirname(reviewerPath), { recursive: true });
+      const malformed = "---\nname: reviewer\nmodel: keep\nmissing closing delimiter\n";
+      fs.writeFileSync(reviewerPath, malformed, "utf8");
+
+      const result = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--conflict",
+          "overwrite",
+          "--clients",
+          "zcode",
+          "--content",
+          "subagents",
+          "--json"
+        ])
+      );
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(result.stdout, /invalid existing ZCode agent frontmatter/);
+      assert.equal(fs.readFileSync(reviewerPath, "utf8"), malformed);
+      assert.equal(fs.existsSync(path.join(target, ".harness", "projection-state.json")), false);
+    });
+  });
+
+  await test("ZCode subagent dry-run fails closed on malformed existing frontmatter", () => {
+    withTempTarget((target) => {
+      const reviewerPath = path.join(target, ".zcode", "agents", "reviewer.md");
+      fs.mkdirSync(path.dirname(reviewerPath), { recursive: true });
+      fs.writeFileSync(reviewerPath, "---\nname: reviewer\nmodel: keep\nmissing closing delimiter\n", "utf8");
+
+      for (const content of ["subagents", "subagents,hooks"]) {
+        const result = capture(() =>
+          runHarnessProject([
+            "--target", target,
+            "--dry-run",
+            "--clients", "zcode",
+            "--content", content,
+            "--json"
+          ])
+        );
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /invalid existing ZCode agent frontmatter/);
+        assert.equal(fs.existsSync(path.join(target, ".harness", "projection-state.json")), false);
+      }
+    });
+  });
+
   await test("hook projection renders supported hooks and reports unsupported intents", () => {
     withTempTarget((target) => {
       const result = capture(() =>
@@ -334,6 +589,34 @@ export async function run(test) {
       assert.doesNotMatch(activeGuard.body, /branch-local-state.*(?:supported|implemented)/i);
     });
   });
+
+  await test("ZCode Hook selection projects native adapters and managed config", () => {
+    withTempTarget((target) => {
+      const result = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--clients",
+          "zcode",
+          "--content",
+          "hooks",
+          "--json"
+        ])
+      );
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      const payload = JSON.parse(result.stdout);
+      assert.equal(payload.summary.hooks, 5);
+      assert.equal(payload.summary.physical_total, 6);
+      assert.equal(payload.warnings.some((warning) => warning.includes("client zcode does not support hook intent")), false);
+      assert.equal(fs.existsSync(path.join(target, ".zcode", "config.json")), true);
+      assert.equal(fs.existsSync(path.join(target, ".zcode", "harness", "hooks", "session-bootstrap.mjs")), true);
+      const config = JSON.parse(fs.readFileSync(path.join(target, ".zcode", "config.json"), "utf8"));
+      assert.equal(config.hooks.enabled, true);
+      assert.equal(config.hooks.events.SessionStart.length, 3);
+      assert.equal(config.hooks.events.PreToolUse.length, 2);
+      assert.equal(fs.existsSync(path.join(target, ".zcode", "harness", "hooks", "pre-compact-handoff.mjs")), false);
+    });
+  });
 }
 
 function withTempTarget(fn) {
@@ -369,6 +652,21 @@ function expectedAgentProjection(client, agent, body) {
     ""
   ].join("\n");
   return `${frontMatter}${body}\n`;
+}
+
+function expectedZCodeAgentProjection(agent, body) {
+  const frontMatter = [
+    "---",
+    `name: ${agent.runtimeName}`,
+    `description: ${JSON.stringify(agent.description)}`,
+    "---",
+    ""
+  ].join("\n");
+  return `${frontMatter}${body}\n`;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function capture(fn) {

@@ -36,6 +36,11 @@ if (all || requested.has("--skills")) {
   await module.run(run);
 }
 
+if (all || requested.has("--context-receipt")) {
+  const module = await import("./test-context-receipt.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--environment-profile-vault")) {
   const module = await import("./test-environment-profile-vault.js");
   await module.run(run);
@@ -128,6 +133,11 @@ if (all || requested.has("--review-run")) {
 
 if (all || requested.has("--subagents") || requested.has("--hooks")) {
   const module = await import("./test-subagents-hooks.js");
+  await module.run(run);
+}
+
+if (all || requested.has("--zcode-hooks")) {
+  const module = await import("./test-zcode-hooks.js");
   await module.run(run);
 }
 

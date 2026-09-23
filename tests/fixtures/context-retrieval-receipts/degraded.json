@@ -1,0 +1,31 @@
+{
+  "schema": "codebase-build.context-retrieval-receipt",
+  "version": 1,
+  "receipt_type": "retrieval",
+  "claim_id": "fixture-degraded",
+  "lane": "risk",
+  "query": "service down",
+  "created_at": "2026-09-03T00:00:00.000Z",
+  "route": {
+    "scheme": "http",
+    "host": "127.0.0.1:1933",
+    "path": "/mcp"
+  },
+  "worktree": {
+    "project_root": "/tmp/project",
+    "head": "0123456789abcdef0123456789abcdef01234567",
+    "dirty_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "ok": false,
+  "state": "DEGRADED",
+  "execution": "EXECUTED",
+  "transport": "unavailable",
+  "query_outcome": "FAILED",
+  "provider": null,
+  "search": null,
+  "read": null,
+  "error": {
+    "code": "MCP_UNAVAILABLE"
+  },
+  "digest": "sha256:a1425fc62a583539cae69f0030e9ed9e6080555bd44a0c392240e026ba57ac8d"
+}

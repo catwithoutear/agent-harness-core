@@ -36,7 +36,7 @@ skill-only installation path.
 ```bash
 npx @catwithoutear/agent-harness-core harness-project \
   --target /path/to/repo \
-  --clients codex,claude,opencode,omp \
+  --clients codex,claude,opencode,omp,zcode \
   --content rules,templates,skills,subagents,hooks
 ```
 
@@ -63,6 +63,47 @@ npx @catwithoutear/agent-harness-core harness-project \
   --content rules,templates,skills,subagents,hooks \
   --verify --json
 ```
+
+## ZCode Projection
+
+ZCode is a first-class projection target. The paths and capabilities below are
+pinned to the installed ZCode desktop 3.10.2 and embedded CLI 0.16.5. Public
+ZCode Hooks documentation may lag this installed runtime; do not infer support
+for another version from that page.
+
+| Content | Project target | User-global target | Behavior |
+|---|---|---|---|
+| Skills | `.agents/skills/<runtimeName>/` | `~/.agents/skills/<runtimeName>/` | Shared public path; no `.zcode/skills` copy or symlink. |
+| Commands | `.agents/commands/<runtimeName>.md` | `~/.agents/commands/<runtimeName>.md` | Shared byte-for-byte command source. |
+| Subagents | `.zcode/agents/<runtimeName>.md` | `~/.zcode/agents/<runtimeName>.md` | ZCode front matter with the canonical role body; existing model and reasoning metadata is preserved on overwrite. |
+| Hooks | `.zcode/config.json#hooks` | `~/.zcode/cli/config.json#hooks` | Managed JSON merge; adapters live under the scoped `.zcode/harness/hooks/`. |
+
+Skills and commands deliberately use the shared `.agents` roots. When Codex
+and ZCode select the same skill, the projector records two logical consumers
+and performs one physical materialization. It never creates a duplicate under
+`.zcode/skills`.
+
+ZCode copies shared command files without changing their bytes. The installed
+CLI discovers a nested command such as `harness:route` and retains its
+description and argument hint. It warns that the canonical `name` front-matter
+key is unknown; that warning is accepted so the shared command remains
+identical for other clients.
+
+Native Hook support is limited to the current five intents:
+
+- `session-bootstrap`, `active-change-guard`, and `projection-health-check` use
+  `SessionStart` with context-only adapters.
+- `tool-safety-guard` and `regulated-structure-guard` use `PreToolUse` with the
+  matcher `Bash|Write|Edit|ApplyPatch` and context-only adapters.
+- `pre-compact-handoff` has no supported native ZCode event and remains
+  unsupported.
+
+Adapters emit only `additionalContext`. If `hooks.enabled` is absent, the
+projector sets it to `true` only when Hooks are explicitly selected. An
+existing `hooks.enabled: false` remains false and produces a
+`configured-disabled` warning. Project workspace Hook trust and admission stay
+ZCode-owned; the projector writes declarations but never grants or revokes
+trust.
 
 ## Optional Third-Party Skills
 
@@ -110,7 +151,7 @@ do not overwrite unrelated user changes. Then run a dry-run:
 
 node <agent-harness-core>/bin/harness-project.js \
   --target <repo> \
-  --clients codex,claude,opencode,omp \
+  --clients codex,claude,opencode,omp,zcode \
   --scope project \
   --content rules,templates,skills,subagents,hooks,commands \
   --mode copy \
@@ -140,7 +181,7 @@ First run:
 
 node <agent-harness-core>/bin/harness-project.js \
   --target <state-target> \
-  --clients codex,claude,opencode,omp \
+  --clients codex,claude,opencode,omp,zcode \
   --scope global \
   --content skills,subagents,hooks,commands \
   --mode copy \
@@ -287,6 +328,7 @@ Client command support is intentionally not uniform:
 | OMP | `.omp/commands/harness-*.md` or `~/.omp/agent/commands/harness-*.md` | `/harness-workflow` |
 | Codex | global only: `~/.codex/prompts/harness-*.md` | `/prompts:harness-workflow` |
 | OpenCode | not file-projected yet; OpenCode uses `opencode.json` `command` entries | use projected skills |
+| ZCode | `.agents/commands/harness/*.md` or `~/.agents/commands/harness/*.md` | `/harness:workflow` |
 
 Codex custom prompts are deprecated by Codex and should be treated as personal
 shortcuts, not the primary shared workflow surface. OpenCode command support

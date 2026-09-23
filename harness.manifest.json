@@ -158,6 +158,93 @@
         "config": true
       }
     },
+    "zcode": {
+      "targets": {
+        "project": {
+          "skills": [
+            ".agents/skills/<runtimeName>/"
+          ],
+          "agents": [
+            ".zcode/agents/<runtimeName>.md"
+          ],
+          "commands": [
+            ".agents/commands/<runtimeName>.md"
+          ],
+          "config": [
+            ".zcode/config.json"
+          ],
+          "hooks": [
+            ".zcode/config.json#hooks"
+          ]
+        },
+        "global": {
+          "skills": [
+            "~/.agents/skills/<runtimeName>/"
+          ],
+          "agents": [
+            "~/.zcode/agents/<runtimeName>.md"
+          ],
+          "commands": [
+            "~/.agents/commands/<runtimeName>.md"
+          ],
+          "config": [
+            "~/.zcode/cli/config.json"
+          ],
+          "hooks": [
+            "~/.zcode/cli/config.json#hooks"
+          ]
+        }
+      },
+      "capabilities": {
+        "skills": true,
+        "subagents": true,
+        "commands": {
+          "project": true,
+          "global": true
+        },
+        "hooks": {
+          "session-bootstrap": {
+            "support": "native",
+            "event": "SessionStart",
+            "matcher": null,
+            "effect": "additionalContext",
+            "adapter_runtime_name": "zcode-context-adapter@1"
+          },
+          "active-change-guard": {
+            "support": "native",
+            "event": "SessionStart",
+            "matcher": null,
+            "effect": "additionalContext",
+            "adapter_runtime_name": "zcode-context-adapter@1"
+          },
+          "tool-safety-guard": {
+            "support": "native",
+            "event": "PreToolUse",
+            "matcher": "Bash|Write|Edit|ApplyPatch",
+            "effect": "additionalContext",
+            "adapter_runtime_name": "zcode-context-adapter@1"
+          },
+          "regulated-structure-guard": {
+            "support": "native",
+            "event": "PreToolUse",
+            "matcher": "Bash|Write|Edit|ApplyPatch",
+            "effect": "additionalContext",
+            "adapter_runtime_name": "zcode-context-adapter@1"
+          },
+          "projection-health-check": {
+            "support": "native",
+            "event": "SessionStart",
+            "matcher": null,
+            "effect": "additionalContext",
+            "adapter_runtime_name": "zcode-context-adapter@1"
+          },
+          "pre-compact-handoff": {
+            "support": "unsupported"
+          }
+        },
+        "config": true
+      }
+    },
     "omp": {
       "targets": {
         "project": {
@@ -225,7 +312,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       }
     ],
@@ -239,7 +327,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -251,7 +340,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -263,7 +353,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -275,7 +366,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -287,7 +379,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -299,7 +392,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       }
     ],
@@ -331,7 +425,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -364,7 +459,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -397,7 +493,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -430,7 +527,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -461,7 +559,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -491,7 +590,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -530,7 +630,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -567,7 +668,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -598,7 +700,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -631,7 +734,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -664,7 +768,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -699,7 +804,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -734,7 +840,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -768,7 +875,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -785,7 +893,15 @@
           "verified knowledge",
           "project vocabulary",
           "durable knowledge",
-          "memory promotion"
+          "memory promotion",
+          "context retrieval receipt",
+          "receipt validation",
+          "context gap",
+          "CONTEXT_READY",
+          "NO_RELEVANT_HIT",
+          "DEGRADED",
+          "QUERY_FAILED",
+          "PLANNED"
         ],
         "negativeTriggers": [
           "one-off answer with no repository context"
@@ -798,7 +914,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -827,7 +944,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -859,7 +977,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -894,7 +1013,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -924,7 +1044,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -962,7 +1083,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -992,7 +1114,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1022,7 +1145,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1052,7 +1176,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1080,7 +1205,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1110,7 +1236,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1141,7 +1268,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1172,7 +1300,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1203,7 +1332,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1234,7 +1364,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1265,7 +1396,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1295,7 +1427,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1325,7 +1458,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1354,7 +1488,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1384,7 +1519,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1414,7 +1550,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1444,7 +1581,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1480,7 +1618,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1509,7 +1648,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1541,7 +1681,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1574,7 +1715,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1604,7 +1746,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1636,7 +1779,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1665,7 +1809,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1694,7 +1839,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1724,7 +1870,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1755,7 +1902,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1785,7 +1933,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1820,7 +1969,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1851,7 +2001,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1881,7 +2032,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1912,7 +2064,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       }
     ],
@@ -1927,7 +2080,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1940,7 +2094,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1953,7 +2108,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1966,7 +2122,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1979,7 +2136,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -1992,7 +2150,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2005,7 +2164,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2018,7 +2178,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2031,7 +2192,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2044,7 +2206,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2057,7 +2220,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       }
     ],
@@ -2071,7 +2235,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2083,7 +2248,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2095,7 +2261,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2107,7 +2274,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2119,7 +2287,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2146,7 +2315,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2159,7 +2329,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2172,7 +2343,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2185,7 +2357,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2198,7 +2371,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2211,7 +2385,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2224,7 +2399,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2237,7 +2413,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       },
       {
@@ -2250,7 +2427,8 @@
           "codex",
           "claude",
           "opencode",
-          "omp"
+          "omp",
+          "zcode"
         ]
       }
     ],
