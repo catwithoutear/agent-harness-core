@@ -123,7 +123,9 @@ lifecycle, migration, or dependency order disqualifies this path.
 4. For `plan-only`, write one bounded lightweight plan with the goal, affected
    source, no-design/no-pack reason, validation, and rollback. Review it only
    when risk warrants review. Do not create formal task slices or require a
-   task-set review; validate the owning artifact and stop.
+   task-set review; validate the owning artifact and finish this planning stage.
+   If implementation is already authorized, return control to the coordinator
+   to continue; only a plan-only user request ends the overall task here.
 5. For `design-to-tasks`, `slice-refine`, or `review-replan`, extract behavior
    slices. A slice should map one coherent behavior, contract,
    migration, test, documentation, or rollout concern to concrete files and a

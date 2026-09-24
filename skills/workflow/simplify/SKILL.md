@@ -21,10 +21,11 @@ authorized slice is itself de-redundancy or behavior-preserving refactor work.
 
 ## Edit Authorization
 
-If the current request is review-only, if the diff was authored externally, or
-if you did not just make the code change, do not edit automatically. Return
-simplification opportunities and ask for edit permission or wait for an explicit
-apply request.
+Choose edit mode from current authorization for the resolved scope, not from
+who authored the code. Explicit permission to simplify existing or externally
+authored changes allows an apply pass without repeated confirmation. For
+review-only or unauthorized changes, return opportunities without editing;
+preserve unrelated changes and ask only when ownership or scope is unresolved.
 
 If tests are failing for behavior, fix or report the behavior failure before
 performing style or clarity cleanup.
@@ -47,8 +48,7 @@ Include:
 - `edit_authorized`: true only when the current request authorizes editing this
   resolved scope,
 - `requested_mode=apply` for an authorized simplification pass, or
-  `requested_mode=opportunities` for review-only, externally authored, or
-  not-yet-authorized changes,
+  `requested_mode=opportunities` for review-only or not-yet-authorized changes,
 - `behavior_invariants` that must not change,
 - `validation_target` with the narrowest relevant command or explicit
   no-command reason,
