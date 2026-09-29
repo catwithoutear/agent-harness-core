@@ -43,17 +43,16 @@ Input: `$ARGUMENTS`
    - `diagnose` for symptoms, failures, regressions, or unclear root cause.
    - `prototype-spike` for proposal/design feasibility risks.
    - `verification-first` for validation choice and evidence reporting.
-9. Choose the lightest valid path:
-   - fast: for work that changes no behavior, interface, lifecycle, dependency,
-     migration, or failure contract, observe, make the local edit, and verify;
-   - compact: record the bounded goal, affected source, no-design/no-pack
-     reason, validation, and rollback, then review when risk warrants it;
-   - design: challenge the proposal, then write and review the solution design.
-10. On the design path, apply the implementation-design trigger only after the
-    solution-design review is ready. Require a populated and reviewed
-    `implementation-design/` pack when work crosses subsystem boundaries,
-    touches 2+ modules with dependency risk, adds lifecycle/failure semantics,
-    or needs dependency/file/class/test-seam constraints.
+9. Follow `workflow-control:Required Materials` in one loop. Local work that
+   changes no behavior, interface, lifecycle, dependency, migration, or failure
+   contract needs direct verification; settled bounded implementation records
+   source, no-design/no-pack reason, validation and rollback. Review the plan
+   when risk warrants it. Challenge unresolved solution decisions before design.
+10. Apply the implementation-design trigger after solution-design review is
+    ready. Require a populated and reviewed `implementation-design/` pack when
+    work crosses subsystem boundaries, touches 2+ modules with dependency risk,
+    adds lifecycle/failure semantics, or needs dependency/file/class/test-seam
+    constraints.
 11. Derive bounded task slices from the accepted solution or reviewed pack.
     Review the complete task set before implementation dispatch. File presence
     and structural validation are not semantic readiness evidence.
@@ -62,7 +61,10 @@ Input: `$ARGUMENTS`
     design and revisit dependent pack and task evidence.
 14. After meaningful code edits, run `simplify` or explicitly explain why it does
     not apply.
-15. Review the slice with a review packet and gate decision.
+15. Follow `workflow-control:Review Coverage`: every general/final review
+    covers the complete task and all code/design/project dimensions. Assign
+    bounded roles and retain checked N/A, evidence and gaps in the review packet;
+    local slice completion does not establish whole-task readiness.
 16. Verify with repository-owned commands or source evidence.
 17. Persist only high-signal results in the owning artifact. Use `reviews/` and
    `timeline/` sparingly; do not create process logs for routine steps.

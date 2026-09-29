@@ -162,11 +162,13 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-根据工作复杂度选择最轻量的适用路径：
+使用一个工作循环，由任务条件决定需要哪些材料：
 
-- 快速路径：适用于措辞、格式或类似的局部修改，前提是不改变行为、接口、生命周期、依赖关系、迁移或失败契约。读取当前源码，完成小范围修改并验证即可。
-- 紧凑路径：适用于方案已经明确、且不触发 implementation-design 的有限实现。记录目标、影响范围、不需要 solution design 和 pack 的原因、验证方式以及回滚方式；风险需要时再审阅这份计划。
-- 设计路径：先挑战 proposal，再审阅 solution design；随后判断是否触发 implementation-design。需要 pack 时，先完成并审阅 pack，再创建和审阅 task slices，最后进入实现。
+- 措辞、格式或类似的局部修改，不改变行为、接口、生命周期、依赖、迁移或失败契约时，读取当前源码，完成小范围修改并验证。
+- 方案已明确且不触发 implementation-design 的有限实现，记录目标、源码范围、不需要 design/pack 的原因、验证及回滚；风险需要时审阅这份计划。
+- 方案决策尚未明确时，挑战 proposal、审阅 solution design、判断 implementation-design 触发条件；需要 pack 时先审阅，再创建和审阅 task slices。
+
+每次一般或最终审阅必须覆盖完整任务范围及全部代码/设计维度与项目基线。材料条件、风险和角色分工只影响调查深度及独立性，不减少范围或维度。不适用须经过检查并有证据；缺失证据保留为缺口。共同义务由 `workflow-control` 拥有，代码和设计清单分别由原 multi-lens 技能拥有。
 
 Solution design 决定行为和边界。需要 `implementation-design/` pack 时，它负责把已接受的方案映射到代码归属、依赖方向、运行与失败流程、实施顺序和测试点。文件存在或结构校验通过都不等于获得批准。后续工作如果改变了方案决策，应回到 solution design，并重新检查依赖它的 pack 和 task evidence。
 

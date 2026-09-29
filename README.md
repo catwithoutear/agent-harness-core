@@ -177,18 +177,24 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-Use the lightest workflow that fits the work:
+Use one workflow loop with material requirements determined by the work:
 
-- Fast path: for wording, formatting, or similarly local work that changes no
-  behavior, interface, lifecycle, dependency, migration, or failure contract,
-  observe the current source, make the narrow edit, and verify it.
-- Compact path: for bounded implementation with a settled solution and no
-  implementation-design trigger, record the goal, affected source, why design
-  and the pack are unnecessary, validation, and rollback. Review that plan when
-  its risk warrants review.
-- Design path: challenge the proposal, review the solution design, assess the
-  implementation-design trigger, review the populated pack when required, then
-  create and review task slices before implementation.
+- For wording, formatting, or similarly local work that changes no behavior,
+  interface, lifecycle, dependency, migration, or failure contract, observe the
+  current source, make the narrow edit, and verify it.
+- For bounded implementation with a settled solution and no implementation-design
+  trigger, record goal, affected source, no-design/no-pack reason, validation,
+  and rollback. Review that plan when its risk warrants review.
+- For unresolved solution decisions, challenge the proposal, review solution
+  design, assess the implementation-design trigger, review a required pack,
+  then create and review task slices before implementation.
+
+Every general/final review covers the complete task scope and every current
+code/design dimension family plus the project baseline. Material requirements,
+risk, and role allocation affect investigation depth and independence, not
+scope or dimension inclusion. N/A needs checked evidence; missing evidence
+remains a gap. See `workflow-control` for the authoritative common duty and the
+existing multi-lens skills for the separate code/design dimension lists.
 
 Solution design decides behavior and boundaries. An `implementation-design/`
 pack, when required, maps that accepted solution to code ownership, dependency

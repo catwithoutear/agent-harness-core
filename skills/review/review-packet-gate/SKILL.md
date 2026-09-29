@@ -10,6 +10,13 @@ artifact, source path, design source, or command output that proves the risk.
 
 ## Review Scope
 
+Use `workflow-control:Review Coverage` for complete task scope and all current
+code/design dimension families plus the repository baseline. Enumerate their
+assignments and evidence in the existing packet before judging completeness.
+A focused specialist result cannot stand for the complete review; missing
+source/mapping stays a gap and N/A requires checked evidence. Formal closure
+of declared relations alone cannot prove the semantic dimension set complete.
+
 For ordinary reviews, gather the target, diff, and available context yourself
 before asking for missing input. Report source-proven defects even when design
 intent or execution evidence is unavailable; qualify the conclusions that depend

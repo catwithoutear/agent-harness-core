@@ -20,7 +20,11 @@ Input: `$ARGUMENTS`
    - `skill-judge` for skills.
    - `subagent-judge` for subagent prompts.
    - `review-verifier` for independent structured review coverage comparison.
-2. Read the target and its intent sources before judging.
+2. Resolve the complete current task scope and read intent sources. Use
+   `workflow-control:Review Coverage` and the current code/design dimension
+   owner plus repository baseline. Check every family; preserve source-backed
+   N/A and evidence gaps. Selecting a skill or assigning roles cannot shrink
+   coverage; a focused question cannot approve the whole task.
 3. Verify claims against current files, diffs, commands, or artifacts.
 4. Lead with findings ordered by severity. Avoid summary-first review output.
 5. Separate blockers, should-fix items, notes, and residual risk.

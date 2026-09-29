@@ -1,6 +1,6 @@
 ---
 name: code-simplifier
-description: Use when a simplification Scope Packet asks for apply or opportunities mode across explicit coverage modes.
+description: Use when a simplification Scope Packet asks for apply or opportunities across the complete resolved task scope.
 ---
 
 # Code Simplifier
@@ -57,18 +57,18 @@ return `NEEDS_CONTEXT` instead of guessing.
 Treat `.changes` artifacts as read-only context unless the Scope Packet
 explicitly includes them in the edit scope.
 
-## Coverage Modes
+## Complete Coverage
 
-- `quick`: only when files <= 2, effective logic diff lines <= 40, changed
-  units <= 3, no public API/data/persistence/error/log/metric/concurrency/
-  lifecycle/security/transaction/resource/cross-module behavior changes, and
-  validation is obvious.
-- `standard`: default. Cover changed units plus nearby callers, callees,
-  helpers, tests, and local patterns.
-- `deep`: required for explicit deep simplification, unit-by-unit cleanup, or
-  simplification/refactor slices. Build a complete Unit Inventory and inspect
-  every class, function, method, and key block in the resolved scope. Trivial
-  units may be grouped only when they share purpose, evidence, and disposition.
+Build a complete Unit Inventory and inspect every class, function, method, and key block
+in the resolved task scope, with necessary callers, callees, helpers and tests.
+Group trivial units only when they share purpose, evidence, and disposition.
+Size, risk and scheduling cannot omit units or dimensions. This is a bounded
+task inventory, not a repository-wide cleanup mandate.
+
+Apply every dimension below; reasoned N/A follows inspection, and missing
+sources or evidence remain gaps. Use the canonical minimal-implementation
+method for operation/result matching, block necessity, side-effect timing,
+proposed final call sites, and optional isolated ablation.
 
 ## Rounds
 
@@ -77,14 +77,14 @@ Round 1 - Behavioral Map:
 - state the intended behavior,
 - list invariants that must not change,
 - identify the smallest scoped areas worth simplifying,
-- confirm the coverage mode and any scope exclusions.
+- confirm complete task coverage and justified scope exclusions.
 
 Round 2 - Unit Inventory:
 
-- list every scoped class, function, method, and key block for deep mode;
-- list changed units plus necessary neighbors for standard mode;
+- list every scoped class, function, method, and key block;
 - group trivial units only with an explicit count, shared reason, and
   representative EvidenceRef;
+- name each unit's strongest keep reason and removal/replacement counterfactual;
 - classify necessity as `essential`, `optional`, or `redundant`;
 - choose disposition: `keep`, `simplify`, `replace`, `remove`, or
   `needs decision`.
@@ -94,7 +94,8 @@ Round 3 - Dimensional Review:
 - apply the ordered minimal-implementation ladder after the Behavioral Map;
 - check whether one authoritative shared owner should replace leaf-level fixes,
   while avoiding forced reuse across different semantics;
-- data shape and ownership,
+- operation-level public capability reuse and block necessity,
+- data shape, ownership, lifetime, and producer-to-consumer side effects,
 - control flow and branching,
 - naming and API clarity,
 - duplication and local helper reuse,
@@ -115,8 +116,7 @@ Round 5 - Verification:
 - run or recommend the narrowest relevant validation,
 - report any validation not run and why,
 - return `VALIDATION_FAILED` if a validation command fails after edits,
-- state `coverage complete` or list uncovered units and why they remain out of
-  scope.
+- state `coverage complete` or list uncovered units and why coverage remains incomplete.
 
 If no behavior-preserving simplification is safe or worthwhile, return
 `NO_SAFE_SIMPLIFICATION`.
@@ -127,12 +127,12 @@ Return:
 
 1. Simplifications made.
 2. Behavior invariants preserved.
-3. Scope Packet summary and coverage mode.
+3. Scope Packet summary, all dimension dispositions, and coverage gaps.
 4. Unit Inventory table: `Unit | Purpose | Necessity | Disposition | EvidenceRef`.
 5. EvidenceRef is a file/line reference, test name, validation command output,
    or `.changes` artifact reference that supports the row.
 6. Tests or validation run, including exact command and status.
-7. Complexity left intentionally unchanged.
+7. Complexity left intentionally unchanged with concrete keep reasons.
 8. Minimality disposition, material rejected ladder levels, and any unavailable
    canonical-reference coverage.
 9. Early exit status when applicable: `NEEDS_CONTEXT`, `NEEDS_AUTHORIZATION`,

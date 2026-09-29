@@ -17,8 +17,9 @@ synthesis.
 - Do not use it as a shortcut around the repository's required review method.
 - Preserve review-only boundaries unless the user explicitly asks for fixes,
   commits, pushes, or external comments.
-- For small low-risk changes, run one baseline review and state why extra
-  lenses were skipped.
+- Every general/final code review checks the complete task scope and all lens
+  families below, plus the repository baseline. Extra independent voices are
+  optional scheduling; small changes cannot omit dimensions.
 
 ## Inputs
 
@@ -38,17 +39,18 @@ possible. Ask only when choosing the wrong base would change findings.
 1. Build a shared review packet: target, base, intended behavior, changed
    artifacts, relevant design or requirements, known validation, risks, and
    out-of-scope boundaries.
-2. Select lenses from the changed surface, not from a fixed checklist.
+2. Enumerate all lens families below and the project baseline; assess each
+   across the complete task scope, then allocate deeper investigation by risk.
 3. Dispatch independent passes only when the surfaces are genuinely separable.
 4. For outside-voice passes, provide neutral facts instead of prior diagnosis.
 5. Triage each finding against source evidence before promoting it.
 6. Deduplicate by root cause and risk-order the final report.
-7. State which lenses ran, which were skipped, validation performed, and
-   residual unknowns.
+7. State dimension coverage, evidence-backed N/A, validation and gaps. Missing
+   source or unresolved applicability cannot count as a completed dimension.
 
 ## Lens Selection
 
-Common lens families:
+Authoritative code-review dimension families; check each:
 
 - behavior and correctness,
 - compatibility and migration,
@@ -57,10 +59,15 @@ Common lens families:
 - security and trust boundaries,
 - performance and scale,
 - observability, operations, and rollback,
-- documentation, tests, and user-facing contract.
+- documentation, tests, and user-facing contract,
+- operation-level public capability reuse and block necessity,
+- project idioms, naming, API clarity, and maintainability.
 
-Use only lenses justified by the review packet. Do not invent a specialist
-role when one bounded reviewer pass is enough.
+Add the repository-native dimensions. Use `workflow-control:Review Coverage`
+for scope and disposition duties and its minimal-implementation reference for
+reuse/necessity analysis. One pass may cover multiple families; independent
+passes may partition them. Neither arrangement reduces the complete duty.
+Do not invent a specialist role when one bounded reviewer pass is enough.
 
 ## Fresh Neutral Packet
 
@@ -135,7 +142,7 @@ independent runtime evidence proves the behavior.
 Packet: "Review the diff from `main...feature-x`; intent is to add import
 retry; tests run: unit retry suite; changed files: parser, retry policy, CLI."
 
-Lenses selected:
+All families checked; deeper investigation:
 
 - behavior/correctness for retry semantics,
 - compatibility for CLI flag defaults,
@@ -143,7 +150,9 @@ Lenses selected:
 
 Final report merges duplicate "retry never stops" findings into one P1 with
 source evidence, downgrades an unsupported logging preference to residual
-notes, and states that security was skipped because no trust boundary changed.
+notes, and records security N/A with evidence that the retry path introduces no
+changed trust boundary or input authority. Other families retain their
+checked dispositions; missing evidence remains a gap.
 
 ## Common Mistakes
 

@@ -45,6 +45,61 @@ requirement and safety floor:
 The ladder is a decision order, not a demand for clever one-liners. Prefer a few
 obvious lines over a dense expression when that preserves local reasoning.
 
+## Operation-Level Discovery
+
+Decompose each unit into actual operations and required results: Boolean,
+position/value, count, transformation, formatting, insertion, or aggregation.
+Match those semantics against current public capabilities, exact declarations,
+supported dependencies, callers, and failure/ownership contracts. Inspect both
+handwritten code and existing helper/algorithm calls: a result may be more
+powerful than its consumer needs. Search with operation/result vocabulary and
+local production patterns, rather than only the custom helper's name.
+
+A helper with no complete replacement may still contain replaceable operations.
+State which part is reusable and why the remaining policy needs local code.
+A failed name search or an existing library call does not close this dimension.
+Keep discovery bounded to the operation and current task; do not enumerate an
+entire library or introduce a dependency to obtain a shorter expression.
+
+## Necessity And Consumer Trace
+
+For every relevant key block, assertion, wrapper, branch, and intermediate
+state, identify the requirement or invariant it protects and the strongest
+concrete keep reason. Ask what observable behavior would change if it were
+removed or replaced. Retain distinctions only when a consumer must act
+differently; preserve contract checks, diagnostics and defensive boundaries
+when their verified requirements justify them. Current safety or absence of a
+warning does not establish necessity, and fewer lines do not establish safety.
+
+Trace producer -> projection/adaptor -> traversal -> consumer. Locate side
+effects, repeated evaluation, ownership transfer, final use, and later reuse.
+Check evaluation count/order, short-circuiting, exceptions, and aliasing. A
+consumer that happens to traverse once does not make a destructive lazy
+projection safe for every consumer; neither is it proof of a current defect.
+Keep the claim tied to the actual path and proposed alternative.
+
+Before rejecting a proposal, reconstruct its final signature, data ownership,
+and call sites. Judge those, rather than constraints of the old signature that
+the proposal explicitly changes. Separate values consumed at last use from
+callbacks or state needed again later.
+
+## Counterfactual And Optional Ablation
+
+Always reason through the deletion/replacement counterfactual. When a material
+necessity or equivalence question remains testable, consider an isolated,
+single-factor ablation: freeze the baseline, change only that construct, and
+compare the behavior invariants through the same relevant checks. Use the
+existing `verification-first` skill to choose falsifying checks and report
+status, fidelity and evidence in the current Review Packet or task artifact.
+Tests passing support only the exercised invariants; they do not prove an
+uncovered contract unnecessary.
+
+Execute an experiment only within granted edit/runtime authority, in an owned
+reversible workspace. Review-only work may propose the experiment or use
+source evidence. Do not require live ablation for every unit, modify unrelated
+state, or add a parallel experiment protocol. Report inconclusive or unexecuted
+experiments honestly; keep required boundaries when evidence is insufficient.
+
 ## Root Cause And Shared Ownership
 
 For a defect, trace the believable failure path before choosing the edit. When
@@ -79,5 +134,6 @@ Selected level: <ladder level and concrete mechanism>
 Why higher levels do not fit: <brief evidence for material rejections>
 Shared owner/root cause: <owner or N/A with reason>
 Safety floor: <preserved invariants>
+Keep/removal evidence: <requirement, strongest keep reason, counterfactual>
 Runnable check: <narrow command/check, or unavailable reason>
 ```

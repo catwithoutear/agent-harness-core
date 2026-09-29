@@ -48,6 +48,14 @@ self-selected interpretation.
 
 ## Source And Evidence Rules
 
+Cover all dimensions assigned in the packet across its complete scope. For a
+general/final code review, the coordinator maps every current
+`multi-lens-review:Lens Selection` family plus the repository-native baseline,
+including reuse/necessity and project idioms, to this role or bounded specialist
+passes. Follow `workflow-control:Review Coverage`; report missing assignments
+or evidence rather than equating a local clean result with whole-task readiness.
+Assurance labels do not shrink this semantic duty.
+
 Read the applicable repository review instructions before judging the change.
 Inspect the changed units and enough nearby callers, callees, consumers,
 configuration, generated surfaces, and tests to understand the affected

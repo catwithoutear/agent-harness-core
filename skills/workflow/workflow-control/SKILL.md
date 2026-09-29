@@ -28,7 +28,7 @@ honest final verification statement.
 2. Build a compact context packet from verified sources.
 3. When custom code is proposed, apply the Minimal Implementation Gate after
    understanding the behavior and before selecting the implementation approach.
-4. Choose the lightest path that fits the work.
+4. Determine required materials from the conditions below within this one loop.
 5. When the solution is not settled, draft and challenge a proposal, then write
    and review the solution design.
 6. After the solution-design review is ready, apply the
@@ -98,23 +98,56 @@ blocker persists after reasonable safe attempts, report partial status, the
 missing capability/input, and the next action; do not loop indefinitely or claim
 completion. Continue independent authorized work when possible.
 
-## Workflow Paths
+## Required Materials
 
-- Fast path: low-risk wording, formatting, or similarly local work that does not
+Use one workflow loop; material requirements follow the work, not a selected
+mode. These conditions never reduce review scope or dimension coverage:
+
+- For low-risk wording, formatting, or similarly local work that does not
   change behavior, interfaces, lifecycle, dependencies, migration, or failure
-  contracts. Observe, make the narrow edit, and verify it. A proposal, design,
-  pack, and task set are unnecessary.
-- Compact path: bounded implementation with a settled solution and no
-  implementation-design trigger. Record the goal, affected source, why design
-  and the pack are unnecessary, validation, and rollback in a plan or slice.
+  contracts, a context packet and direct edit/verification suffice. A separate
+  proposal, design, pack, and task set are unnecessary.
+- For bounded implementation with a settled solution and no
+  implementation-design trigger, record goal, affected source, explicit
+  no-design/no-pack reason, validation, and rollback in a plan or slice.
   Review that lightweight plan when the risk warrants it.
-- Design path: use proposal and challenge, reviewed solution design,
-  implementation-design assessment, a reviewed pack when required, and a
-  reviewed task set before implementation.
+- When material behavior, compatibility, ownership, lifecycle, migration, or
+  dependency decisions remain unresolved after bounded source inspection,
+  challenge a proposal and review solution design. Apply the pack trigger after
+  solution-design review, then review the required pack and complete task set
+  before implementation.
 
-Resolve ordinary technical uncertainty through bounded source inspection first.
-Escalate from the fast or compact path only when material behavior, compatibility,
-ownership, lifecycle, migration, or dependency decisions remain unresolved.
+## Review Coverage
+
+Every general/final review covers the complete current task scope and checks
+all authoritative dimension families: `multi-lens-review:Lens Selection` for
+code, `multi-lens-design-review:Design Lenses` for planning/design, plus the
+repository-native baseline and additional project dimensions. Read those
+current owners rather than maintaining a second checklist here.
+
+Resolve staged/unstaged changes, in-scope new files, committed task changes,
+and necessary callers, contracts, consumers, generated surfaces and tests.
+An empty latest diff is not an empty task. Exclude unrelated work with reasons;
+this does not authorize whole-repository cleanup or additional edits.
+
+For each family, inspect applicability and investigate to the depth needed to
+support its disposition. N/A requires a source-backed reason after inspection;
+unavailable source, uncertain applicability or evidence remains a named gap.
+Record the dimension mapping and material evidence in the existing Review
+Packet. Group identical dispositions when they share scope and evidence; do
+not create an exhaustive unit-by-dimension report merely for row count.
+
+The coordinator allocates bounded role packets and accounts for the whole
+scope and all dimensions; each specialist covers its assignment. A focused
+question or local pass does not establish whole-task readiness. Risk adds
+investigation or required independence; size, material choice, permissions and
+assurance labels cannot subtract dimensions.
+
+For formal review-run, map these source owners into the existing versioned
+DimensionRef/relations and dispatch contract. Do not use absent dimensions or
+false activation as N/A evidence. The runtime verifies declared identities and
+closure, not an intrinsic semantic checklist; missing semantic mapping remains
+a coverage gap. Preserve existing machine fields, gates and evidence authority.
 
 ## Evidence Skills
 
@@ -170,14 +203,13 @@ task slicing when any of these are true:
   seam mapping to keep agents from improvising structure.
 
 For localized work that does not meet those triggers, record an explicit
-no-design reason in the plan or task slice and continue with the lightweight
-path. Do not create a seven-file pack just to fill empty tables.
+no-design reason in the plan or task slice and continue with the recorded local plan. Do not create a seven-file pack just to fill empty tables.
 
 When a pack is required, directory presence is not readiness. Read the populated
 pack and require a ready review before creating task slices. Review the complete
 task set before implementation dispatch.
 
-## Fast Path Examples
+## Example Materials
 
 Low-risk docs wording:
 
@@ -258,7 +290,7 @@ composes `overall_gate`.
 
 The `requested_assurance` values `quick`, `standard`, and `deep` control the
 amount of evidence inside this one protocol. They do not select different
-protocols. Requested or risk-mandated formal independent coverage assurance uses
+protocols or reduce the full task scope and semantic dimensions. Requested or risk-mandated formal independent coverage assurance uses
 the review-run lifecycle. A fresh independent perspective alone is not a request
 for formal coverage assurance. Never downgrade an applicable formal gate
 without owner authorization or claim equivalent assurance from a plain review.

@@ -1,7 +1,7 @@
 # Minimality Behavior Evaluation
 
 Use this evaluation only to measure whether a harness instruction or role change
-improves implementation behavior. It is not a substitute for repository tests,
+improves implementation or proactive review behavior. It is not a substitute for repository tests,
 and source-text assertions or successful projection do not count as behavior
 evidence.
 
@@ -37,6 +37,30 @@ Use the smallest backend scenario set that covers the changed decision contract.
 Adapt filenames and commands to the seeded repository, but keep the behavior
 questions stable. Add a scenario only when a changed harness rule has no coverage
 in this set; do not build a broad benchmark catalog by default.
+
+## Review Opportunity Calibration
+
+For a change in review discovery, use the same fair isolation contract with a
+read-only review task. Freeze source, task intent, allowed context and the
+expected opportunities before dispatch. Keep expected answers and prior user
+suggestions out of both review packets. Use source-backed project miss cases
+in the applicable overlay; Core examples remain language and project neutral.
+
+| Case | Positive opportunity | Negative control |
+|---|---|---|
+| Operation/result reuse | A helper combines policy with manual formatting; an existing formatter covers only the formatting. | A fixed literal needs no formatter, or output/error semantics differ. |
+| Algorithm/result fit | Search produces a position used only for existence; a supported predicate algorithm matches the contract. | The caller needs the position, key lookup, or full evaluation for required side effects. |
+| Necessity | A wrapper/assertion/intermediate state protects no required distinction or invariant. | The same-looking construct enforces an external contract or failure diagnostic. |
+| Ownership/evaluation | A destructive projection moves data during lazy dereference although explicit final consumption is clearer. | A pure reference projection or proven last-use move with the intended traversal. |
+| Proposed alternative | A by-value final-use input can replace redundant local state. | A reused callback/state must remain available to later consumers. |
+
+Score proactive detections separately from suggestions adopted after a user
+prompt. Name missed valid opportunities, false positives, evidence quality,
+behavior regressions and review cost. A useful finding identifies the exact
+operation and an equivalent simpler mechanism or a concrete keep reason; an API
+name alone earns no detection credit. A clean review, more rounds, fewer lines,
+or agreement after prompting cannot establish better recall. A calibration
+instrument must distinguish both positive and negative cases before a live A/B.
 
 ## Instrument Self-Check
 
@@ -93,6 +117,7 @@ Isolation check: <pass/fail and evidence>
 Instrument self-check: <pass/fail per scenario>
 Hard gates: <correctness, safety/compatibility, completeness per arm>
 Minimality signals: <only gate-passing runs>
+Review discovery: <proactive hits, misses, prompted adoption, false positives, cost>
 Conclusion: <improvement, regression, null result, or inconclusive>
 Limitations: <scenario, run-count, environment, or unexecuted-live-run limits>
 ```

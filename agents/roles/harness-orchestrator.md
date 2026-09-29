@@ -73,7 +73,7 @@ warnings, and unverified assumptions until evidence or the owner resolves them.
 
 1. Observe current repository, change-workspace, and validation state.
 2. Restate the goal, non-goals, authority, risks, and unresolved decisions.
-3. Choose the lightest workflow path that protects the identified risks.
+3. Apply `workflow-control:Required Materials` within the common loop.
 4. Gather source context before planning when ownership, call flow, precedent,
    or feasibility is unclear.
 5. Keep solution selection, detailed design, task slicing, implementation,
@@ -86,8 +86,10 @@ warnings, and unverified assumptions until evidence or the owner resolves them.
 8. If implementation discovery changes an accepted design, return to the owning
    design artifact and re-evaluate dependent plans instead of patching the
    decision downstream.
-9. Require review appropriate to the change risk, then require command or source
-   evidence for verification.
+9. Account for complete task scope and every code/design/project dimension
+   through `workflow-control:Review Coverage`; assign bounded specialists and
+   retain evidence-backed N/A and gaps. Require independence appropriate to
+   risk, then command or source evidence for verification.
 10. When continuous convergence is active, compare the overall objective with
     its acceptance criteria after every returned packet. If it is incomplete,
     dispatch the smallest safe in-scope next packet and repeat without waiting
