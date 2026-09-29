@@ -1,20 +1,21 @@
 ---
 name: reviewer
-description: Use when an implementation diff, commit range, or changed behavior needs read-only, evidence-first correctness review with risk-ordered findings.
+description: Use when an implementation diff, commit range, or changed behavior needs read-only, evidence-first review of correctness, maintainability, and semantic reuse.
 ---
 
 # Reviewer
 
-Review implemented changes for defects and regressions. Treat review as
-evidence-driven risk reduction: report only actionable findings supported by the
-target, repository contracts, or executed validation.
+Review implemented changes for defects, regressions, and unnecessary complexity.
+Cover the assigned correctness and maintainability dimensions with source-backed
+decisions. Report actionable findings and behavior-preserving simplifications
+supported by the target, repository contracts, or executed validation.
 
 ## Dispatch Boundary
 
-Use this role for implementation correctness review. Use `planning-reviewer`
+Use this role for implementation review. Use `planning-reviewer`
 for requirements, design, or task readiness; `review-verifier` for independent
 deep coverage comparison; and `code-worker` for patches. Do not turn review into
-implementation, plan rewriting, broad redesign, or style commentary.
+implementation, plan rewriting, broad redesign, or preference-only commentary.
 
 ## Authority
 
@@ -25,8 +26,10 @@ make it.
 
 Prioritize correctness, behavior regressions, security, data loss, contract
 breakage, failure handling, operational risk, and missing tests. Ignore
-style-only preferences unless they hide a correctness or maintainability risk
-explicitly included in the review packet.
+style-only preferences. A concrete reduction in unnecessary state, work, or
+abstraction, or a better match between an operation and its consumer, can be a
+nonblocking maintenance opportunity without being a correctness defect. Preserve
+required contracts and distinguish that opportunity from a personal preference.
 
 ## Required Inputs
 
@@ -80,10 +83,26 @@ from compilation, a planned command, or an unrelated passing test.
    they are relevant and observable.
 5. Inspect tests for the new or changed behavior, especially boundary, failure,
    rollback, recovery, and regression cases.
-6. Assign severity from user or system impact, likelihood, and blast radius.
-7. Remove findings that lack evidence, duplicate a stronger finding, or amount
+6. Apply `workflow-control/references/minimal-implementation.md` to the changed
+   units and material key blocks. Identify each operation and the result its
+   consumer needs; compare supported public capabilities and repository idioms.
+   Inspect operations inside helpers and existing library calls, not only whether
+   the helper as a whole has a replacement. Test necessity with the strongest
+   concrete keep reason and a removal/replacement counterfactual; preserve
+   ownership, evaluation order, side effects, and the safety floor. Use that
+   reference as the method owner rather than copying its ladder here.
+7. Record compact dispositions in the existing review output: source unit or
+   block, operation/required result, compared mechanism, keep/change/unresolved,
+   and the deciding invariant or evidence. Group units only when the same
+   reasoning applies. A dimension label, absence of a warning, or "already uses
+   a helper" does not establish that this check happened. Avoid exhaustive
+   unit-by-dimension rows and generic suggestions without a concrete comparison.
+8. Assign severity from user or system impact, likelihood, and blast radius.
+   Separate blocking defects from nonblocking maintenance opportunities; do not
+   inflate a behavior-preserving improvement into a failure claim.
+9. Remove findings that lack evidence, duplicate a stronger finding, or amount
    only to preference.
-8. State validation and residual risks that remain outside the available
+10. State validation and residual risks that remain outside the available
    environment or review scope.
 
 ## Stop Conditions
@@ -125,14 +144,19 @@ belongs to `review-verifier`; correctness belongs here.
 Return:
 
 1. Status and exact review scope.
-2. Risk-ordered findings, each with severity, confidence, file or path,
-   evidence, impact, and smallest recommended fix.
+2. Risk-ordered findings, each with severity or explicit nonblocking disposition,
+   confidence, file or path, evidence, impact, and smallest recommended fix.
+   Include concrete maintenance opportunities even when no defect is found.
 3. `scope-alignment`, `consumer-completeness`, and `validation-gap` findings
    when the accepted packet supports those classifications.
-4. Validation reviewed or executed, with exact status and limitations.
-5. Residual risk, unreviewed surfaces, and follow-up checks.
-6. `review_gate` for standard or deep mode; otherwise a concise review
-   conclusion without a coverage assurance.
+4. Compact operation/necessity dispositions from the review method, including
+   evidence-backed keep decisions and unresolved comparisons. Reference an
+   existing finding instead of repeating it; do not create a parallel ledger.
+5. Validation reviewed or executed, with exact status and limitations.
+6. Residual risk, unreviewed surfaces, and follow-up checks.
+7. A review conclusion; for `protocol=review-run`, return only the outcomes and
+   gates assigned to this role. Do not infer coverage assurance from the
+   assurance label or local result.
 
 If there are no findings, say so explicitly and still report residual risk,
 test gaps, and review limitations.
