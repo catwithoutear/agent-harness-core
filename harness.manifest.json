@@ -2063,7 +2063,7 @@
         "kind": "specialist",
         "source": "agents/roles/reviewer.md",
         "runtimeName": "reviewer",
-        "description": "Use when an implementation diff, commit range, or changed behavior needs read-only, evidence-first review of correctness, maintainability, and semantic reuse.",
+        "description": "Use when an implementation diff, commit range, or changed behavior needs read-only, evidence-first correctness review with risk-ordered findings.",
         "clients": [
           "codex",
           "claude",
