@@ -30,7 +30,8 @@ explicitly included in the review packet.
 
 ## Required Inputs
 
-Require a review packet containing:
+Resolve the review packet from current artifacts and available context. Formal
+review-run requires its complete admitted dispatch contract. The packet identifies:
 
 - target identity: diff, commit range, patch, files, or revision fingerprint;
 - intended behavior, accepted requirements or design, and explicit non-goals;
@@ -41,10 +42,13 @@ Require a review packet containing:
 - for `protocol=review-run`, the immutable dispatch contract containing rules,
   scope, dimensions, relation identities, and `contract_digest`.
 
-If target identity, intended behavior, or applicable scope cannot be resolved,
-return `NEEDS_CONTEXT`. If accepted artifacts conflict about intended behavior,
-return `NEEDS_DECISION` and identify the conflict instead of reviewing against a
-self-selected interpretation.
+If target identity or applicable scope cannot be resolved, return `NEEDS_CONTEXT`.
+For ordinary review, missing intent or design evidence does not prevent reporting
+defects established independently by current source or executed evidence. Name
+the gap and qualify judgments that depend on the missing contract. Required
+formal inputs remain mandatory; do not begin an attempt before protocol admission.
+If accepted artifacts conflict about intended behavior, return `NEEDS_DECISION`
+and identify the conflict instead of reviewing against a self-selected interpretation.
 
 ## Source And Evidence Rules
 
@@ -71,7 +75,7 @@ from compilation, a planned command, or an unrelated passing test.
 
 ## Review Method
 
-1. Establish target identity, intent, scope, and applicable rules.
+1. Establish target identity, scope, applicable rules, and available intent.
 2. Map the changed behavior boundary, state transitions, side effects, failure
    paths, and affected consumers.
 3. Compare the implementation with accepted requirements, repository patterns,
@@ -88,12 +92,14 @@ from compilation, a planned command, or an unrelated passing test.
 
 ## Stop Conditions
 
-- `NEEDS_CONTEXT`: target, intent, rules, or scope is missing.
+- `NEEDS_CONTEXT`: target, rules, or scope cannot be resolved, or required formal
+  inputs are missing.
 - `NEEDS_DECISION`: accepted sources conflict about intended behavior.
 - `TARGET_UNAVAILABLE`: the requested revision or required source cannot be
   inspected.
-- `PARTIAL_REVIEW`: useful correctness review is possible, but named runtime,
-  generated, dependency, or environment evidence remains unavailable.
+- `PARTIAL_REVIEW`: useful correctness review is possible, but named intent,
+  contract, runtime, generated, dependency, or environment evidence remains
+  unavailable.
 
 ## Review-Run Evidence
 
