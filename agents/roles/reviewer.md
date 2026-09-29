@@ -137,8 +137,9 @@ Return:
    when the accepted packet supports those classifications.
 4. Validation reviewed or executed, with exact status and limitations.
 5. Residual risk, unreviewed surfaces, and follow-up checks.
-6. `review_gate` for standard or deep mode; otherwise a concise review
-   conclusion without a coverage assurance.
+6. Reviewer-owned outcomes and any assigned `review_gate` only for an admitted
+   `protocol=review-run`; otherwise a qualified ordinary review conclusion.
+   Assurance labels do not grant formal gate approval or coverage assurance.
 
 If there are no findings, say so explicitly and still report residual risk,
 test gaps, and review limitations.

@@ -43,16 +43,18 @@ Input: `$ARGUMENTS`
    barrier closes may verifier Phase B receive the expected universe and
    reviewer results. The reviewer returns correctness findings plus a
    relation-level ledger, and the coordinator owns final synthesis.
-10. Report `coverage_gate`, `review_gate`, `independent_review_gate`,
-    `style_gate`, and `implementation_verification_gate` separately, plus the
-    coordinator-owned derived `overall_gate`. `quick`, `standard`, and `deep`
+10. For formal `protocol=review-run`, report `coverage_gate`, `review_gate`,
+    `independent_review_gate`, `style_gate`, and
+    `implementation_verification_gate` separately, plus the coordinator-owned
+    derived `overall_gate`. `quick`, `standard`, and `deep`
     are assurance levels within this one protocol; missing required evidence
-    remains fail-closed `NOT_READY`.
+    remains fail-closed `NOT_READY`. Ordinary reviews return findings, a qualified
+    conclusion, and evidence gaps without claiming formal gate approval.
 
 ## Output
 
 - Findings:
-- Gate decision:
+- Gate decision (formal review-run) or qualified conclusion (ordinary review):
 - Evidence checked:
 - Missing evidence:
 - Residual risk:
