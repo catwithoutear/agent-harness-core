@@ -120,9 +120,10 @@ mode. These conditions never reduce review scope or dimension coverage:
 ## Review Coverage
 
 Every general/final review covers the complete current task scope and checks
-all authoritative dimension families: `multi-lens-review:Lens Selection` for
-code, `multi-lens-design-review:Design Lenses` for planning/design, plus the
-repository-native baseline and additional project dimensions. Read those
+all authoritative dimension families. For code, `multi-lens-review` is the one
+normal code-review procedure and `multi-lens-review:Lens Selection` owns the
+code families; invoke the applicable project-native baseline.
+`multi-lens-design-review:Design Lenses` owns planning/design. Read those
 current owners rather than maintaining a second checklist here.
 
 Resolve staged/unstaged changes, in-scope new files, committed task changes,

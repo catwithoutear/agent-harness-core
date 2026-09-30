@@ -1071,8 +1071,13 @@
         "audience": "model",
         "source": "skills/review/multi-lens-review",
         "runtimeName": "multi-lens-review",
-        "description": "Use when a review needs multiple independent lenses, fresh outside-voice passes, confidence calibration, false-positive suppression, or synthesis after the baseline review method is selected.",
+        "description": "Use when reviewing code, a diff, commit, merge request, or current task across complete scope and code dimensions with the mandatory project-native baseline and optional fresh supplemental passes.",
         "triggers": [
+          "code review",
+          "review this diff",
+          "review this commit",
+          "review this MR",
+          "review current task",
           "multi-lens review",
           "outside-voice review",
           "fresh-agent review",
@@ -1080,12 +1085,14 @@
           "reviewer synthesis"
         ],
         "negativeTriggers": [
-          "ordinary baseline review",
-          "review method not yet selected"
+          "requirements or design review without implementation review",
+          "interactive hunk review",
+          "review packet or formal gate without implementation review",
+          "skill or subagent package review without implementation review"
         ],
         "requires": [
-          "baseline review method",
-          "review packet or target diff"
+          "review target or current task scope",
+          "applicable project-native baseline"
         ],
         "priority": 80,
         "clients": [

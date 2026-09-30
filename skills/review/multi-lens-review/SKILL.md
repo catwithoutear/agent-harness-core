@@ -1,52 +1,62 @@
 ---
 name: multi-lens-review
-description: Use when a review needs multiple independent lenses, fresh outside-voice passes, confidence calibration, false-positive suppression, or synthesis after the baseline review method is selected.
+description: Use when reviewing code, a diff, commit, merge request, or current task across complete scope and code dimensions with the mandatory project-native baseline and optional fresh supplemental passes.
 ---
 
 # Multi-Lens Review
 
-Use this as a review orchestrator, not as the baseline review method. First
-select the repository's normal review procedure or domain skill, then use this
-skill to add independent lenses, neutral outside-voice passes, calibration, and
-synthesis.
+This is the one normal code-review procedure. It owns the common code process
+and its ten dimension families; the applicable project-native baseline remains
+mandatory. `workflow-control:Review Coverage` owns shared scope, while
+`review-packet-gate` owns packet materials, findings, re-review, and formal
+gates.
 
 ## Activation Boundary
 
-- Use only when the user asks for multi-lens, outside-voice, fresh-agent,
-  confidence calibration, false-positive suppression, or reviewer synthesis.
-- Do not use it as a shortcut around the repository's required review method.
+- Use for ordinary code, diff, commit, merge request, or complete-task review;
+  no explicit multi-lens request is needed.
+- Invoke the applicable project-native baseline. It adds domain obligations but
+  does not replace this procedure.
+- Use `multi-lens-design-review` for requirements, design, plans, and tasks;
+  use `grill-diff` for interactive hunk review.
+- Fresh outside-voice, neutral, and code-only passes are optional supplements.
+  They do not replace the intent-aware review, `review-verifier`, or a formal
+  gate.
 - Preserve review-only boundaries unless the user explicitly asks for fixes,
   commits, pushes, or external comments.
-- Every general/final code review checks the complete task scope and all lens
-  families below, plus the repository baseline. Extra independent voices are
-  optional scheduling; small changes cannot omit dimensions.
 
 ## Inputs
 
-Accept any review target the active repository or client supports:
+Accept code, diff, commit, merge request, and complete-task targets the active
+repository or client supports:
 
 - branch diff or commit range,
 - local staged or unstaged diff,
 - merge/pull request URL or id,
-- supplied patch, generated artifact, report, or plan,
+- supplied code-bearing patch or generated artifact,
 - named files, modules, or symbols.
 
-If the base or target is ambiguous, resolve it from repository state when
-possible. Ask only when choosing the wrong base would change findings.
+Resolve the base and target from repository state when possible. Ask only when
+choosing the wrong base would change findings.
+For a mixed code/design target, use this procedure for code surfaces and
+`multi-lens-design-review` for design obligations. A plan or report without
+implementation is not a code target.
 
 ## Protocol
 
-1. Build a shared review packet: target, base, intended behavior, changed
-   artifacts, relevant design or requirements, known validation, risks, and
-   out-of-scope boundaries.
-2. Enumerate all lens families below and the project baseline; assess each
-   across the complete task scope, then allocate deeper investigation by risk.
-3. Dispatch independent passes only when the surfaces are genuinely separable.
-4. For outside-voice passes, provide neutral facts instead of prior diagnosis.
-5. Triage each finding against source evidence before promoting it.
-6. Deduplicate by root cause and risk-order the final report.
-7. State dimension coverage, evidence-backed N/A, validation and gaps. Missing
-   source or unresolved applicability cannot count as a completed dimension.
+1. Resolve full task scope and intent through `workflow-control:Review Coverage`;
+   identify the applicable project-native baseline.
+2. Use `review-packet-gate:Packet` for materials and its completeness and
+   finding rules. Do not copy packet fields or formal-gate behavior here.
+3. Assess every Lens Selection family and the project baseline across the
+   complete task scope, then allocate deeper investigation by risk.
+4. Assign bounded reviewer or specialist passes only when needed; one pass may
+   cover multiple families. For outside-voice passes, provide neutral facts
+   instead of prior diagnosis.
+5. Verify findings against current source or execution evidence, deduplicate by
+   root cause, risk-order the report, and apply the confidence scale below.
+6. State coverage, evidence-backed N/A, validation, and gaps. Missing source or
+   unresolved applicability cannot count as a completed dimension.
 
 ## Lens Selection
 
@@ -156,7 +166,9 @@ checked dispositions; missing evidence remains a gap.
 
 ## Common Mistakes
 
-- Letting "multi-lens" replace the baseline review method.
+- Treating ordinary code review as a separate baseline that this skill only
+  augments.
+- Omitting the applicable project-native baseline or any Lens Selection family.
 - Sending prior suspected bugs to a fresh outside reviewer.
 - Reporting every lens output without evidence triage.
 - Treating majority opinion as correctness.

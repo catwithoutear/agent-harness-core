@@ -19,8 +19,8 @@ skipped, or explicitly unresolved.
 - Already merged or deployed code.
 - ordinary PR/MR review, findings-first review, review packet or gate review,
   broad risk-ordered review, or multi-lens review.
-- Broad architecture review. Use `multi-lens-review` after a baseline review
-  method is selected.
+- Broad code or architecture review. Use the normal `multi-lens-review`
+  procedure with the project-native baseline.
 - Design or planning interrogation. Use `grill-me` or `grill-with-docs`.
 
 ## Authority

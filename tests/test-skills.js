@@ -226,6 +226,39 @@ export async function run(test) {
     assert.match(text, /not a new role, protocol, or gate/i);
   });
 
+  await test("ordinary code review uses the unified multi-lens procedure", () => {
+    const multiLens = fs.readFileSync(path.join(packageRoot, "skills", "review", "multi-lens-review", "SKILL.md"), "utf8");
+    const workflow = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
+    const gate = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
+    const command = fs.readFileSync(path.join(packageRoot, "commands", "harness", "review.md"), "utf8");
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const entry = manifest.assets.skills.find((skill) => skill.id === "multi-lens-review");
+    const normalize = (text) => text.replace(/\s+/g, " ");
+
+    assert(entry, "multi-lens-review manifest entry missing");
+    for (const trigger of ["code review", "review this diff", "review this commit", "review this MR", "review current task"]) {
+      assert(entry.triggers.includes(trigger), `multi-lens-review missing ordinary routing trigger: ${trigger}`);
+    }
+    assert.doesNotMatch(entry.negativeTriggers.join("\n"), /ordinary (?:baseline|code) review/i);
+    for (const negative of [
+      "requirements or design review without implementation review",
+      "review packet or formal gate without implementation review",
+      "skill or subagent package review without implementation review"
+    ]) {
+      assert(entry.negativeTriggers.includes(negative), `multi-lens-review missing scoped negative trigger: ${negative}`);
+    }
+
+    assert.match(normalize(multiLens), /one normal code-review procedure/i);
+    assert.match(normalize(multiLens), /mandatory project-native baseline/i);
+    assert.match(normalize(multiLens), /plan or report without implementation is not a code target/i);
+    assert.match(normalize(multiLens), /workflow-control:Review Coverage/);
+    assert.match(normalize(multiLens), /review-packet-gate:Packet/);
+    assert.match(normalize(workflow), /multi-lens-review.*one normal code-review procedure/i);
+    assert.match(normalize(gate), /multi-lens-review.*one normal code-review procedure/i);
+    assert.match(normalize(command), /multi-lens-review.*ordinary code, commit, diff, merge request, or complete task/i);
+    assert.match(normalize(command), /grill-diff.*interactive hunk review/i);
+  });
+
   await test("MR finding lifecycle separates disposition, state, and knowledge promotion", () => {
     const skill = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
     const lifecycle = fs.readFileSync(

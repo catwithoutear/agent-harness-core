@@ -12,19 +12,23 @@ Input: `$ARGUMENTS`
 
 ## Required Behavior
 
-1. Choose the narrowest review skill:
-   - `review-packet-gate` for readiness packets and implementation gates.
+1. Route by target:
+   - `multi-lens-review` for ordinary code, commit, diff, merge request, or
+     complete task review. It is the one normal code-review procedure and calls
+     the applicable project-native baseline.
    - `multi-lens-design-review` for requirements, proposal, design, specs, or
      implementation-design.
-   - `multi-lens-review` for explicit multi-lens or fresh outside review.
-   - `skill-judge` for skills.
-   - `subagent-judge` for subagent prompts.
-   - `review-verifier` for independent structured review coverage comparison.
-2. Resolve the complete current task scope and read intent sources. Use
-   `workflow-control:Review Coverage` and the current code/design dimension
-   owner plus repository baseline. Check every family; preserve source-backed
-   N/A and evidence gaps. Selecting a skill or assigning roles cannot shrink
-   coverage; a focused question cannot approve the whole task.
+   - `grill-diff` for interactive hunk review.
+   - `review-packet-gate` for readiness packets, re-review, and formal
+     implementation gates.
+   - `skill-judge` for skills, `subagent-judge` for subagent prompts, and
+     `review-verifier` for independent structured review coverage comparison.
+2. Follow the current owners: `workflow-control:Review Coverage` for complete
+   scope and gaps, `multi-lens-review` for the normal code procedure and ten
+   dimensions, and `review-packet-gate` for packet, findings, re-review, and
+   formal gates. A normal reviewer remains intent-aware and read-only. Selecting
+   a skill or assigning roles cannot shrink coverage; a focused question cannot
+   approve the whole task.
 3. Verify claims against current files, diffs, commands, or artifacts.
 4. Lead with findings ordered by severity. Avoid summary-first review output.
 5. Separate blockers, should-fix items, notes, and residual risk.
