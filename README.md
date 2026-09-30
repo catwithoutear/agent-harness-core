@@ -153,6 +153,35 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
+## Existing ZCode and DSH Roles
+
+ZCode Desktop and DSH can consume the shared `.agents/skills` roots in their
+verified installed versions. Project those skills once through Codex. Their
+native role refresh is separate from the generic four-client projector:
+
+```bash
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --dry-run --json > zcode-plan.json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --from-plan zcode-plan.json --json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --verify --json
+```
+
+Inspect the dry-run plan and existing role bodies before applying. Resolve
+ZCode's actual storage directory first; user roles are a Desktop capability.
+For DSH, use `--client dsh --profile-dir <existing-profile>` with the same
+plan/apply/verify sequence. The profile must have its runtime `yaml` installed.
+This refreshes existing Harness personas and preserves all other profile
+content, including models, permissions and presets; it does not provision a
+new profile. Unknown formats or stale plans fail before writing. ZCode preserves
+all metadata except canonical name/description. Multi-file failures report the
+updated, failed and remaining roles with backup mappings. Updates need a new
+client session or profile reload; this tool never restarts a service.
+
+`--conflict backup` stores generic projection snapshots under
+`~/backup/agent-harness-core/`, outside discovery roots. Each private snapshot
+contains its original-to-saved mapping; native role refresh uses the same owner.
+Retain these mappings for recovery, and remove reviewed plan files when done.
+Choose deployment clients explicitly to avoid updating clients you have stopped.
+
 ## User-Global Agent Constitution
 
 The reusable user-global instruction template lives at

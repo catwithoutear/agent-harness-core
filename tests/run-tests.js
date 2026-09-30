@@ -31,6 +31,11 @@ if (all || requested.has("--projection")) {
   await module.run(run);
 }
 
+if (all || requested.has("--native-roles")) {
+  const module = await import("./test-native-roles.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--skills")) {
   const module = await import("./test-skills.js");
   await module.run(run);

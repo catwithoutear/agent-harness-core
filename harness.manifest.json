@@ -212,7 +212,8 @@
     "project": "harness-project",
     "changeDoc": "harness-change-doc",
     "changeValidate": "harness-change-validate",
-    "aggregate": "harness"
+    "aggregate": "harness",
+    "nativeRoles": "harness-native-roles"
   },
   "assets": {
     "rules": [

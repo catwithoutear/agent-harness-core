@@ -74,6 +74,14 @@ that lower-level skill explicitly in the recommendation.
 | "Review this project-domain MR." | Use the overlay MR review skill and the overlay domain skill named by the manifest; do not route to a generic core review skill as a replacement. |
 | "Improve a core skill and its projections." | Use `skill-authoring-governance`, then `subagent-projection-review` if client-visible role or projection behavior changes. |
 
+For existing ZCode Desktop or DSH profile roles, use the manifest's
+`commands.nativeRoles` entry (`harness-native-roles`) for dry-run or verify.
+Shared `.agents/skills` are projected once through Codex when the installed
+native loader confirms that root. The native adapter refreshes existing roles
+only; check the actual ZCode storage directory or intended DSH profile, review
+the dry-run plan, and apply with `--from-plan`. Do not invent generic client
+support or a `.dsh/agents` directory. Preserve other native settings.
+
 ## Output
 
 Answer in this shape:

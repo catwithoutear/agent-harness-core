@@ -142,6 +142,26 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
+## 已有 ZCode 与 DSH 角色
+
+经当前安装源码确认，ZCode Desktop 和 DSH 能读取共享 `.agents/skills` 根，技能通过 Codex 投影一次。原生角色刷新独立于通用四客户端 projector：
+
+```bash
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --dry-run --json > zcode-plan.json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --from-plan zcode-plan.json --json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --verify --json
+```
+
+应用前检查计划及已有正文，并确认 ZCode 实际 storage 目录；用户角色能力适用于 Desktop。
+DSH 使用 `--client dsh --profile-dir <已有-profile>`，同样先计划、再应用、验证；profile 需有运行时的 `yaml`。
+工具只刷新已有 Harness persona，保留模型、权限、preset 和其他配置，不创建新 profile。
+未知格式或过期计划会在写入前失败。ZCode 保留 canonical name/description 以外的全部元数据。
+多文件失败会报告已更新、失败、未处理角色及备份映射。客户端需新会话或 profile 重载才加载更新；工具不重启服务。
+
+通用投影的 `--conflict backup` 将快照保存到 `~/backup/agent-harness-core/`，不会在发现根创建备份。
+原生刷新复用同一快照所有者，每份私有快照记录 original→saved。保留映射用于恢复，交付后清理已检查的计划文件。
+部署时明确选择客户端，避免更新已经停止使用的客户端。
+
 ## User-Global Agent Constitution
 
 可复用的 user-global instruction template 位于 `templates/user-global/AGENTS.md`。
