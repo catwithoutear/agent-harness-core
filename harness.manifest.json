@@ -1224,6 +1224,40 @@
         ]
       },
       {
+        "id": "harness-deploy",
+        "category": "operations",
+        "audience": "model",
+        "source": "skills/operations/harness-deploy",
+        "runtimeName": "harness-deploy",
+        "description": "Use when installing, updating, or migrating Harness skills, agent roles, or client projections into user-global or project locations.",
+        "triggers": [
+          "deploy harness",
+          "minimal harness deployment",
+          "update harness skills or agents",
+          "migrate harness projections",
+          "部署 Harness",
+          "最简部署",
+          "部署时避免重复技能或智能体"
+        ],
+        "negativeTriggers": [
+          "application release or service rollout without harness assets",
+          "skill inventory or cleanup report without deployment",
+          "creating a skill without deployment"
+        ],
+        "requires": [
+          "canonical Core manifest and any project-owned deployment procedure",
+          "requested clients, scope, targets and assets",
+          "current loaded roots, projection state and existing definitions"
+        ],
+        "priority": 75,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
         "id": "skill-cleaner",
         "category": "operations",
         "audience": "model",

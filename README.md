@@ -155,6 +155,10 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 
 ## Existing ZCode and DSH Roles
 
+Use the `harness-deploy` skill to choose the smallest authorized installation,
+resolve loaded roots, preserve external backups and verify that skills and roles
+are not duplicated. It uses the existing projector or owning overlay deployer.
+
 ZCode Desktop and DSH can consume the shared `.agents/skills` roots in their
 verified installed versions. Project those skills once through Codex. Their
 native role refresh is separate from the generic four-client projector:
