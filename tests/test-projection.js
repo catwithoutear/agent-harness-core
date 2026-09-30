@@ -6,6 +6,32 @@ import path from "node:path";
 import { runHarnessProject } from "../lib/project/projector.js";
 
 export async function run(test) {
+  for (const scope of ["project", "global"]) await test(`${scope} skill backup stays outside discovery roots`, () => {
+    withTempTarget((target) => {
+      const previousHome = process.env.HOME;
+      process.env.HOME = target;
+      try {
+        const args = ["--target", path.join(target, "checkout"), "--scope", scope, "--clients", "codex", "--content", "skills", "--skills", "ask-harness", "--json"];
+        const initial = capture(() => runHarnessProject([...args, "--conflict", "overwrite"]));
+        assert.equal(initial.status, 0, initial.stderr);
+        const projected = JSON.parse(initial.stdout).records[0].target;
+        fs.writeFileSync(path.join(projected, "SKILL.md"), "preserved old skill\n");
+        const dry = capture(() => runHarnessProject([...args, "--conflict", "backup", "--dry-run"]));
+        assert.equal(dry.status, 0); assert.equal(fs.existsSync(path.join(target, "backup")), false);
+        const result = capture(() => runHarnessProject([...args, "--conflict", "backup"]));
+        assert.equal(result.status, 0, result.stderr);
+        const archives = fs.readdirSync(path.join(target, "backup", "agent-harness-core"));
+        assert.equal(archives.length, 1);
+        const saved = path.join(target, "backup", "agent-harness-core", archives[0], "entry", "SKILL.md");
+        assert.equal(fs.readFileSync(saved, "utf8"), "preserved old skill\n");
+        assert.deepEqual(fs.readdirSync(path.dirname(projected)), ["ask-harness"]);
+        const verify = capture(() => runHarnessProject([...args, "--verify"]));
+        assert.equal(verify.status, 0, verify.stdout); assert.equal(fs.readdirSync(path.join(target, "backup", "agent-harness-core")).length, 1);
+      } finally {
+        if (previousHome === undefined) delete process.env.HOME; else process.env.HOME = previousHome;
+      }
+    });
+  });
   await test("dry-run reports flat skill and client agent targets", () => {
     withTempTarget((target) => {
       const result = capture(() =>
