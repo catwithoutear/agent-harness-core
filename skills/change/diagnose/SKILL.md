@@ -14,6 +14,11 @@ Build the feedback loop before the fix. A diagnosis is ready only when the
 failing behavior, candidate path, falsifiable hypotheses, and source-backed root
 cause are recorded.
 
+If execution is unavailable, continue authorized source inspection and report
+reproduction as not run. Separate defects directly established by source from
+runtime-dependent hypotheses that remain unconfirmed. Neither a source finding
+nor a missing environment grants authority to implement a fix.
+
 ## Boundaries
 
 Use this skill for:
@@ -43,13 +48,24 @@ Do not use it for:
    - focused command or API call,
    - log replay or script,
    - product scenario only when lower-level evidence cannot cover it.
+   Choose a signal that distinguishes the reported symptom, preserving relevant
+   call order, repeated use, state, and inputs. If a narrower proxy omits part
+   of the original scenario, record that limit. Reduce one relevant factor at a
+   time only while the failure signal remains meaningful.
+
+   For a new test or validation scenario, use `verification-first` for test
+   design and evidence credibility. If no discriminating loop can run, record
+   the missing environment or observation and continue read-only investigation;
+   do not treat unverified runtime assumptions as confirmed diagnosis.
 4. Trace the runtime or artifact path in source: entry, coordinator, model,
    persistence, executor, state transition, or output boundary as relevant.
 5. Compare with at least one local precedent before adapting behavior.
 6. Form one active hypothesis at a time. For each hypothesis, record expected
    evidence, the check performed, observed result, and decision.
 7. Stop when root cause has a believable failure path and a minimal change
-   surface, then hand off to `change-planner`.
+   surface, then hand off to `change-planner`. If the path remains unconfirmed,
+   hand off only the investigation evidence and next diagnostic observation, not
+   an implementation-ready task.
 
 ## Research Artifact
 
@@ -58,7 +74,8 @@ equivalent artifact:
 
 - symptom and report source,
 - reproduction status,
-- feedback loop used or why none exists yet,
+- feedback loop used and observed signal, or why execution is unavailable and
+  what evidence would decide the issue,
 - affected path and ownership boundary,
 - rejected hypotheses,
 - confirmed root cause,

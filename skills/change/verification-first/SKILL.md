@@ -43,6 +43,12 @@ Prefer the narrowest loop that can falsify the risk:
 Do not run tests before the relevant build or generated artifact exists. If a
 pre-existing build or fixture is reused, record that assumption.
 
+When selecting, writing, or assessing a behavior, regression, or fault-path
+check, including a deliberate perturbation of its target or input, read
+[test-design.md](references/test-design.md). It covers test boundaries,
+independent expected results, substitutions, and regression closure;
+`diagnose` owns causal investigation. Artifact-only checks do not need it.
+
 ## Validation Fidelity
 
 When a local or narrower check stands in for a broader release, CI, integration,
@@ -71,6 +77,7 @@ Rules:
 | Change shape | Minimum credible loop |
 |---|---|
 | `.changes`, skill, rule, or docs only | artifact validator plus static check |
+| bug fix or regression | a check that reaches the reported failure pattern; plan to rerun an existing original scenario after the fix |
 | parser/helper behavior | focused unit or command check for the changed behavior |
 | API/CLI contract | contract artifact validation plus focused scenario |
 | state transition or lifecycle logic | success and failure scenario where feasible |
@@ -90,6 +97,11 @@ Validation:
 - <command or check>: blocked (<environment, approval, dependency, or missing build>)
 - <evidence source>: partial / approximate (<what it proves and does not prove>)
 ```
+
+When a substitution or internal seam materially limits what a check proves,
+record its reason, observable assertion, fidelity, and remaining gap in the
+existing evidence record. A failed command is useful only when its failure
+matches the prediction being tested.
 
 Use status terms precisely:
 
