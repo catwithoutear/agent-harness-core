@@ -1060,6 +1060,60 @@ export async function run(test) {
     for (const text of [minimal, evaluation]) assert.doesNotMatch(text, /string_sprintf|MEMBER_RANGE|OBJECT_OF|DBackup|cnware/);
   });
 
+  await test("capability comparison has one owner and is required across review paths", () => {
+    const read = (relative) => fs.readFileSync(path.join(packageRoot, relative), "utf8").replace(/\s+/g, " ");
+    const reference = read("skills/workflow/workflow-control/references/minimal-implementation.md");
+    for (const fact of ["Block and purpose", "Capability checked", "Alternative and keep reason", "Safety and disposition"]) {
+      assert(reference.includes(fact), `comparison owner missing ${fact}`);
+    }
+    for (const boundary of ["per-operation options and failure behavior", "pre-read type check", "observable side effect", "temporary lifetime", "No exhaustive table or new artifact"]) {
+      assert(reference.includes(boundary), `comparison owner missing ${boundary}`);
+    }
+    for (const step of ["steps in order before choosing", "fixed behavior constraints", "rejects that candidate, not every simplification", "why the questioned operations are needed"]) {
+      assert(reference.includes(step), `comparison procedure missing ${step}`);
+    }
+    for (const relative of [
+      "skills/review/multi-lens-review/SKILL.md",
+      "skills/workflow/simplify/SKILL.md",
+      "skills/workflow/workflow-control/SKILL.md",
+      "skills/review/review-packet-gate/SKILL.md",
+      "agents/roles/reviewer.md",
+      "agents/roles/code-simplifier.md",
+      "agents/roles/review-verifier.md"
+    ]) {
+      const text = read(relative);
+      assert(text.includes("Capability Comparison Evidence"), `${relative} does not require the canonical comparison`);
+      assert(!text.includes("### Capability Comparison Evidence"), `${relative} duplicates the comparison owner`);
+    }
+    const workflow = read("skills/workflow/workflow-control/SKILL.md");
+    assert(workflow.includes("Do not infer a missed inspection merely from a missing record"));
+    assert(workflow.includes("Reject blanket"));
+    assert(workflow.includes("source check or bounded follow-up"));
+    assert(workflow.includes("comparison targets the retained operations under the same behavior constraints"));
+    assert(workflow.includes("mismatched comparisons as unsubstantiated coverage"));
+    assert(workflow.includes("The coordinator does not rewrite reviewer-owned outcomes"));
+    const packet = read("skills/review/review-packet-gate/SKILL.md");
+    assert(packet.includes("it does not read their targets or prove their semantic adequacy"));
+    assert(packet.includes("not a new gate or parallel report"));
+    assert(packet.includes("Do not disclose expected comparisons"));
+    assert(packet.includes("coordinator-rejected comparison against different behavior does not support `covered`"));
+    assert(packet.includes("before `append-attempt` seals the reviewer ledger"));
+    assert(packet.includes("do not edit it or append an overlapping successful retry"));
+    const simplifier = read("agents/roles/code-simplifier.md");
+    assert(simplifier.includes("only when coverage and the required capability comparisons are complete"));
+    assert(simplifier.includes("as hypotheses to check, not final dispositions"));
+    assert(simplifier.indexOf("Then classify necessity") > simplifier.indexOf("Round 3 - Dimensional Review"));
+    const reviewer = read("agents/roles/reviewer.md");
+    assert(reviewer.includes("Direct role dispatch has the same evidence duty"));
+    for (const relative of ["skills/workflow/simplify/SKILL.md", "skills/review/multi-lens-review/SKILL.md", "agents/roles/code-simplifier.md", "agents/roles/reviewer.md"]) {
+      assert(read(relative).includes("behavior invariants held fixed"), `${relative} omits the comparison's execution constraint`);
+    }
+    const evaluation = read("skills/workflow/workflow-control/references/minimality-behavior-evaluation.md");
+    assert(evaluation.includes("coordinator acceptance separately from reviewer discovery"));
+    assert(evaluation.includes("not a text-pattern validator"));
+    assert(evaluation.includes("prompted recovery, separately from autonomous discovery"));
+  });
+
   await test("simplification review resolves task scope before inspecting code", () => {
     const simplify = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"), "utf8").replace(/\s+/g, " ");
     for (const required of [

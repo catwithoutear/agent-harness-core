@@ -137,3 +137,53 @@ Safety floor: <preserved invariants>
 Keep/removal evidence: <requirement, strongest keep reason, counterfactual>
 Runnable check: <narrow command/check, or unavailable reason>
 ```
+
+### Capability Comparison Evidence
+
+For a key block retaining multiple operations, wrappers, branches, or
+intermediate state, make the operation-level comparison inspectable. Execute
+the following steps in order before choosing its disposition, and record the
+comparison in the existing disposition or referenced review evidence:
+
+- **Block and purpose:** source anchor, actual operations and required results.
+  Separate the operations being questioned from the behavior they must protect.
+  Fix the applicable validation, defaults, errors, ordering and lifetime as
+  constraints on the comparison; necessity of a protective check does not by
+  itself establish necessity of surrounding calls or intermediate state.
+- **Capability checked:** exact interface/implementation or production pattern
+  inspected, with a source reference; a helper name or failed name search alone
+  is insufficient. If unavailable, record the bounded search and remaining gap.
+- **Alternative and keep reason:** construct the proposed final call form under
+  those fixed behavior constraints, then test the strongest reason for
+  retaining the current operations against its actual semantics. Preserve
+  protective checks and local state when their removal is not the operation
+  being questioned. Rejecting a candidate that drops a required boundary
+  rejects that candidate, not every simplification of the block; check whether
+  the existing capability can simplify the operations while keeping the boundary.
+  Record the source-backed semantic difference that accepts or defeats the
+  keep reason. A difference in input categories alone
+  is not proof that an interface needs separate calls; inspect per-operation
+  options and failure behavior before deciding.
+- **Safety and disposition:** preserve defaults, validation, failure propagation,
+  evaluation order/count, ownership and temporary lifetime as applicable;
+  choose keep/simplify/replace/remove/needs decision and state validation limits.
+  A keep reason must explain why the questioned operations are needed, not just
+  why some other part of the block must remain. An unverified equivalent call
+  form or a comparison against different behavior remains a coverage gap.
+
+An inline paragraph can supply all four facts. Group trivial blocks only when
+purpose, inspected capability, invariants and disposition are shared. Split out
+a key block whose keep reason differs; a function-level row must not hide it.
+No exhaustive table or new artifact is required. An unavailable comparison
+supports a gap, not a checked keep decision or `NO_SAFE_SIMPLIFICATION`.
+
+For example, a batch reader may allow a failure policy on each read. Different
+required/optional inputs do not justify separate batches if the same call form
+preserves their defaults and errors. Retain a pre-read type check when an
+optional policy also suppresses malformed values. Conversely, keep batches
+separate when a required validation or observable side effect must occur
+between them and the batch interface cannot express that boundary. Cite that
+boundary; neither shorter code nor identical helper names decide equivalence.
+Rejecting an unchecked batch reader supports retaining the type check; it does
+not establish that multiple reads must remain separate. Evaluate the checked
+call form before accepting that keep conclusion.

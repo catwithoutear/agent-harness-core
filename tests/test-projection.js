@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { runHarnessProject } from "../lib/project/projector.js";
 
 export async function run(test) {
@@ -614,6 +615,26 @@ export async function run(test) {
       assert.match(minimalImplementation, /Native platform capability/);
       assert.match(minimalImplementation, /Root Cause And Shared Ownership/);
       assert.match(minimalImplementation, /Safety Floor/);
+      assert.match(minimalImplementation, /Capability Comparison Evidence/);
+
+      // Check emitted bytes, not only routing metadata or selected keywords.
+      // This temp projection is packaging evidence, not model execution proof.
+      const coreRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+      for (const [category, name] of [
+        ["workflow", "simplify"], ["workflow", "workflow-control"],
+        ["review", "multi-lens-review"], ["review", "review-packet-gate"]
+      ]) {
+        const canonical = fs.readFileSync(path.join(coreRoot, "skills", category, name, "SKILL.md"), "utf8");
+        for (const skillRoot of [[".agents", "skills"], [".claude", "skills"], [".opencode", "skills"], [".omp", "skills"]]) {
+          assert.equal(fs.readFileSync(path.join(target, ...skillRoot, name, "SKILL.md"), "utf8"), canonical);
+        }
+      }
+      for (const reference of ["minimal-implementation.md", "minimality-behavior-evaluation.md"]) {
+        const canonical = fs.readFileSync(path.join(coreRoot, "skills", "workflow", "workflow-control", "references", reference), "utf8");
+        for (const skillRoot of [[".agents", "skills"], [".claude", "skills"], [".opencode", "skills"], [".omp", "skills"]]) {
+          assert.equal(fs.readFileSync(path.join(target, ...skillRoot, "workflow-control", "references", reference), "utf8"), canonical);
+        }
+      }
 
       const minimalityEvaluation = fs.readFileSync(minimalityEvaluationPath, "utf8");
       assert.match(minimalityEvaluation, /Fair A\/B Contract/);

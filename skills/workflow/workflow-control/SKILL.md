@@ -144,6 +144,40 @@ question or local pass does not establish whole-task readiness. Risk adds
 investigation or required independence; size, material choice, permissions and
 assurance labels cannot subtract dimensions.
 
+Before accepting a delegated or inline reuse/necessity result, inspect the
+`Capability Comparison Evidence` defined in
+`references/minimal-implementation.md`. Reconcile it with the scoped key blocks,
+including retained blocks with multiple operations or intermediate state.
+Follow each material keep reason to the inspected interface and proposed final
+call form; check that the cited semantics support the claimed difference and
+preserve the named invariants. Verify that the comparison targets the retained
+operations under the same behavior constraints. A reason to retain validation
+or local state does not justify surrounding operations, and rejection of an
+unsafe alternative does not establish that the block is irreducible. Treat
+these mismatched comparisons as unsubstantiated coverage, even when an
+inventory, source anchors and a keep decision are present.
+Reopen unsupported comparisons with a targeted
+source check or bounded follow-up, rather than adding reviewers or rerunning
+unrelated tests. Do not infer a missed inspection merely from a missing record;
+record that coverage is not yet substantiated and obtain the missing evidence.
+
+A bounded return names the block, the unsupported claim, and the invariant or
+comparison object that was not held fixed; it need not prescribe a replacement.
+Keep the original report. The assigned reviewer rechecks the interface and
+returns a corrected comparison or an explicit uncovered block. Accept only the
+scope this return substantiates; silence, a repeated keep label, and unrelated
+passing checks do not close the return. In formal runs, use the ledger and
+immutable-record procedure in `review-packet-gate:Relation Ledger` before
+aggregation. The coordinator does not rewrite reviewer-owned outcomes.
+
+Distinguish dispatch/return from supported coverage: assigning a dimension
+proves allocation; a clean report proves only that no finding was reported;
+static checks prove their exercised properties. None replaces the comparison.
+Reject blanket "covered", "no simplification needed", or a passing command as
+completion evidence for that dimension. Keep useful correctness findings while
+qualifying incomplete ordinary coverage; apply the formal evidence-gap rules
+when a required gate is involved.
+
 For formal review-run, map these source owners into the existing versioned
 DimensionRef/relations and dispatch contract. Do not use absent dimensions or
 false activation as N/A evidence. The runtime verifies declared identities and

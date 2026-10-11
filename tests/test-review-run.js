@@ -284,6 +284,32 @@ export async function run(test) {
     );
   });
 
+  await test("ledger closure validates references without attesting semantic evidence adequacy", () => {
+    const req = validateRequest(request());
+    const sealed = requireDiscovery(req);
+    const unsupported = ledger(req, sealed);
+    for (const entry of unsupported.entries) {
+      entry.evidence = [{ kind: "source", ref: "unread/blanket-coverage-claim.md" }];
+    }
+    // The runtime deliberately has no target resolver here. A machine READY
+    // is not proof that the cited document exists or substantiates a keep reason.
+    assert.doesNotThrow(() => validateLedger(unsupported, sealed));
+    const aggregate = aggregateCoverage(sealed, [unsupported]);
+    assert.equal(aggregate.coverage_gate, "READY");
+    const gateEvidence = readyGateEvidence();
+    const independent = gateEvidence.find((item) => item.gate_name === "independent_review_gate");
+    independent.status = "NOT_READY";
+    independent.blocking_reasons = ["EVIDENCE_GAP: comparison unavailable"];
+    for (const selectedMode of ["quick", "standard", "deep"]) {
+      const result = composeGateResult({ aggregate, selectedMode, gateEvidence });
+      assert.equal(result.independent_review_gate, "NOT_READY");
+      assert.equal(result.overall_gate, "NOT_READY");
+      if (selectedMode === "deep") assert.equal(result.coverage_gate, "NOT_READY");
+    }
+    unsupported.entries[0].evidence = [];
+    assert.throws(() => validateLedger(unsupported, sealed), /must not be empty/);
+  });
+
   await test("durable run lifecycle enforces the discovery barrier and persists five evidence gates plus overall", () => {
     withTempDir((root) => {
       const runRoot = path.join(root, "run-test");
@@ -314,6 +340,80 @@ export async function run(test) {
       assert.equal(fs.existsSync(path.join(runRoot, "control", "current.json")), true);
       assert.equal(fs.existsSync(path.join(runRoot, "aggregate-report.json")), true);
       assert.equal(fs.existsSync(path.join(runRoot, "gate-result.json")), true);
+    });
+  });
+
+  await test("pending owner attempt and not-covered block acceptance while a new run preserves prior evidence", () => {
+    withTempDir((root) => {
+      function start(runId) {
+        const runRoot = path.join(root, runId);
+        const accepted = acceptRun(runRoot, request({ request_id: runId, run_id: runId }), { now: () => 0 });
+        const sealed = persistDiscovery(runRoot, discovery(accepted.request), { now: () => 100 });
+        beginShardPlanning(runRoot);
+        persistShardPlan(runRoot, plan(accepted.request, sealed));
+        dispatchRun(runRoot);
+        admitAttempt(runRoot, { attempt_id: "attempt-1", shard_id: "shard-1", input_digest: "sha256:attempt-input" }, { now: () => 200 });
+        return { runRoot, req: accepted.request, sealed };
+      }
+      const first = start("return-open");
+      // An owner has not yet resolved the coordinator return. An assessment
+      // or passing verification receipt cannot stand in for that response.
+      const coordinatorSourceAssessment = {
+        owner: "coordinator", status: "READY",
+        evidence: [{ kind: "source-review", ref: "reports/coordinator-assessment.md" }]
+      };
+      assert.throws(() => aggregateRun(first.runRoot, { now: () => 250, gateEvidence: readyGateEvidence(), coordinatorSourceAssessment }), /attempts remain active/);
+      const response = ledger(first.req, first.sealed);
+      response.entries[0].status = "not-covered";
+      response.entries[0].evidence = [{ kind: "source-review", ref: "reports/unresolved-comparison.md" }];
+      const accepted = appendLedgerAttempt(first.runRoot, response, { now: () => 300 });
+      const priorBytes = fs.readFileSync(path.join(first.runRoot, "attempts", "attempt-1.json"), "utf8");
+      const blocked = aggregateRun(first.runRoot, { now: () => 400, gateEvidence: readyGateEvidence(), coordinatorSourceAssessment });
+      assert.equal(blocked.control.state, "completed");
+      assert.equal(blocked.gate_result.coverage_gate, "NOT_READY");
+      assert.equal(blocked.gate_result.overall_gate, "NOT_READY");
+      assert.equal(blocked.gate_result.coordinator_source_assessment.gating, false);
+      assert.deepEqual(blocked.aggregate.exact_gaps.map((gap) => [gap.type, gap.relation_id]), [["NOT_COVERED", "rel-1"]]);
+      const amended = ledger(first.req, first.sealed);
+      assert.throws(() => appendLedgerAttempt(first.runRoot, amended), /already has a terminal result/);
+
+      const successor = start("return-corrected");
+      assert.equal(successor.req.target.fingerprint, first.req.target.fingerprint);
+      assert.equal(successor.req.dispatch_contract.contract_digest, first.req.dispatch_contract.contract_digest);
+      const corrected = ledger(successor.req, successor.sealed);
+      // This reference is coordinator-supplied lineage, not validated by the
+      // filesystem runtime. The original report/return belongs in Review Packet.
+      corrected.created_from = [accepted.record_digest];
+      corrected.entries[0].evidence = [{ kind: "source-review", ref: "reports/corrected-comparison.md" }];
+      // Correctness of this comparison is an owner/coordinator judgment. These
+      // synthetic receipts exercise only the already-owned runtime lifecycle.
+      appendLedgerAttempt(successor.runRoot, corrected, { now: () => 300 });
+      const closed = aggregateRun(successor.runRoot, { now: () => 400, gateEvidence: readyGateEvidence() });
+      assert.equal(closed.gate_result.overall_gate, "READY");
+      assert.equal(fs.readFileSync(path.join(first.runRoot, "attempts", "attempt-1.json"), "utf8"), priorBytes);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(first.runRoot, "gate-result.json"), "utf8")).overall_gate, "NOT_READY");
+    });
+  });
+
+  await test("overlapping successful retry cannot replace a sealed not-covered relation", () => {
+    withTempDir((root) => {
+      const runRoot = path.join(root, "duplicate-return");
+      const { request: req } = acceptRun(runRoot, request({ request_id: "duplicate-return", run_id: "duplicate-return" }), { now: () => 0 });
+      const sealed = persistDiscovery(runRoot, discovery(req), { now: () => 100 });
+      beginShardPlanning(runRoot);
+      persistShardPlan(runRoot, plan(req, sealed));
+      dispatchRun(runRoot);
+      for (const [index, attemptId] of ["attempt-1", "attempt-2"].entries()) {
+        admitAttempt(runRoot, { attempt_id: attemptId, shard_id: "shard-1", input_digest: "sha256:attempt-input" }, { now: () => 200 + index * 100 });
+        const response = ledger(req, sealed);
+        response.attempt_id = attemptId;
+        if (index === 0) response.entries[0].status = "not-covered";
+        appendLedgerAttempt(runRoot, response, { now: () => 250 + index * 100 });
+      }
+      const result = aggregateRun(runRoot, { now: () => 400, gateEvidence: readyGateEvidence() });
+      assert.equal(result.aggregate.coverage_gate, "NOT_READY");
+      assert(result.aggregate.exact_gaps.some((gap) => gap.type === "DUPLICATE_RELATION" && gap.relation_id === "rel-1"));
+      assert.equal(result.gate_result.overall_gate, "NOT_READY");
     });
   });
 

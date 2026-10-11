@@ -53,6 +53,7 @@ in the applicable overlay; Core examples remain language and project neutral.
 | Necessity | A wrapper/assertion/intermediate state protects no required distinction or invariant. | The same-looking construct enforces an external contract or failure diagnostic. |
 | Ownership/evaluation | A destructive projection moves data during lazy dereference although explicit final consumption is clearer. | A pure reference projection or proven last-use move with the intended traversal. |
 | Proposed alternative | A by-value final-use input can replace redundant local state. | A reused callback/state must remain available to later consumers. |
+| Comparison under fixed behavior | Repeated adjacent operations can use an existing per-operation policy while retaining validation, defaults and local destinations. | A required validation or observable action must occur between operations and the combined interface cannot express it. |
 
 Score proactive detections separately from suggestions adopted after a user
 prompt. Name missed valid opportunities, false positives, evidence quality,
@@ -61,6 +62,28 @@ operation and an equivalent simpler mechanism or a concrete keep reason; an API
 name alone earns no detection credit. A clean review, more rounds, fewer lines,
 or agreement after prompting cannot establish better recall. A calibration
 instrument must distinguish both positive and negative cases before a live A/B.
+
+Evaluate coordinator acceptance separately from reviewer discovery. Supply a
+fresh coordinator with the same frozen source and neutral candidate reports:
+one rejects an alternative that drops a required safeguard and then claims the
+whole block must stay; another compares the actual operations with safeguards
+preserved; a negative control cites a real intervening boundary. Require the
+coordinator to identify the mismatched comparison as unsubstantiated, request a
+bounded source check or follow-up, and accept the concrete keep reason only
+when its cited boundary matches the source. Do not put expected verdicts in the
+dispatch or count prompted repair as proactive discovery. This is semantic
+evaluation by an agent or human, not a text-pattern validator or proof that all
+future coverage gaps will be caught.
+
+Exercise the return as well as the first verdict: preserve the first report,
+give only the named comparison gap to its owner, and inspect the corrected
+comparison or explicit uncovered result. Record this as prompted recovery,
+separately from autonomous discovery. Check that unresolved owner evidence
+blocks acceptance and that a real intervening boundary remains protected.
+For formal-record tests, exercise pending attempts, `not-covered` closure,
+immutable prior results, duplicate relations and a corrected successor using
+the existing runtime. Synthetic receipts in these tests verify protocol
+behavior, not real provider isolation or model judgment.
 
 ## Instrument Self-Check
 

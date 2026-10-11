@@ -20,6 +20,11 @@ missing source/mapping stays a gap and N/A requires checked evidence. Formal
 closure of declared relations alone cannot prove the semantic dimension set
 complete.
 
+Use `workflow-control:Review Coverage` completion checks to accept
+reuse/necessity coverage, including results from a separate simplification
+pass. Findings, kept-block comparisons, and unsubstantiated coverage are
+different outcomes; no reported defect is not a complete comparison.
+
 For ordinary reviews, gather the target, diff, and available context yourself
 before asking for missing input. Report source-proven defects even when design
 intent or execution evidence is unavailable; qualify the conclusions that depend
@@ -224,6 +229,56 @@ unassigned relations remain visible as typed gaps:
 `RULE_SOURCE_GAP`, `UNIT_IDENTITY_GAP`, `RULE_COVERAGE_GAP`,
 `APPLICABILITY_GAP`, `EVIDENCE_GAP`, `STALE_REVIEW`, and
 `CONCLUSION_CONFLICT`.
+
+For reuse/necessity relations, reviewer evidence must reference the compact
+`Capability Comparison Evidence` owned by
+`workflow-control/references/minimal-implementation.md`. Carry this authority
+in the existing rule source and dimension mapping; use existing ledger
+evidence references, not a new gate or parallel report. In Phase B, check that
+the referenced evidence is available and addresses the assigned block; missing
+or unrelated evidence is an `EVIDENCE_GAP`. Correctness of the comparison remains
+the reviewer's responsibility, with coordinator acceptance under
+`workflow-control:Review Coverage`. A coordinator-rejected comparison against
+different behavior does not support `covered`; the reviewer must supply a
+corrected comparison or record `not-covered`. Structural closure cannot
+rehabilitate that result.
+Do not disclose expected comparisons to
+the isolated Phase-A lane.
+
+The reviewer records a missing comparison as `not-covered`, not `covered`.
+If Phase B finds that a claimed comparison is unavailable or unrelated, retain
+that required difference and `independent_review_gate=NOT_READY` until the
+reviewer supplies current evidence and the comparison closes. The coordinator
+must consume that owner result; structural ledger closure cannot override it.
+
+`validateLedger` checks identity, status and nonempty portable evidence
+references; it does not read their targets or prove their semantic adequacy.
+A machine-closed ledger cannot by itself certify capability discovery or a keep
+reason. Preserve this limit when reporting `coverage_gate` and the final gate;
+do not use a passing validator to override a known evidence gap.
+
+Resolve coordinator acceptance returns before `append-attempt` seals the
+reviewer ledger. Preserve the raw report and return with evidence references;
+the reviewer supplies the terminal ledger, recording unresolved required
+comparisons as `not-covered`. An execution may have succeeded while coverage
+remains incomplete. If the reviewer has not returned, keep the admitted
+attempt open and use its existing timeout/cancellation policy; do not synthesize
+a successful ledger. A non-gating `coordinator_source_assessment` cannot stand
+in for this owner response or close the gap.
+
+If the ledger is already immutable, do not edit it or append an overlapping
+successful retry: aggregation treats duplicate relations as gaps, not as a
+newest-result selection. Finish an already recorded `not-covered` run with
+`NOT_READY`, or invalidate an erroneously accepted run, and obtain corrected
+owner evidence in a successor run. Preserve the prior report, rejection and
+run lineage in the existing Review Packet. The filesystem lifecycle does not
+validate this cross-run lineage; the coordinator checks those references.
+Before consuming a gate, read the latest fenced control revision. An
+`invalidated` run's old `READY` file is historical and must not authorize
+progress; invalidation does not rewrite it. `completed` describes lifecycle
+termination, not gate acceptance.
+Recheck the returned comparison and current target before accepting the
+successor; a new run id alone supplies no missing semantic evidence.
 
 Discovery must be sealed before planning, and the sealed discovery plus shard
 closure must exist before dispatch, comparison or aggregation. The runtime

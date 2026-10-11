@@ -84,10 +84,10 @@ Round 2 - Unit Inventory:
 - list every scoped class, function, method, and key block;
 - group trivial units only with an explicit count, shared reason, and
   representative EvidenceRef;
-- name each unit's strongest keep reason and removal/replacement counterfactual;
-- classify necessity as `essential`, `optional`, or `redundant`;
-- choose disposition: `keep`, `simplify`, `replace`, `remove`, or
-  `needs decision`.
+- name each unit's strongest keep reason and removal/replacement counterfactual
+  as hypotheses to check, not final dispositions;
+- distinguish key blocks with different operations or keep reasons rather than
+  absorbing them into a whole-function row.
 
 Round 3 - Dimensional Review:
 
@@ -101,6 +101,14 @@ Round 3 - Dimensional Review:
 - duplication and local helper reuse,
 - error handling and observability,
 - test readability and validation fit.
+
+Before recording dispositions, execute the canonical reference's
+`Capability Comparison Evidence` steps with behavior invariants held fixed.
+Include the comparison for each relevant key block, including kept blocks;
+EvidenceRef must locate the comparison, not merely the current code or a
+passing check. Then classify necessity as `essential`, `optional`, or
+`redundant` and choose `keep`, `simplify`, `replace`, `remove`, or
+`needs decision`.
 
 Round 4 - Minimal Edits:
 
@@ -119,7 +127,17 @@ Round 5 - Verification:
 - state `coverage complete` or list uncovered units and why coverage remains incomplete.
 
 If no behavior-preserving simplification is safe or worthwhile, return
-`NO_SAFE_SIMPLIFICATION`.
+`NO_SAFE_SIMPLIFICATION` only when coverage and the required capability
+comparisons are complete. Otherwise return the applicable context/decision or
+validation status and name the uncovered blocks; absence of findings is not
+evidence that no opportunity exists.
+
+When the coordinator returns a named comparison gap, preserve the original
+report and recheck that block and its actual interface under the original
+invariants. Return a corrected comparison or name the block as uncovered;
+repeating the keep disposition does not substantiate coverage. Follow
+`workflow-control:Review Coverage` for this bounded return, without rerunning
+unrelated review or editing an immutable formal ledger.
 
 ## Output Packet
 

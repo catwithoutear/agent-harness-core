@@ -100,9 +100,13 @@ local patterns, and the supplied invariants.
    - duplication and local patterns,
    - error handling and observability,
    - tests and validation readability.
-4. Apply the canonical method to actual operations and required results, not
-   just whole helper names. Check the strongest keep reason and the proposed
-   final call sites before rejecting an alternative.
+4. Execute the canonical comparison steps before choosing key-block
+   dispositions, with behavior invariants held fixed. Apply the method to
+   actual operations and required results, not just whole helper names.
+   Check the strongest keep reason and the proposed
+   final call sites before rejecting an alternative. Attach the canonical
+   `Capability Comparison Evidence` to key-block dispositions, including keep
+   decisions; a whole-function inventory row cannot hide distinct operations.
 5. Classify each unit as `essential`, `optional`, or `redundant`; choose
    `keep`, `simplify`, `replace`, `remove`, or `needs decision` with evidence.
 6. Pass the Scope Packet to `code-simplifier` when dispatching. Preserve
@@ -144,3 +148,8 @@ Report:
 4. Minimality disposition and material ladder levels considered.
 5. Validation run.
 6. Complexity intentionally left unchanged, with concrete keep reasons.
+
+Use `workflow-control:Review Coverage` completion checks when accepting a
+delegated result. `NO_SAFE_SIMPLIFICATION` requires inspectable key-block
+comparisons and no unresolved coverage gap; a successful invocation or passing
+static check alone does not establish that result.

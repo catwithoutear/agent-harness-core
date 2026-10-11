@@ -49,7 +49,13 @@ implementation is not a code target.
 2. Use `review-packet-gate:Packet` for materials and its completeness and
    finding rules. Do not copy packet fields or formal-gate behavior here.
 3. Assess every Lens Selection family and the project baseline across the
-   complete task scope, then allocate deeper investigation by risk.
+   complete task scope, then allocate deeper investigation by risk. For
+   reuse/necessity, read and apply
+   `workflow-control/references/minimal-implementation.md:Capability Comparison
+   Evidence` from current source or runtime. Execute its comparison steps with
+   behavior invariants held fixed before choosing a key-block disposition.
+   Require its compact evidence for
+   key blocks; current correctness does not establish implementation necessity.
 4. Assign bounded reviewer or specialist passes only when needed; one pass may
    cover multiple families. For outside-voice passes, provide neutral facts
    instead of prior diagnosis.
@@ -127,6 +133,12 @@ The coordinator owns the final report:
 - take the lower confidence when independent reviewers disagree,
 - preserve minority concerns when evidence remains plausible,
 - avoid grouping by lens when risk ordering is clearer.
+
+Before accepting reuse/necessity coverage, follow
+`workflow-control:Review Coverage` completion checks. A safe local simplification
+may be reported as a nonblocking opportunity; do not promote it to a runtime
+defect merely because the current form is longer. Return missing comparison
+evidence as a coverage gap even when no correctness finding was established.
 
 Every main finding must include location, trigger, impact, evidence, and a
 confidence score.

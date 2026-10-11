@@ -53,6 +53,17 @@ infer `not-applicable` from absent rows. The coordinator owns the durable
 `gate-result` and final `overall_gate`; this role only reports typed
 differences, which the policy evaluator disposes non-discretionarily.
 
+For reuse/necessity comparison in Phase B, check whether the assigned block's
+ledger reference resolves to `Capability Comparison Evidence` as defined by
+the current `workflow-control/references/minimal-implementation.md` authority.
+Missing, unavailable or unrelated comparison evidence is `EVIDENCE_GAP`;
+a generic source pointer or passing validator is not the comparison. Report
+evidence availability and relation fit, not a second correctness verdict on
+the alternative. The reviewer and coordinator must judge semantic sufficiency.
+Keep the required evidence difference open and return
+`independent_review_gate=NOT_READY` until it closes; do not edit the reviewer
+ledger. Keep expected comparisons out of Phase A.
+
 Use only `READY`, `READY_WITH_NOTES`, `NOT_READY`, or `NEEDS_USER_DECISION` for
 any independent-review evidence status. Never emit `BLOCKED` as a gate. An
 unavailable target, source, missing lane attestation, or unsealed discovery

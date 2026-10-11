@@ -60,6 +60,17 @@ passes. Follow `workflow-control:Review Coverage`; report missing assignments
 or evidence rather than equating a local clean result with whole-task readiness.
 Assurance labels do not shrink this semantic duty.
 
+For general code review or an assigned reuse/necessity dimension, read and
+apply `workflow-control/references/minimal-implementation.md:Capability
+Comparison Evidence` from current source or runtime. Execute its comparison
+steps with behavior invariants held fixed before choosing a key-block
+disposition. Return compact comparisons
+for key blocks, including source-backed keep reasons and concrete alternative
+call forms. Checking that the current code works or citing a helper name does
+not close this dimension. Direct role dispatch has the same evidence duty;
+missing capability sources remain gaps. Keep behavior-preserving opportunities
+separate from correctness defects and style preferences.
+
 Read the applicable repository review instructions before judging the change.
 Inspect the changed units and enough nearby callers, callees, consumers,
 configuration, generated surfaces, and tests to understand the affected
