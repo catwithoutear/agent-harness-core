@@ -1072,6 +1072,9 @@ export async function run(test) {
     for (const step of ["steps in order before choosing", "fixed behavior constraints", "rejects that candidate, not every simplification", "why the questioned operations are needed"]) {
       assert(reference.includes(step), `comparison procedure missing ${step}`);
     }
+    for (const step of ["selection guidance", "original input and the full required result combination", "actual overloads", "index is not proof of absence", "retaining every required destination", "closest competing public capability", "authorized final signatures", "required result form"]) {
+      assert(reference.includes(step), `capability discovery execution missing ${step}`);
+    }
     for (const relative of [
       "skills/review/multi-lens-review/SKILL.md",
       "skills/workflow/simplify/SKILL.md",
@@ -1092,6 +1095,9 @@ export async function run(test) {
     assert(workflow.includes("comparison targets the retained operations under the same behavior constraints"));
     assert(workflow.includes("mismatched comparisons as unsubstantiated coverage"));
     assert(workflow.includes("The coordinator does not rewrite reviewer-owned outcomes"));
+    for (const step of ["explicit unresolved coverage", "no findings does not resolve the named gap", "current source", "actual strongest factual keep premise", "within its declared scope"]) {
+      assert(workflow.includes(step), `comparison acceptance execution missing ${step}`);
+    }
     const packet = read("skills/review/review-packet-gate/SKILL.md");
     assert(packet.includes("it does not read their targets or prove their semantic adequacy"));
     assert(packet.includes("not a new gate or parallel report"));
@@ -1112,6 +1118,19 @@ export async function run(test) {
     assert(evaluation.includes("coordinator acceptance separately from reviewer discovery"));
     assert(evaluation.includes("not a text-pattern validator"));
     assert(evaluation.includes("prompted recovery, separately from autonomous discovery"));
+    assert(evaluation.includes("no-argument, value-returning member projection"));
+    assert(evaluation.includes("explicit unresolved coverage signal"));
+    assert(evaluation.includes("exclusions already stated in the report"));
+    assert(evaluation.includes("a fresh workspace or fork alone does not prove it"));
+    assert(evaluation.includes("invalidate isolation even without a tool read"));
+    assert(evaluation.includes("definitions and routing delivered to each arm"));
+    assert(evaluation.includes("Delivered context/tools:"));
+    assert(evaluation.includes("exclude the arm from the controlled treatment comparison"));
+    assert(evaluation.includes("Do not inspect private model reasoning"));
+    assert(evaluation.includes("nominal time cap and actual inspection/termination times separately"));
+    assert(evaluation.includes("First report and isolation deviations:"));
+    assert(evaluation.includes("Fresh rerun:"));
+    assert(evaluation.includes("Time: <nominal cap, actual inspection/termination and sealing times>"));
   });
 
   await test("simplification review resolves task scope before inspecting code", () => {

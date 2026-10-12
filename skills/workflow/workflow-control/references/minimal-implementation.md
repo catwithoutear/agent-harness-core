@@ -152,7 +152,21 @@ comparison in the existing disposition or referenced review evidence:
   itself establish necessity of surrounding calls or intermediate state.
 - **Capability checked:** exact interface/implementation or production pattern
   inspected, with a source reference; a helper name or failed name search alone
-  is insufficient. If unavailable, record the bounded search and remaining gap.
+  is insufficient. Before comparing individual current calls, select a public
+  API family for the original input and the full required result combination.
+  Record how the applicable project/library selection guidance, or the owning
+  module's public file/symbol index, selects that family. An intermediate binding
+  does not make its sub-input the only possible API boundary. Compare the
+  required result form as well: an owning collection versus a view followed by
+  collection, or separate output destinations versus a single return value.
+  Inspect the closest competing public capability matching that full shape,
+  even when an index lists only a narrower helper; an index is not proof of
+  absence. Construct its call retaining every required destination under the
+  scope's interface-change authority; judge authorized final signatures, then
+  verify the actual overloads, failures and lifetimes. Naming
+  a capability, restating a selection rule, or comparing only a different
+  spelling of the current calls does not complete discovery. Keep the search
+  bounded; if the family or call cannot be checked, record the remaining gap.
 - **Alternative and keep reason:** construct the proposed final call form under
   those fixed behavior constraints, then test the strongest reason for
   retaining the current operations against its actual semantics. Preserve
@@ -161,7 +175,9 @@ comparison in the existing disposition or referenced review evidence:
   rejects that candidate, not every simplification of the block; check whether
   the existing capability can simplify the operations while keeping the boundary.
   Record the source-backed semantic difference that accepts or defeats the
-  keep reason. A difference in input categories alone
+  keep reason. Distinguish a required result from the current statements that
+  produce it: keeping a result does not require keeping separate calls. A
+  difference in input categories alone
   is not proof that an interface needs separate calls; inspect per-operation
   options and failure behavior before deciding.
 - **Safety and disposition:** preserve defaults, validation, failure propagation,

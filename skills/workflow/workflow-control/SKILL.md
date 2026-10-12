@@ -149,7 +149,8 @@ Before accepting a delegated or inline reuse/necessity result, inspect the
 `references/minimal-implementation.md`. Reconcile it with the scoped key blocks,
 including retained blocks with multiple operations or intermediate state.
 Follow each material keep reason to the inspected interface and proposed final
-call form; check that the cited semantics support the claimed difference and
+call form, including the applicable selection guidance and the full result
+combination; check that the cited semantics support the claimed difference and
 preserve the named invariants. Verify that the comparison targets the retained
 operations under the same behavior constraints. A reason to retain validation
 or local state does not justify surrounding operations, and rejection of an
@@ -160,6 +161,23 @@ Reopen unsupported comparisons with a targeted
 source check or bounded follow-up, rather than adding reviewers or rerunning
 unrelated tests. Do not infer a missed inspection merely from a missing record;
 record that coverage is not yet substantiated and obtain the missing evidence.
+
+Reconcile explicit unresolved coverage from a verifier or another pass before
+closing that dimension. A later invocation, complete file inventory or no
+findings does not resolve the named gap; require the missing comparison or
+retain the gap. After fixes change an operation or its result combination,
+obtain a comparison of that changed block on the current source; earlier review
+of a different operation cannot close it. Use the existing Review Packet and
+coverage evidence, without introducing a second status store.
+
+Locate the report's final keep claim and test its actual strongest factual keep
+premise on that same block, without turning a readability preference into an
+impossibility claim. A boundary in another example cannot substantiate this
+block's comparison. Accept a supported bounded
+claim within its declared scope; do not demand proof of irreducibility for
+operations the report explicitly leaves unclaimed. A return should identify
+the unsupported premise or named missing evidence, not merely ask for more
+documentation or substitute a weaker rejected candidate.
 
 A bounded return names the block, the unsupported claim, and the invariant or
 comparison object that was not held fixed; it need not prescribe a replacement.

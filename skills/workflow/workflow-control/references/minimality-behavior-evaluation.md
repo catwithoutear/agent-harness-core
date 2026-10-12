@@ -24,6 +24,23 @@ reuse one arm's workspace, context, or generated artifacts in the other arm.
 Record the exact revisions and material settings used; do not add a new durable
 state or evidence protocol for the run.
 
+Verify isolation using delivered instruction metadata and public tool calls
+and readbacks; a fresh workspace or fork alone does not prove it. Account for
+automatically supplied memory and global skill routing. Freeze the allowed
+context, including common client-provided instructions and the public tool
+definitions and routing delivered to each arm. If actual delivery cannot be
+verified, mark the affected controlled comparison `INCONCLUSIVE`. Candidate guidance,
+task-specific evidence or prior results delivered outside that context
+invalidate isolation even without a tool read. Reading any unassigned source
+or rule also invalidates isolation. Preserve the first report, mark the
+deviation and exclude the arm from the controlled treatment comparison.
+Freeze corrected allowed inputs before a fresh rerun; do not silently repair
+the original record. Do not inspect private model reasoning.
+
+Record the nominal time cap and actual inspection/termination times separately.
+After closing inspection, allow only sealing of existing observations and gaps.
+An observed overrun cannot support a strict equal-budget or cost claim.
+
 ## Backend Scenario Set
 
 Use the smallest backend scenario set that covers the changed decision contract.
@@ -54,6 +71,7 @@ in the applicable overlay; Core examples remain language and project neutral.
 | Ownership/evaluation | A destructive projection moves data during lazy dereference although explicit final consumption is clearer. | A pure reference projection or proven last-use move with the intended traversal. |
 | Proposed alternative | A by-value final-use input can replace redundant local state. | A reused callback/state must remain available to later consumers. |
 | Comparison under fixed behavior | Repeated adjacent operations can use an existing per-operation policy while retaining validation, defaults and local destinations. | A required validation or observable action must occur between operations and the combined interface cannot express it. |
+| Projection and construction | A pure no-argument, value-returning member projection can use a supported eager collection capability. | Composite construction, output parameters, filtering, moves or failure short-circuiting require a different comparison; do not redesign interfaces solely to fit the projection. |
 
 Score proactive detections separately from suggestions adopted after a user
 prompt. Name missed valid opportunities, false positives, evidence quality,
@@ -74,6 +92,13 @@ when its cited boundary matches the source. Do not put expected verdicts in the
 dispatch or count prompted repair as proactive discovery. This is semantic
 evaluation by an agent or human, not a text-pattern validator or proof that all
 future coverage gaps will be caught.
+
+Include acceptance with an explicit unresolved coverage signal followed by a
+no-findings report: require evidence that resolves that named gap, not merely
+proof that another pass ran. Also change an operation during a fix and check
+that its earlier comparison is not reused for the new result combination.
+Score a supported bounded claim separately from an unsupported broader claim;
+do not reward extra return requests for exclusions already stated in the report.
 
 Exercise the return as well as the first verdict: preserve the first report,
 give only the named comparison gap to its owner, and inspect the corrected
@@ -137,6 +162,10 @@ Evaluation status: LIVE_AB_COMPLETE | LIVE_AB_NOT_RUN | INCONCLUSIVE
 Baseline/candidate revisions: <exact revisions>
 Client/model/settings: <same settings or mismatch>
 Isolation check: <pass/fail and evidence>
+Delivered context/tools: <per-arm public definitions/routing and evidence, or unknown>
+First report and isolation deviations: <preserved original and excluded arms>
+Fresh rerun: <corrected allowed-context revision and report, or not run>
+Time: <nominal cap, actual inspection/termination and sealing times>
 Instrument self-check: <pass/fail per scenario>
 Hard gates: <correctness, safety/compatibility, completeness per arm>
 Minimality signals: <only gate-passing runs>
