@@ -59,6 +59,13 @@ explicitly includes them in the edit scope.
 
 ## Complete Coverage
 
+For an ordinary filesystem-backed Scope Packet, use its fixed-root source
+inventory and read receipts under `review-packet-gate:Source Navigation and
+Acceptance`. Compare actual operations under the packet's invariants; hashes
+do not choose a disposition. Preserve the original report when answering a
+bounded return. After authorized edits, request a new current snapshot while
+retaining the earlier evidence, without broadening edit authority.
+
 Build a complete Unit Inventory and inspect every class, function, method, and key block
 in the resolved task scope, with necessary callers, callees, helpers and tests.
 Group trivial units only when they share purpose, evidence, and disposition.

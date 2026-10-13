@@ -93,6 +93,129 @@ function assertDigest(value) {
 }
 
 export async function run(test) {
+  await test("ordinary source snapshot navigates explicit scope from another cwd", () => {
+    withTemp("harness-review-source-", (root) => {
+      write(root, "src/unit.py", "first\nsecond\nthird\n");
+      write(root, "context/api.py", "api\n");
+      write(root, "private/answer.txt", "not selected\n");
+      const snapshot = executeReviewTargetDigest(["source-snapshot", "--code-root", root,
+        "--include-path", "src", "--include-path", "context", "--target-path", "src"]);
+      assert.equal(snapshot.exitCode, 0, JSON.stringify(snapshot.body));
+      const manifest = write(root, "snapshot.json", JSON.stringify(snapshot.body));
+      assert.deepEqual(snapshot.body.files.map((f) => f.path), ["context/api.py", "src/unit.py"]);
+      assert.equal(JSON.stringify(snapshot.body).includes(root), false);
+      const result = command([process.execPath, helperPath, "source-read", "--code-root", root,
+        "--snapshot", manifest, "--path", "src/unit.py", "--start", "2", "--end", "2"], os.tmpdir());
+      assert.equal(result.error, undefined, result.error?.message);
+      assert.equal(result.status, 0, result.stderr);
+      const receipt = JSON.parse(result.stdout);
+      assert.deepEqual(receipt.lines, [{ number: 2, text: "second" }]);
+      assert.equal(receipt.sha256, snapshot.body.files[1].sha256);
+      expectError(["source-read", "--code-root", root, "--snapshot", manifest, "--path", "private/answer.txt"], "SOURCE_OUTSIDE_SCOPE");
+      const inventory = executeReviewTargetDigest(["source-inventory", "--code-root", root, "--snapshot", manifest, "--prefix", "context"]);
+      assert.deepEqual(inventory.body.files.map((f) => f.path), ["context/api.py"]);
+    });
+  });
+
+  await test("source reads check complete file identity and acceptance checks context drift", () => {
+    withTemp("harness-review-source-drift-", (root) => {
+      write(root, "src.py", "target\n");
+      write(root, "api.py", "interface\n");
+      const snapshot = executeReviewTargetDigest(["source-snapshot", "--code-root", root,
+        "--include-path", "src.py", "--include-path", "api.py", "--target-path", "src.py"]).body;
+      const manifest = write(root, "snapshot.json", JSON.stringify(snapshot));
+      const args = ["--code-root", root, "--snapshot", manifest];
+      const receipt = executeReviewTargetDigest(["source-read", ...args, "--path", "src.py"]).body;
+      const evidence = write(root, "evidence.json", JSON.stringify([receipt]));
+      const ok = executeReviewTargetDigest(["source-check", ...args, "--evidence", evidence]).body;
+      assert.equal(ok.source_identity_verified, true);
+      assert.equal(ok.semantics_verified, false);
+      assert.equal("overall_gate" in ok, false);
+      write(root, "api.py", "changed interface\n");
+      const changed = executeReviewTargetDigest(["source-check", ...args, "--evidence", evidence]);
+      assert.equal(changed.exitCode, 1);
+      assert.equal(changed.body.source_identity_verified, false);
+      assert.deepEqual(changed.body.gaps, [{ path: "api.py", kind: "SOURCE_CHANGED" }]);
+      write(root, "src.py", "target\nnew unread tail\n");
+      expectError(["source-read", ...args, "--path", "src.py", "--start", "1", "--end", "1"], "SOURCE_CHANGED");
+    });
+  });
+
+  await test("source excerpt receipts cannot approve altered quotes or empty blanket coverage", () => {
+    withTemp("harness-review-source-evidence-", (root) => {
+      write(root, "src.py", "actual\n");
+      const snapshot = executeReviewTargetDigest(["source-snapshot", "--code-root", root,
+        "--include-path", "src.py", "--target-path", "src.py"]).body;
+      const manifest = write(root, "snapshot.json", JSON.stringify(snapshot));
+      const args = ["--code-root", root, "--snapshot", manifest];
+      const receipt = executeReviewTargetDigest(["source-read", ...args, "--path", "src.py"]).body;
+      receipt.lines[0].text = "invented source";
+      const evidence = write(root, "evidence.json", JSON.stringify([receipt]));
+      const changed = executeReviewTargetDigest(["source-check", ...args, "--evidence", evidence]);
+      assert.equal(changed.exitCode, 1);
+      assert.deepEqual(changed.body.gaps, [{ path: "src.py", kind: "SOURCE_EXCERPT_MISMATCH" }]);
+      fs.writeFileSync(evidence, "[]");
+      expectError(["source-check", ...args, "--evidence", evidence], "SOURCE_EVIDENCE_GAP");
+      snapshot.files[0].sha256 = "sha256:" + "0".repeat(64);
+      fs.writeFileSync(manifest, JSON.stringify(snapshot));
+      expectError(["source-inventory", ...args], "SOURCE_SNAPSHOT_INVALID");
+    });
+  });
+
+  await test("source receipts allow literal comments and paths without treating code as portable metadata", () => {
+    withTemp("harness-review-source-text-", (root) => {
+      write(root, "src.js", '// comment\n/** API */\nconst endpoint = "/service";\n');
+      const snapshot = executeReviewTargetDigest(["source-snapshot", "--code-root", root,
+        "--include-path", "src.js", "--target-path", "src.js"]).body;
+      const manifest = write(root, "snapshot.json", JSON.stringify(snapshot));
+      const args = ["--code-root", root, "--snapshot", manifest];
+      const receipt = executeReviewTargetDigest(["source-read", ...args, "--path", "src.js"]).body;
+      const evidence = write(root, "evidence.json", JSON.stringify([receipt]));
+      const checked = executeReviewTargetDigest(["source-check", ...args, "--evidence", evidence]);
+      assert.equal(checked.exitCode, 0, JSON.stringify(checked.body));
+      assert.equal(checked.body.source_identity_verified, true);
+      assert.equal(checked.body.semantics_verified, false);
+      receipt.extra_claim = "approved";
+      fs.writeFileSync(evidence, JSON.stringify([receipt]));
+      assert.equal(executeReviewTargetDigest(["source-check", ...args, "--evidence", evidence]).exitCode, 1);
+    });
+  });
+
+  await test("source navigation rejects file and ancestor symlink escapes before traversal", () => {
+    withTemp("harness-review-source-links-", (root) => withTemp("harness-review-source-outside-", (outside) => {
+      write(outside, "secret.txt", "outside sentinel\n");
+      fs.symlinkSync(outside, path.join(root, "link"), "dir");
+      for (const relative of ["link", "link/secret.txt"]) {
+        expectError(["source-snapshot", "--code-root", root, "--include-path", relative, "--target-path", relative], "SOURCE_OUTSIDE_ROOT");
+      }
+      for (const relative of ["../secret.txt", path.join(outside, "secret.txt")]) {
+        assert.notEqual(executeReviewTargetDigest(["source-snapshot", "--code-root", root,
+          "--include-path", relative, "--target-path", relative]).exitCode, 0);
+      }
+    }));
+  });
+
+  await test("source return binds original report and exact block without issuing a gate", () => {
+    withTemp("harness-review-source-return-", (root) => {
+      write(root, "src.py", "first\nsecond\n");
+      const snapshot = executeReviewTargetDigest(["source-snapshot", "--code-root", root,
+        "--include-path", "src.py", "--target-path", "src.py"]).body;
+      const manifest = write(root, "snapshot.json", JSON.stringify(snapshot));
+      const report = write(root, "report.md", "keep with unsupported premise\n");
+      const original = fs.readFileSync(report);
+      const result = executeReviewTargetDigest(["source-return", "--code-root", root, "--snapshot", manifest,
+        "--path", "src.py", "--start", "1", "--end", "2", "--report", report,
+        "--claim", "The retained operations are necessary", "--invariant", "Preserve storage failure propagation"]);
+      assert.equal(result.exitCode, 0, JSON.stringify(result.body));
+      assert.deepEqual(fs.readFileSync(report), original);
+      assert.equal(result.body.block.path, "src.py");
+      assert.equal(result.body.semantics_verified, false);
+      assert.match(result.body.original_report_sha256, /^sha256:[a-f0-9]{64}$/u);
+      assert.equal("overall_gate" in result.body, false);
+      expectError(["source-read", "--code-root", root, "--snapshot", manifest, "--path", "src.py", "--start", "0"], "SOURCE_RANGE_INVALID");
+    });
+  });
+
   await test("review target helper exists", () => {
     assert.equal(fs.existsSync(helperPath), true, "review target helper is missing");
     expectError(["packet", "--json"], "INVALID_ARGUMENT");

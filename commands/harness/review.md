@@ -30,6 +30,10 @@ Input: `$ARGUMENTS`
    a skill or assigning roles cannot shrink coverage; a focused question cannot
    approve the whole task.
 3. Verify claims against current files, diffs, commands, or artifacts.
+   For ordinary filesystem code targets, execute the source navigation and
+   acceptance actions owned by `review-packet-gate:Source Navigation and
+   Acceptance` before first dispatch and coverage acceptance. Keep them in the
+   existing packet; preserve formal target-view isolation when that applies.
 4. Lead with findings ordered by severity. Avoid summary-first review output.
 5. Separate blockers, should-fix items, notes, and residual risk.
 6. If evidence conflicts at high risk, recommend council handling through

@@ -71,6 +71,14 @@ not close this dimension. Direct role dispatch has the same evidence duty;
 missing capability sources remain gaps. Keep behavior-preserving opportunities
 separate from correctness defects and style preferences.
 
+For ordinary filesystem-backed dispatch, use the packet's source inventory
+and fixed-root reader under `review-packet-gate:Source Navigation and Acceptance`.
+Reference material source-read receipts in the existing evidence; inspect the
+actual interface and final call, not just the hashes. On a bounded return,
+preserve the original report and answer its named premise/invariant with current
+source evidence or explicit unsubstantiated coverage. Formal provider isolation
+and admission remain unchanged; ordinary navigation cannot bypass them.
+
 Read the applicable repository review instructions before judging the change.
 Inspect the changed units and enough nearby callers, callees, consumers,
 configuration, generated surfaces, and tests to understand the affected

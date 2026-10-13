@@ -54,6 +54,14 @@ Include:
 - active `.changes/<task>/` artifacts that name affected files or decisions,
 - target branch or base commit, if known.
 
+For a filesystem-backed scope, execute
+`review-packet-gate:Source Navigation and Acceptance` before dispatching the
+first pass. Carry its selected inventory, fixed-root invocation and snapshot
+with this same Scope Packet. Use its source and bounded-return checks when
+accepting the comparisons. Authorized edits require a new current snapshot;
+retain the pre-edit evidence. This does not change edit authority or select
+the formal review-run protocol.
+
 If the branch mixes unrelated tasks and the scope cannot be resolved from branch
 name, commit messages, change artifacts, or the user request, report
 `NEEDS_CONTEXT` with the ambiguous commits or files.

@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
+import { canonicalJSONStringify, parseJsonStrict } from "./review-records.mjs";
 
 const FORMAT = "review-target";
 const HELPER_VERSION = 1;
@@ -605,8 +607,194 @@ function targetResult({
   };
 }
 
+// Ordinary review navigation uses the same explicit-root owner as target identity.
+// These receipts are source evidence, never protocol records or semantic gates.
+function sourceLocation(root, relative) {
+  let resolved;
+  try {
+    resolved = fs.realpathSync(pathInside(root, relative));
+  } catch {
+    fail("SOURCE_UNAVAILABLE", `source unavailable: ${relative}`);
+  }
+  const inside = path.relative(root, resolved);
+  if (inside === ".." || inside.startsWith(`..${path.sep}`) || path.isAbsolute(inside)) {
+    fail("SOURCE_OUTSIDE_ROOT", `source escapes explicit root: ${relative}`);
+  }
+  return resolved;
+}
+
+function sourceFile(root, relativePath) {
+  const relative = normalizeRelativePath(relativePath, { allowDot: false });
+  const resolved = sourceLocation(root, relative);
+  if (!fs.statSync(resolved).isFile()) fail("SOURCE_UNAVAILABLE", `source is not a file: ${relative}`);
+  const bytes = fs.readFileSync(resolved);
+  const text = decodeUtf8(bytes, "SOURCE_UNAVAILABLE", `source is not UTF-8: ${relative}`);
+  const lines = text.split(/\r\n|\n|\r/u);
+  if (lines.at(-1) === "") lines.pop();
+  return { path: relative, sha256: sha256(bytes), bytes: bytes.length, lines, text };
+}
+
+function sourceDigest(snapshot) {
+  const { snapshot_digest, ...body } = snapshot;
+  return sha256(utf8(canonicalJSONStringify(body)));
+}
+
+function createSourceSnapshot(root, values) {
+  const includes = uniqueNormalizedPaths(values.get("--include-path") ?? [], "include-path");
+  const targets = uniqueNormalizedPaths(values.get("--target-path") ?? [], "target-path");
+  if (!includes.length || !targets.length) fail("INVALID_ARGUMENT", "source snapshot requires include-path and target-path");
+  const selected = new Set();
+  function walk(relative) {
+    if (relative.split("/").includes(".git")) fail("SOURCE_OUTSIDE_SCOPE", "Git metadata is not review source");
+    const location = sourceLocation(root, relative);
+    let stat;
+    try { stat = fs.lstatSync(location); } catch { fail("SOURCE_UNAVAILABLE", `source unavailable: ${relative}`); }
+    if (stat.isDirectory()) {
+      for (const name of sortPaths(fs.readdirSync(location))) {
+        if (name === ".git") continue;
+        walk(relative === "." ? normalizeRelativePath(name) : `${relative}/${normalizeRelativePath(name)}`);
+      }
+    } else {
+      selected.add(relative);
+    }
+  }
+  includes.forEach(walk);
+  const files = sortPaths([...selected]).map((relative) => {
+    const file = sourceFile(root, relative);
+    return { path: relative, sha256: file.sha256, bytes: file.bytes, line_count: file.lines.length };
+  });
+  if (!files.length || targets.some((target) => !files.some((file) => scopeIncludes(target, file.path)))) {
+    fail("SOURCE_OUTSIDE_SCOPE", "each target must have source in the selected includes");
+  }
+  const snapshot = { format: "review-source", version: 1, files, target_paths: targets };
+  return { ...snapshot, snapshot_digest: sourceDigest(snapshot) };
+}
+
+function readSourceSnapshot(file) {
+  let snapshot;
+  try { snapshot = parseJsonStrict(fs.readFileSync(file, "utf8")); } catch { fail("SOURCE_SNAPSHOT_INVALID", "source snapshot is unavailable or invalid"); }
+  if (snapshot?.format !== "review-source" || snapshot.version !== 1 || !Array.isArray(snapshot.files) || !snapshot.files.length ||
+      !Array.isArray(snapshot.target_paths) || !snapshot.target_paths.length ||
+      Object.keys(snapshot).some((key) => !["format", "version", "files", "target_paths", "snapshot_digest"].includes(key))) {
+    fail("SOURCE_SNAPSHOT_INVALID", "invalid source snapshot shape");
+  }
+  const paths = new Set();
+  for (const file of snapshot.files) {
+    const relative = normalizeRelativePath(file.path, { allowDot: false });
+    if (relative !== file.path || paths.has(relative) || !/^sha256:[0-9a-f]{64}$/u.test(file.sha256) ||
+        !Number.isSafeInteger(file.bytes) || file.bytes < 0 || !Number.isSafeInteger(file.line_count) || file.line_count < 0 ||
+        Object.keys(file).some((key) => !["path", "sha256", "bytes", "line_count"].includes(key))) {
+      fail("SOURCE_SNAPSHOT_INVALID", "invalid/duplicate source file identity");
+    }
+    paths.add(relative);
+  }
+  for (const target of snapshot.target_paths) {
+    if (normalizeRelativePath(target) !== target || !snapshot.files.some((file) => scopeIncludes(target, file.path))) {
+      fail("SOURCE_SNAPSHOT_INVALID", "snapshot target has no selected source");
+    }
+  }
+  if (snapshot.snapshot_digest !== sourceDigest(snapshot)) fail("SOURCE_SNAPSHOT_INVALID", "snapshot digest mismatch");
+  return snapshot;
+}
+
+function selectedSource(root, snapshot, relative) {
+  const entry = snapshot.files.find((file) => file.path === relative);
+  if (!entry) fail("SOURCE_OUTSIDE_SCOPE", "source was not selected in the snapshot");
+  const current = sourceFile(root, relative);
+  if (current.sha256 !== entry.sha256 || current.bytes !== entry.bytes || current.lines.length !== entry.line_count) {
+    fail("SOURCE_CHANGED", `source changed since dispatch: ${relative}`);
+  }
+  return current;
+}
+
+function sourceRead(root, snapshot, relative, start = 1, end) {
+  const file = selectedSource(root, snapshot, relative);
+  end ??= Math.min(start + 159, file.lines.length);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start || start > file.lines.length) {
+    fail("SOURCE_RANGE_INVALID", "source range must select existing lines");
+  }
+  end = Math.min(end, file.lines.length);
+  return { format: "review-source-read", snapshot_digest: snapshot.snapshot_digest,
+    path: relative, sha256: file.sha256, start_line: start, end_line: end,
+    lines: file.lines.slice(start - 1, end).map((text, offset) => ({ number: start + offset, text })) };
+}
+
+function checkSourceEvidence(root, snapshot, evidence) {
+  if (!Array.isArray(evidence) || !evidence.length) fail("SOURCE_EVIDENCE_GAP", "source check requires read receipts");
+  const gaps = [];
+  // Check the entire delivered corpus, including context not quoted in a report.
+  for (const file of snapshot.files) {
+    try { selectedSource(root, snapshot, file.path); } catch (error) {
+      if (!(error instanceof CommandFailure)) throw error;
+      gaps.push({ path: file.path, kind: error.code });
+    }
+  }
+  for (const receipt of evidence) {
+    try {
+      if (receipt?.format !== "review-source-read" || receipt.snapshot_digest !== snapshot.snapshot_digest) {
+        fail("SOURCE_EVIDENCE_GAP", "receipt is not bound to this snapshot");
+      }
+      const actual = sourceRead(root, snapshot, receipt.path, receipt.start_line, receipt.end_line);
+      if (!isDeepStrictEqual(receipt, actual)) {
+        fail("SOURCE_EXCERPT_MISMATCH", "receipt does not match the actual source slice");
+      }
+    } catch (error) {
+      if (!(error instanceof CommandFailure)) throw error;
+      gaps.push({ path: receipt?.path ?? null, kind: error.code });
+    }
+  }
+  return { status: gaps.length ? "gap" : "ok", snapshot_digest: snapshot.snapshot_digest,
+    source_identity_verified: gaps.length === 0, semantics_verified: false, gaps };
+}
+
+function sourceCommand(action, args) {
+  const common = ["--code-root", "--snapshot"];
+  const options = {
+    "source-snapshot": ["--code-root", "--include-path", "--target-path"],
+    "source-inventory": [...common, "--prefix"],
+    "source-read": [...common, "--path", "--start", "--end"],
+    "source-check": [...common, "--evidence"],
+    "source-return": [...common, "--path", "--start", "--end", "--report", "--claim", "--invariant"]
+  };
+  const { values } = parseOptions(args, new Set(options[action]));
+  const root = rootDirectory(oneOption(values, "--code-root", { required: true }), "SOURCE_UNAVAILABLE");
+  if (action === "source-snapshot") return createSourceSnapshot(root, values);
+  const snapshot = readSourceSnapshot(oneOption(values, "--snapshot", { required: true }));
+  if (action === "source-inventory") {
+    const prefix = normalizeRelativePath(oneOption(values, "--prefix", { fallback: "." }));
+    return { snapshot_digest: snapshot.snapshot_digest, target_paths: snapshot.target_paths,
+      files: snapshot.files.filter((file) => scopeIncludes(prefix, file.path)).map((entry) => {
+        selectedSource(root, snapshot, entry.path);
+        return entry;
+      }) };
+  }
+  if (action === "source-check") {
+    let receipts;
+    try { receipts = parseJsonStrict(fs.readFileSync(oneOption(values, "--evidence", { required: true }), "utf8")); }
+    catch { fail("SOURCE_EVIDENCE_GAP", "read receipts are unavailable or invalid"); }
+    return checkSourceEvidence(root, snapshot, receipts);
+  }
+  const relative = normalizeRelativePath(oneOption(values, "--path", { required: true }), { allowDot: false });
+  const start = Number(oneOption(values, "--start", { fallback: "1" }));
+  const endValue = oneOption(values, "--end");
+  const receipt = sourceRead(root, snapshot, relative, start, endValue === undefined ? undefined : Number(endValue));
+  if (action === "source-read") return receipt;
+  const claim = oneOption(values, "--claim", { required: true });
+  const invariant = oneOption(values, "--invariant", { required: true });
+  if (!claim.trim() || !invariant.trim()) fail("INVALID_ARGUMENT", "return requires a concrete claim and invariant");
+  let report;
+  try { report = fs.readFileSync(oneOption(values, "--report", { required: true })); }
+  catch { fail("SOURCE_EVIDENCE_GAP", "original report unavailable"); }
+  return { format: "review-source-return", original_report_sha256: sha256(report), block: receipt,
+    unsupported_claim: claim, invariant, semantics_verified: false,
+    requested_action: "Recheck this premise and final call under the named invariant; return corrected evidence or explicitly unsubstantiated coverage. Preserve the original report." };
+}
+
 function main(argv) {
   const action = argv[0];
+  if (["source-snapshot", "source-inventory", "source-read", "source-check", "source-return"].includes(action)) {
+    return sourceCommand(action, argv.slice(1));
+  }
   if (action === "target") {
     const { values } = parseOptions(
       argv.slice(1),
@@ -636,7 +824,8 @@ function main(argv) {
 export function executeReviewTargetDigest(argv) {
   const action = argv[0] ?? "unknown";
   try {
-    return { exitCode: 0, body: main(argv) };
+    const body = main(argv);
+    return { exitCode: action === "source-check" && body.status === "gap" ? 1 : 0, body };
   } catch (error) {
     const code = error instanceof CommandFailure ? error.code : "INTERNAL_ERROR";
     const message = error instanceof CommandFailure ? error.message : "helper failed unexpectedly";

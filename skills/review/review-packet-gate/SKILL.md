@@ -52,6 +52,70 @@ Reject the packet as `NOT_READY` when the scope, intended behavior, source
 artifact, or validation expectation is missing. Do not review a vague summary as
 if it were the diff.
 
+## Source Navigation and Acceptance
+
+For ordinary filesystem-backed code review, including direct reviewer and
+read-only simplification dispatch, prepare source navigation before launching
+the first pass. Resolve the exact root and complete task target as usual; select
+the target files and necessary interface, caller, contract and test context.
+Run the existing target helper's source actions below. Put the immutable output
+and invocation in the existing Review/Scope Packet, not a separate status store.
+The root is explicit in the local invocation; portable receipts contain no root.
+
+```text
+node <review-packet-gate-skill-root>/scripts/review-target-digest.mjs source-snapshot \
+  --code-root <resolved-root> --target-path <target-file-or-directory>... \
+  --include-path <target-or-context-file-or-directory>... --json
+
+node <same-helper> source-inventory --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> [--prefix <relative-directory>] --json
+
+node <same-helper> source-read --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> --path <relative-file> \
+  [--start <one-based-line>] [--end <one-based-line>] --json
+
+node <same-helper> source-check --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> --evidence <read-receipts-array.json> --json
+
+node <same-helper> source-return --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> --report <original-report> \
+  --path <relative-file> --start <line> --end <line> \
+  --claim <unsupported-premise> --invariant <fixed-behavior-or-comparison> --json
+```
+
+Capture stdout in the existing packet/evidence location. Use inventory to find
+available dependencies instead of guessing names or leaving the selected root.
+Read emits whole-file byte identity and exact numbered lines from one buffer;
+save or reference the material receipts alongside the existing comparison.
+Before accepting coverage, source-check verifies the delivered corpus is still
+current and the cited receipts match its actual slices. Inspect its `status`,
+`source_identity_verified` and named gaps; a successful command invocation alone
+does not mean that evidence passed. An unavailable interface stays a gap; add
+newly justified context through a new snapshot, retaining the prior one. After
+authorized edits, likewise use a new current snapshot, not rewritten old proof.
+
+Then execute `workflow-control:Review Coverage` acceptance on the actual claim
+and final call. Source-check always leaves `semantics_verified=false`; it
+cannot discover all necessary context, validate a copied probe's adaptations,
+prove an API comparison, or establish that a reviewer loaded a skill. Compile
+or exercise the actual candidate when that is needed to support the claim,
+and retain substitution/coverage limits. Do not replace an exact call test
+with a related mechanism or a quoted source fragment.
+
+When a claim remains unsupported, source-return binds the original report hash,
+exact block, premise and invariant for the existing bounded return procedure.
+Keep the original report; the same assigned reviewer returns corrected evidence
+or explicit unsubstantiated coverage. The coordinator rechecks it, rather than
+rewriting reviewer-owned conclusions or treating the return artifact as approval.
+Missing source, changed bytes and mismatched quotes cannot substantiate coverage.
+Neither ordinary source receipts nor a return are formal protocol records.
+
+These read-only helpers are navigation aids, not a filesystem sandbox. For
+formal review-run, preserve Target Identity and the admitted provider target
+view. Never give the isolated Phase-A lane a local root, snapshot, expected
+comparison or return; broker-only reads and its closed schema remain mandatory.
+Coordinator local source receipts do not replace any formal owner gate.
+
 ## Completeness Checks
 
 For implementation review, distinguish:

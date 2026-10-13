@@ -144,6 +144,13 @@ question or local pass does not establish whole-task readiness. Risk adds
 investigation or required independence; size, material choice, permissions and
 assurance labels cannot subtract dimensions.
 
+For ordinary filesystem-backed review or simplification, execute
+`review-packet-gate:Source Navigation and Acceptance` before the first dispatch
+and when consuming material source evidence. Carry the fixed-root invocation
+in the existing packet; source identity errors require a named gap or return,
+and matching receipts do not establish semantic coverage. Formal provider
+isolation and owner gates remain authoritative.
+
 Before accepting a delegated or inline reuse/necessity result, inspect the
 `Capability Comparison Evidence` defined in
 `references/minimal-implementation.md`. Reconcile it with the scoped key blocks,
