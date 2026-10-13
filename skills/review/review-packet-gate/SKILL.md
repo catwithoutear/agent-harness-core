@@ -108,6 +108,17 @@ ordinary review report.
 
 ## Re-review
 
+The coordinator reconciles prior findings from the owning review records and
+their dispositions, including relevant nonblocking opportunities and
+owner-withdrawn fixes. Preserve their identity across amendments, rebases and
+scope changes; omission from a later clean report is not a disposition. Match
+the finding's trigger, affected behavior and resolution evidence to the current
+target, not merely an earlier tested fix or a different failure path.
+Honor an explicit deferral or withdrawal: carry its owner, reason and remaining
+risk without treating it as repaired or silently authorizing the deferred edit.
+Keep this reconciliation in the existing Review Packet; do not feed prior
+conclusions into isolated discovery lanes.
+
 On re-review, do not repeat the first review blindly. For each prior finding,
 state one of:
 

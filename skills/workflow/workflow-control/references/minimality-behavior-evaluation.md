@@ -38,8 +38,20 @@ Freeze corrected allowed inputs before a fresh rerun; do not silently repair
 the original record. Do not inspect private model reasoning.
 
 Record the nominal time cap and actual inspection/termination times separately.
+Before dispatch, identify the runner's cancellation mechanism and arrange a
+deadline check. At the deadline, request cancellation through that mechanism;
+a stop instruction alone is not evidence that inspection stopped. If the
+runner cannot enforce the cap, record that limit rather than claim a hard cap.
 After closing inspection, allow only sealing of existing observations and gaps.
 An observed overrun cannot support a strict equal-budget or cost claim.
+
+Classify each attempt from its own runtime outcome, including terminal errors,
+and bind it to the actor and turn identity. Distinguish failed, interrupted,
+completed and unknown attempts from delivery of a report. A completion event
+name or a report file alone does not establish a successful return; a file left
+by a failed attempt remains an uncompleted draft. Preserve retries and
+seal-only continuations separately. A completed return supports only its
+declared scope after evidence review, not automatic coverage or gate approval.
 
 ## Backend Scenario Set
 
@@ -72,6 +84,9 @@ in the applicable overlay; Core examples remain language and project neutral.
 | Proposed alternative | A by-value final-use input can replace redundant local state. | A reused callback/state must remain available to later consumers. |
 | Comparison under fixed behavior | Repeated adjacent operations can use an existing per-operation policy while retaining validation, defaults and local destinations. | A required validation or observable action must occur between operations and the combined interface cannot express it. |
 | Projection and construction | A pure no-argument, value-returning member projection can use a supported eager collection capability. | Composite construction, output parameters, filtering, moves or failure short-circuiting require a different comparison; do not redesign interfaces solely to fit the projection. |
+| Cross-call failure responsibility | A caller changes durable state before a callee can fail outside its cleanup protection. | The caller already finalizes that failure, or the whole path fails before any externally visible state change. |
+| Layer-local contract | A migration-layer comment assumes a producer contract that only a later layer establishes. | Every applicable producer in the reviewed layer actually establishes that contract. |
+| Failure-channel equivalence | Reuse moves a fallible operation across a catch or termination boundary and changes caller-visible failure handling. | The applicable contract accepts the changed failure policy, or the operation cannot fail under verified preconditions; do not infer a defect solely from different syntax. |
 
 Score proactive detections separately from suggestions adopted after a user
 prompt. Name missed valid opportunities, false positives, evidence quality,
@@ -99,6 +114,15 @@ proof that another pass ran. Also change an operation during a fix and check
 that its earlier comparison is not reused for the new result combination.
 Score a supported bounded claim separately from an unsupported broader claim;
 do not reward extra return requests for exclusions already stated in the report.
+
+For re-review acceptance, include an earlier tested fix that the owner later
+withdrew, and a nonblocking reuse opportunity whose alternative changes a
+failure or confirmation contract. A later clean report must not erase either
+disposition or use old validation to prove the current target repaired. Pair
+this with a supported explicit deferral: respect the operation boundary and
+carry the residual risk instead of mechanically requiring the deferred edit.
+Score historical attribution separately from source discovery; supplied prior
+findings in a coordinator packet are not proactive reviewer detections.
 
 Exercise the return as well as the first verdict: preserve the first report,
 give only the named comparison gap to its owner, and inspect the corrected
@@ -166,6 +190,7 @@ Delivered context/tools: <per-arm public definitions/routing and evidence, or un
 First report and isolation deviations: <preserved original and excluded arms>
 Fresh rerun: <corrected allowed-context revision and report, or not run>
 Time: <nominal cap, actual inspection/termination and sealing times>
+Attempts: <actor/turn, runtime outcome, report delivery or draft, retry/seal-only scope>
 Instrument self-check: <pass/fail per scenario>
 Hard gates: <correctness, safety/compatibility, completeness per arm>
 Minimality signals: <only gate-passing runs>

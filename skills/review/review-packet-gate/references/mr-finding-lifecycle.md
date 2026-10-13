@@ -66,13 +66,21 @@ Spelling, one-off naming, and obvious local edits may stop after disposition.
 
 ## Retrospective Record
 
+Before attributing a review miss, establish the reviewed revision, original
+finding and disposition, and subsequent owner decisions from available original
+records. Distinguish an undiscovered issue from a known deferred issue, a
+withdrawn fix, and unsupported closure on a later revision. Missing records
+leave the historical cause unknown; current installed rules do not prove what
+an earlier reviewer loaded or executed.
+
 For a detailed retrospective record:
 
 1. surface symptom and reviewer premise;
 2. type definitions, call paths, state transitions, build edges, or runtime
    contracts needed to decide it;
 3. classification and why;
-4. why self-review/skill/automation missed it;
+4. whether earlier review detected it, how its disposition reached the current
+   revision, and any evidenced discovery, tracking or acceptance failure;
 5. reusable reasoning, scope, prerequisites, counterexamples, and automation
    potential;
 6. recommended existing owner.

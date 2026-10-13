@@ -56,6 +56,12 @@ implementation is not a code target.
    behavior invariants held fixed before choosing a key-block disposition.
    Require its compact evidence for
    key blocks; current correctness does not establish implementation necessity.
+   For persistence or lifecycle changes, trace the first durable or externally
+   visible state change through affected callers, callees and material failure
+   exits, including unchanged shared frameworks. Identify which owner finalizes
+   failure or preserves retry state, and when that protection becomes active.
+   A state inventory or the presence of a cleanup guard alone does not establish
+   that an early return or exception is covered; name any untraced boundary.
 4. Assign bounded reviewer or specialist passes only when needed; one pass may
    cover multiple families. For outside-voice passes, provide neutral facts
    instead of prior diagnosis.

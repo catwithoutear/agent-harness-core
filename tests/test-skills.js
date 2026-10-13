@@ -289,6 +289,21 @@ export async function run(test) {
       assert.match(lifecycle, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `lifecycle missing ${required}`);
     }
     assert.match(skill, /references\/mr-finding-lifecycle\.md/);
+    const normalize = (text) => text.replace(/\s+/g, " ");
+    for (const boundary of [
+      "including relevant nonblocking opportunities and owner-withdrawn fixes",
+      "omission from a later clean report is not a disposition",
+      "Match the finding's trigger, affected behavior and resolution evidence to the current target",
+      "without treating it as repaired or silently authorizing the deferred edit",
+      "do not feed prior conclusions into isolated discovery lanes"
+    ]) assert(normalize(skill).includes(boundary), `re-review boundary missing ${boundary}`);
+    for (const boundary of [
+      "Before attributing a review miss",
+      "a known deferred issue, a withdrawn fix",
+      "Missing records leave the historical cause unknown",
+      "whether earlier review detected it"
+    ]) assert(normalize(lifecycle).includes(boundary), `retrospective boundary missing ${boundary}`);
+    assert.doesNotMatch(lifecycle, /why self-review\/skill\/automation missed it/);
     assert.match(discuss, /discussions\/<discussion-id>\/notes/);
     assert.match(discuss, /"resolved":true/);
     assert.match(discuss, /explicit mutation authorization/);
@@ -1040,6 +1055,9 @@ export async function run(test) {
     assert.match(workflow, /false activation/);
     assert.match(workflow, /runtime verifies declared identities/);
     assert.match(code, /operation-level public capability reuse and block necessity/);
+    for (const boundary of ["first durable or externally visible state change", "including unchanged shared frameworks", "when that protection becomes active", "name any untraced boundary"]) {
+      assert(code.replace(/\s+/g, " ").includes(boundary), `stateful review execution missing ${boundary}`);
+    }
     assert.match(code, /project idioms/);
     assert.doesNotMatch(code, /Use only lenses justified|lenses were skipped|security was skipped/);
     assert.doesNotMatch(design, /Do not run all lenses|Select only lenses|smallest set/);
@@ -1055,6 +1073,9 @@ export async function run(test) {
     }
     const evaluation = read("skills/workflow/workflow-control/references/minimality-behavior-evaluation.md");
     assert.match(evaluation, /Negative control/);
+    assert(evaluation.includes("Cross-call failure responsibility"));
+    assert(evaluation.includes("The caller already finalizes that failure, or the whole path fails before any externally visible state change"));
+    assert(evaluation.includes("Layer-local contract"));
     assert.match(evaluation, /proactive detections separately/);
     assert.match(evaluation, /LIVE_AB_NOT_RUN/);
     for (const text of [minimal, evaluation]) assert.doesNotMatch(text, /string_sprintf|MEMBER_RANGE|OBJECT_OF|DBackup|cnware/);
@@ -1116,6 +1137,8 @@ export async function run(test) {
     }
     const evaluation = read("skills/workflow/workflow-control/references/minimality-behavior-evaluation.md");
     assert(evaluation.includes("coordinator acceptance separately from reviewer discovery"));
+    assert(evaluation.includes("an earlier tested fix that the owner later withdrew"));
+    assert(evaluation.includes("supplied prior findings in a coordinator packet are not proactive reviewer detections"));
     assert(evaluation.includes("not a text-pattern validator"));
     assert(evaluation.includes("prompted recovery, separately from autonomous discovery"));
     assert(evaluation.includes("no-argument, value-returning member projection"));
