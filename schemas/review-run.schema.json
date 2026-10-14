@@ -83,6 +83,12 @@
       },
       "additionalProperties": true
     },
+    "execution_profile": {"enum": ["native","isolated"]},
+    "native_preflight": {"type": "object","additionalProperties": false,"required": ["source_snapshot"],"properties": {"source_snapshot": {"$ref": "#/$defs/sourceSnapshot"}}},
+    "native_execution": {"$ref": "#/$defs/nativeExecution"},
+    "source_snapshot": {"$ref": "#/$defs/sourceSnapshot"},
+    "native_inventory": {"$ref": "#/$defs/nativeInventory"},
+    "native_observation_mapping": {"type": "array","minItems": 1,"items": {"type": "object","additionalProperties": false,"required": ["observation_index","relation_ids"],"properties": {"observation_index": {"type": "integer","minimum": 0},"relation_ids": {"type": "array","uniqueItems": true,"items": {"type": "string","minLength": 1}},"reason": {"type": "string","minLength": 1}},"allOf": [{"if": {"properties": {"relation_ids": {"maxItems": 0}}},"then": {"required": ["reason"]}}]}},
     "execution_policy": { "$ref": "#/$defs/executionPolicy" },
     "provider_policy": { "$ref": "#/$defs/providerPolicy" },
     "deep_preflight": { "$ref": "#/$defs/deepPreflightInput" },
@@ -103,6 +109,280 @@
   },
   "additionalProperties": true,
   "$defs": {
+    "nativeExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_id",
+        "execution_status",
+        "input_digest",
+        "output_ref",
+        "source_receipts_ref"
+      ],
+      "properties": {
+        "execution_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_status": {
+          "const": "completed"
+        },
+        "input_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "output_ref": {
+          "$ref": "#/$defs/nativeMaterialRef"
+        },
+        "source_receipts_ref": {
+          "$ref": "#/$defs/nativeMaterialRef"
+        }
+      }
+    },
+    "nativeMaterialRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "digest"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^reviews/materials/(?![.]{1,2}(?:/|$))(?!.*\\/[.]{1,2}(?:/|$))(?!.*//)[^\\\\]+\\.json$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "sourceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "version",
+        "files",
+        "target_paths",
+        "snapshot_digest"
+      ],
+      "properties": {
+        "format": {
+          "const": "review-source"
+        },
+        "version": {
+          "const": 1
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "bytes",
+              "line_count"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "line_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "target_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "snapshot_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "nativeUnitKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_path",
+        "anchor_kind",
+        "anchor_value"
+      ],
+      "properties": {
+        "unit_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anchor_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anchor_value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "nativeInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed_units",
+        "observations",
+        "source_refs"
+      ],
+      "properties": {
+        "observed_units": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nativeUnitKey"
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "observations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unit_key",
+              "dimension_id",
+              "disposition",
+              "evidence_refs"
+            ],
+            "properties": {
+              "unit_key": {
+                "$ref": "#/$defs/nativeUnitKey"
+              },
+              "dimension_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "disposition": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "nativeVerifierDiscoveryEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "format_version",
+        "record_type",
+        "record_id",
+        "created_from",
+        "record_digest",
+        "canonical_digest",
+        "protocol",
+        "run_id",
+        "phase",
+        "assurance",
+        "target_fingerprint",
+        "execution_profile",
+        "source_snapshot"
+      ],
+      "properties": {
+        "format": {
+          "const": "review-run"
+        },
+        "format_version": {
+          "const": 1
+        },
+        "record_type": {
+          "const": "verifier-discovery-envelope"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "record_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "canonical_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "protocol": {
+          "const": "review-run"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "phase": {
+          "const": "inventory"
+        },
+        "assurance": {
+          "const": "deep"
+        },
+        "target_fingerprint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_profile": {
+          "const": "native"
+        },
+        "source_snapshot": {
+          "$ref": "#/$defs/sourceSnapshot"
+        }
+      }
+    },
+    "verifierDiscoveryEnvelope": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/isolatedVerifierDiscoveryEnvelope"
+        },
+        {
+          "$ref": "#/$defs/nativeVerifierDiscoveryEnvelope"
+        }
+      ]
+    },
+
     "canonicalRef": {
       "type": "object",
       "required": ["id", "digest"],
@@ -153,7 +433,7 @@
       },
       "additionalProperties": false
     },
-    "verifierDiscoveryEnvelope": {
+    "isolatedVerifierDiscoveryEnvelope": {
       "type": "object",
       "required": ["format", "format_version", "record_type", "record_id", "created_from", "record_digest", "canonical_digest", "protocol", "run_id", "phase", "assurance", "target_fingerprint", "run_binding_ref", "target_view_ref", "target_view_capability_ref", "provider_binding_ref", "firewall_policy_ref", "policy_binding_refs"],
       "properties": {

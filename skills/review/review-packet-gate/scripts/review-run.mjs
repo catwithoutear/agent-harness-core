@@ -72,10 +72,15 @@ import { enumerateCandidates, decideApplicability, buildExpectedObligations } fr
 import { buildAssignmentPackets, validateAssignmentClosure } from "./review-dispatch.mjs";
 import { evaluateCoverageGate } from "./review-gates.mjs";
 import {
+  executionProfile,
+  validateNativeDiscoveryEnvelope,
+  validateNativeSourceScope,
   preflightDeepDispatch,
   selectProvider,
   validateVerifierDiscoveryEnvelope
 } from "./review-provider.mjs";
+
+import { checkSourceEvidence } from "./review-target-digest.mjs";
 
 function groupAuthorityByKind(items) {
   const byKind = {};
@@ -315,6 +320,7 @@ export function validateRequest(request) {
   requireString(value.run_id ?? value.request_id, "request.run_id", { id: true });
   requireString(value.active_change, "request.active_change", { id: true });
   validateTarget(value.target);
+  if (value.execution_profile !== undefined) executionProfile(value);
   verifyInputDigest(value, "request");
   if (Array.isArray(value.risk_facts)) {
     value.risk_facts.forEach((fact, index) => {
@@ -362,6 +368,7 @@ export function routeRequest(request) {
     mandatory_deep: mandatoryDeep,
     requested_assurance: requested,
     selected_mode: selectedMode,
+    execution_profile: executionProfile(value, "native"),
     downgrade,
     downgrade_reason: downgrade ? (value.downgrade_reason ?? ownerOverride.reason) : null,
     created_at: value.created_at ?? null
@@ -384,6 +391,15 @@ export function validateDispatchPreflight(preflight, request, routing) {
   if (value.request_ref?.id !== request.record_id || value.request_ref?.digest !== request.record_digest) {
     fail("PROVIDER_RUNTIME_GAP", "dispatch preflight request binding is stale");
   }
+  const profile = executionProfile(routing);
+  if (executionProfile(value) !== profile || (request.execution_profile !== undefined && executionProfile(request) !== profile)) fail("PROVIDER_RUNTIME_GAP", "execution profile mismatch");
+  if (value.routing_ref?.id !== routing.record_id || value.routing_ref?.digest !== routing.record_digest) fail("PROVIDER_RUNTIME_GAP", "dispatch preflight routing binding is stale");
+  if (profile === "native") {
+    if (value.provider_binding !== undefined) fail("VERIFIER_INPUT_CONTAMINATED", "native preflight must not contain provider binding");
+    validateNativeDiscoveryEnvelope(value.verifier_discovery_envelope, request);
+    verifyInputDigest(value, "dispatch preflight");
+    return value;
+  }
   const provider = requireObject(value.provider_binding, "dispatch-preflight.provider_binding");
   if (provider.record_type !== "provider-binding" || !verifyRecordDigest(provider)) {
     fail("PROVIDER_RUNTIME_GAP", "dispatch preflight provider binding is invalid");
@@ -391,9 +407,6 @@ export function validateDispatchPreflight(preflight, request, routing) {
   const revalidatedProvider = selectProvider(provider);
   if (revalidatedProvider.record_digest !== provider.record_digest) {
     fail("PROVIDER_RUNTIME_GAP", "dispatch preflight provider binding is not canonical");
-  }
-  if (value.routing_ref?.id !== routing.record_id || value.routing_ref?.digest !== routing.record_digest) {
-    fail("PROVIDER_RUNTIME_GAP", "dispatch preflight routing binding is stale");
   }
   const providerRef = { id: provider.record_id, digest: provider.record_digest };
   validateVerifierDiscoveryEnvelope(value.verifier_discovery_envelope, {
@@ -888,6 +901,13 @@ export function acceptRun(runRoot, request, { now = Date.now } = {}) {
   if (normalized.run_id !== runId) fail("REQUEST_ID_CONFLICT", "request run_id does not match run root");
   const existingRequest = fs.existsSync(recordPath(root, "request")) ? readRecord(recordPath(root, "request")) : null;
   if (existingRequest && existingRequest.record_digest !== normalized.record_digest) fail("REQUEST_ID_CONFLICT", "run already accepted a different request");
+  if (existingRequest) {
+    const routing = readRecord(recordPath(root, "routing-decision"));
+    verifyInputDigest(routing, "persisted routing");
+    if (routing.request_digest !== normalized.record_digest) fail("REQUEST_ID_CONFLICT", "persisted routing request binding mismatch");
+    const preflight = routing.selected_mode === "deep" ? validateDispatchPreflight(readRecord(recordPath(root, "dispatch-preflight")), normalized, routing) : null;
+    return { request: normalized, routing, preflight, control: readControl(root) };
+  }
   const routing = routeRequest(normalized);
   const preflight = preflightDeepDispatch({ request: normalized, routing });
   const acceptedAt = now();
@@ -917,7 +937,102 @@ export function verifierPhaseAPacket(runRoot) {
   return validateDispatchPreflight(preflight, request, routing).verifier_discovery_envelope;
 }
 
-export function persistDiscovery(runRoot, discovery, { now = Date.now } = {}) {
+// Material references are relative to the regulated change's existing reviews directory.
+function nativeMaterial(root, ref) {
+  if (!isPlainObject(ref) || Object.keys(ref).sort().join(",") !== "digest,path" || typeof ref.path !== "string" || !ref.path.startsWith("reviews/materials/") || !ref.path.endsWith(".json") || ref.path.split("/").some((part) => !part || part === "." || part === "..") || ref.path.includes("\\") || !/^sha256:[0-9a-f]{64}$/u.test(ref.digest ?? "")) fail("NATIVE_EXECUTION_GAP", "invalid native material reference");
+  const changeRoot = path.dirname(path.dirname(root));
+  const reviews = fs.realpathSync(path.join(changeRoot, "reviews"));
+  if (reviews !== path.join(fs.realpathSync(changeRoot), "reviews")) fail("NATIVE_EXECUTION_GAP", "reviews directory escapes change root");
+  const location = fs.realpathSync(path.join(changeRoot, ref.path));
+  if (!location.startsWith(`${reviews}${path.sep}`)) fail("NATIVE_EXECUTION_GAP", "native material escapes reviews directory");
+  const bytes = fs.readFileSync(location);
+  if (sha256Text(bytes) !== ref.digest) fail("NATIVE_EXECUTION_GAP", "native material digest mismatch");
+  return bytes.toString("utf8");
+}
+
+export function validateNativeExecutionMaterials(root, record, packet) {
+  const execution = requireObject(record.native_execution, "native_execution");
+  if (Object.keys(execution).some((key) => !["execution_id", "execution_status", "input_digest", "output_ref", "source_receipts_ref"].includes(key)) || typeof execution.execution_id !== "string" || !execution.execution_id.trim() || execution.execution_status !== "completed" || execution.input_digest !== packet.record_digest) fail("NATIVE_EXECUTION_GAP", "native execution must bind a completed child and machine packet");
+  const raw = nativeMaterial(root, execution.output_ref);
+  const returned = parseJsonStrict(raw, "native child output");
+  const body = structuredClone(record);
+  delete body.native_execution;
+  for (const key of ["format", "format_version", "record_id", "created_from", "record_digest", "canonical_digest"]) delete body[key];
+  if (record.record_type === "discovery") {
+    if (!isPlainObject(returned) || Object.keys(returned).sort().join(",") !== "observations,observed_units,source_refs" || !Array.isArray(returned.observations) || !returned.observations.length || !Array.isArray(returned.observed_units) || !returned.observed_units.length || !Array.isArray(returned.source_refs) || !returned.source_refs.length || canonicalJSONStringify(record.native_inventory) !== canonicalJSONStringify(returned)) fail("NATIVE_EXECUTION_GAP", "discovery must preserve the complete neutral child inventory");
+    const sourcePaths = new Set(packet.source_snapshot.files.map((file) => file.path));
+    const unitValid = (unit) => isPlainObject(unit) && Object.keys(unit).sort().join(",") === "anchor_kind,anchor_value,unit_path" && [unit.unit_path, unit.anchor_kind, unit.anchor_value].every((value) => typeof value === "string" && value.length > 0) && sourcePaths.has(unit.unit_path);
+    if (returned.observed_units.some((unit) => !unitValid(unit)) || returned.source_refs.some((ref) => typeof ref !== "string" || !sourcePaths.has(ref)) || returned.observations.some((observation) => !isPlainObject(observation) || Object.keys(observation).sort().join(",") !== "dimension_id,disposition,evidence_refs,unit_key" || !unitValid(observation.unit_key) || !returned.observed_units.some((unit) => canonicalJSONStringify(unit) === canonicalJSONStringify(observation.unit_key)) || typeof observation.dimension_id !== "string" || !observation.dimension_id || typeof observation.disposition !== "string" || !observation.disposition || !Array.isArray(observation.evidence_refs) || !observation.evidence_refs.length)) fail("VERIFIER_INPUT_CONTAMINATED", "native inventory contains invalid or non-neutral observations");
+    const mapping = requireArray(record.native_observation_mapping, "native_observation_mapping");
+    const seen = new Set();
+    const linked = new Set();
+    const relationIds = new Set(record.relations.map((relation) => relation.relation_id));
+    for (const item of mapping) {
+      if (!isPlainObject(item) || Object.keys(item).some((key) => !["observation_index", "relation_ids", "reason"].includes(key)) || !Number.isSafeInteger(item.observation_index) || item.observation_index < 0 || item.observation_index >= returned.observations.length || seen.has(item.observation_index) || !Array.isArray(item.relation_ids) || (!item.relation_ids.length && (typeof item.reason !== "string" || !item.reason.trim())) || (item.reason !== undefined && (typeof item.reason !== "string" || !item.reason.trim())) || new Set(item.relation_ids).size !== item.relation_ids.length || item.relation_ids.some((id) => !relationIds.has(id))) fail("NATIVE_EXECUTION_GAP", "invalid native observation relation mapping");
+      seen.add(item.observation_index);
+      item.relation_ids.forEach((id) => linked.add(id));
+    }
+    if (seen.size !== returned.observations.length || linked.size !== relationIds.size) fail("NATIVE_EXECUTION_GAP", "native discovery dropped observations or left unbound relations");
+  }
+  if (!isPlainObject(returned)) fail("NATIVE_EXECUTION_GAP", "native child output must be an object");
+  const original = structuredClone(returned);
+  if (record.record_type === "review-ledger") {
+    body.attempt_status ??= "succeeded";
+    original.attempt_status ??= "succeeded";
+  }
+  for (const key of ["format", "format_version", "record_id", "created_from", "record_digest", "canonical_digest"]) delete original[key];
+  if (record.record_type !== "discovery" && canonicalJSONStringify(body) !== canonicalJSONStringify(original)) fail("NATIVE_EXECUTION_GAP", "record differs from original child output");
+  const receipts = parseJsonStrict(nativeMaterial(root, execution.source_receipts_ref), "native source receipts");
+  if (!Array.isArray(receipts) || !receipts.length) fail("SOURCE_EVIDENCE_GAP", "native source receipts are required");
+  for (const receipt of receipts) {
+    const source = packet.source_snapshot.files.find((file) => file.path === receipt?.path);
+    if (!source || Object.keys(receipt).sort().join(",") !== "end_line,format,lines,path,sha256,snapshot_digest,start_line" || receipt.format !== "review-source-read" || receipt.snapshot_digest !== packet.source_snapshot.snapshot_digest || receipt.sha256 !== source.sha256 || !Number.isSafeInteger(receipt.start_line) || !Number.isSafeInteger(receipt.end_line) || receipt.start_line < 1 || receipt.end_line < receipt.start_line || receipt.end_line > source.line_count || !Array.isArray(receipt.lines) || receipt.lines.length !== receipt.end_line - receipt.start_line + 1 || receipt.lines.some((line, index) => !isPlainObject(line) || Object.keys(line).sort().join(",") !== "number,text" || line.number !== receipt.start_line + index || typeof line.text !== "string")) fail("SOURCE_EVIDENCE_GAP", "native source receipt identity/range mismatch");
+  }
+  if (record.record_type === "discovery" && record.native_inventory.source_refs.some((ref) => !receipts.some((receipt) => receipt.path === ref))) fail("SOURCE_EVIDENCE_GAP", "inventory source_refs lack read receipts");
+  return receipts;
+}
+
+export function validateNativeExecution(root, record, packet, codeRoot) {
+  const receipts = validateNativeExecutionMaterials(root, record, packet);
+  if (!codeRoot) fail("NATIVE_EXECUTION_GAP", "native execution requires --code-root");
+  const check = checkSourceEvidence(path.resolve(codeRoot), packet.source_snapshot, receipts);
+  if (check.status !== "ok") fail("SOURCE_EVIDENCE_GAP", "native source evidence failed", check);
+  return check;
+}
+
+export function nativeReviewPacket(runRoot, { shard_id, attempt_id }) {
+  const root = ensureRunRoot(runRoot);
+  const routing = readRecord(recordPath(root, "routing-decision"));
+  if (executionProfile(routing) !== "native") fail("INVALID_STATE_TRANSITION", "native reviewer packet requires native execution profile");
+  if (routing.selected_mode !== "deep") fail("INVALID_STATE_TRANSITION", "native machine assignment supports deep review only");
+  const control = readControl(root);
+  if (control.state !== "running") fail("INVALID_STATE_TRANSITION", "native reviewer packet requires dispatched run");
+  const request = validateRequest(readRecord(recordPath(root, "request")));
+  const preflight = validateDispatchPreflight(readRecord(recordPath(root, "dispatch-preflight")), request, routing);
+  const plan = readRecord(recordPath(root, "shard-plan"));
+  const discovery = readRecord(recordPath(root, "discovery"));
+  return buildNativeReviewPacket({ request, preflight, discovery, plan, shard_id, attempt_id });
+}
+
+export function buildNativeReviewPacket({ request, preflight, discovery, plan, shard_id, attempt_id }) {
+  validateDiscovery(discovery, request.dispatch_contract, request.execution_policy);
+  validateShardPlan(plan, discovery);
+  const shard = plan.shards.find((item) => item.shard_id === shard_id);
+  if (!shard) fail("INVALID_LEDGER", "unknown native shard");
+  requireString(attempt_id, "attempt_id", { id: true });
+  const relations = discovery.relations.filter((relation) => shard.relation_ids.includes(relation.relation_id));
+  validateNativeSourceScope(preflight.verifier_discovery_envelope.source_snapshot, request.target, relations);
+  return finalizeRecord({ record_type: "review-assignment", protocol: PROTOCOL, execution_profile: "native",
+    run_id: request.run_id, shard_id, attempt_id, target: request.target,
+    source_snapshot: preflight.verifier_discovery_envelope.source_snapshot,
+    contract_digest: request.dispatch_contract.contract_digest, discovery_digest: discovery.record_digest,
+    scope: request.dispatch_contract.scope, rules: request.dispatch_contract.rules,
+    dimensions: request.dispatch_contract.dimensions,
+    relations
+  }, `native-assignment:${request.run_id}:${shard_id}:${attempt_id}`);
+}
+
+export function persistDiscovery(runRoot, discovery, { now = Date.now, codeRoot } = {}) {
   const root = ensureRunRoot(runRoot);
   const request = validateRequest(readRecord(recordPath(root, "request")));
   const control = readControl(root);
@@ -929,6 +1044,7 @@ export function persistDiscovery(runRoot, discovery, { now = Date.now } = {}) {
   if (routing.selected_mode === "deep") {
     const preflight = readRecord(recordPath(root, "dispatch-preflight"));
     validateDispatchPreflight(preflight, request, routing);
+    if (executionProfile(routing) === "native") validateNativeExecution(root, discovery, preflight.verifier_discovery_envelope, codeRoot);
   }
   const normalized = validateDiscovery(
     { ...discovery, run_id: discovery.run_id ?? request.run_id },
@@ -1011,6 +1127,8 @@ export function admitAttempt(runRoot, attempt, { now = Date.now } = {}) {
     return existing;
   }
   const request = validateRequest(readRecord(recordPath(root, "request")));
+  const routing = readRecord(recordPath(root, "routing-decision"));
+  if (routing.selected_mode === "deep" && executionProfile(routing) === "native" && nativeReviewPacket(root, { shard_id: shardId, attempt_id: attemptId }).record_digest !== inputDigest) fail("NATIVE_EXECUTION_GAP", "admission input_digest must bind the machine reviewer packet");
   const priorCount = terminalAttempts(root, shardId).length + (control.active_attempts ?? []).filter((item) => item.shard_id === shardId).length;
   if (priorCount >= request.execution_policy.max_attempts_per_shard) {
     fail("RETRY_EXHAUSTED", `attempt budget exhausted for shard ${shardId}`);
@@ -1077,11 +1195,19 @@ function persistFinalAttempt(root, normalized, control) {
   return normalized;
 }
 
-export function appendLedgerAttempt(runRoot, ledger, { now = Date.now, allowExpired = false } = {}) {
+export function appendLedgerAttempt(runRoot, ledger, { now = Date.now, allowExpired = false, codeRoot } = {}) {
   const root = ensureRunRoot(runRoot);
   const discovery = readRecord(recordPath(root, "discovery"));
   const plan = fs.existsSync(recordPath(root, "shard-plan")) ? readRecord(recordPath(root, "shard-plan")) : null;
   const normalized = validateLedger(ledger, discovery, plan);
+  const routing = readRecord(recordPath(root, "routing-decision"));
+  if (routing.selected_mode === "deep" && executionProfile(routing) === "native" && normalized.attempt_status === "succeeded") {
+    const request = validateRequest(readRecord(recordPath(root, "request")));
+    const preflight = validateDispatchPreflight(readRecord(recordPath(root, "dispatch-preflight")), request, routing);
+    const packet = buildNativeReviewPacket({ request, preflight, discovery, plan, shard_id: normalized.shard_id, attempt_id: normalized.attempt_id });
+    validateNativeExecution(root, ledger, packet, codeRoot);
+    if (ledger.native_execution.execution_id === discovery.native_execution?.execution_id) fail("VERIFIER_INPUT_CONTAMINATED", "reviewer reused Phase A execution identity");
+  }
   const attemptPath = attemptFile(root, normalized.attempt_id);
   if (fs.existsSync(attemptPath)) {
     const existing = readRecord(attemptPath);
@@ -1325,13 +1451,14 @@ export function runCli(argv = process.argv.slice(2)) {
     let result;
     if (command === "accept") result = acceptRun(runRoot, inputRecord(values));
     else if (command === "phase-a-packet") result = verifierPhaseAPacket(runRoot);
-    else if (command === "discover") result = persistDiscovery(runRoot, inputRecord(values));
+    else if (command === "native-review-packet") result = nativeReviewPacket(runRoot, { shard_id: values.get("shard-id"), attempt_id: values.get("attempt-id") });
+    else if (command === "discover") result = persistDiscovery(runRoot, inputRecord(values), { codeRoot: values.get("code-root") });
     else if (command === "begin-planning") result = beginShardPlanning(runRoot);
     else if (command === "plan") result = persistShardPlan(runRoot, inputRecord(values));
     else if (command === "dispatch") result = dispatchRun(runRoot);
     else if (command === "admit-attempt") result = admitAttempt(runRoot, inputRecord(values));
     else if (command === "checkpoint-attempt") result = checkpointAttempt(runRoot, inputRecord(values));
-    else if (command === "append-attempt") result = appendLedgerAttempt(runRoot, inputRecord(values));
+    else if (command === "append-attempt") result = appendLedgerAttempt(runRoot, inputRecord(values), { codeRoot: values.get("code-root") });
     else if (command === "fail-attempt") result = failAttempt(runRoot, inputRecord(values));
     else if (command === "expire-attempt") {
       const attemptId = values.get("attempt-id");

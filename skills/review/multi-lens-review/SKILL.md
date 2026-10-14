@@ -48,11 +48,16 @@ implementation is not a code target.
    identify the applicable project-native baseline.
 2. Use `review-packet-gate:Packet` for materials and its completeness and
    finding rules. Do not copy packet fields or formal-gate behavior here.
-   For ordinary filesystem-backed code targets, execute
+   For ordinary filesystem-backed code targets and native formal review, execute
    `review-packet-gate:Source Navigation and Acceptance` before the first
    dispatch and again when accepting material source comparisons. Pass the
    selected source inventory and fixed-root read invocation with the existing
    packet; do not provide expected findings to a fresh pass.
+   A request to delegate a subagent for formal deep review selects the existing
+   `protocol=review-run` with default `execution_profile=native`; follow
+   `review-packet-gate:Execution Selection` and `Dispatch And Return` for actual
+   host dispatch, source-bound outputs and owner gates. Deep does not itself
+   select strong isolation or require signing credentials.
 3. Assess every Lens Selection family and the project baseline across the
    complete task scope, then allocate deeper investigation by risk. For
    reuse/necessity, read and apply

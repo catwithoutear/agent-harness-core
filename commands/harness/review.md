@@ -30,7 +30,7 @@ Input: `$ARGUMENTS`
    a skill or assigning roles cannot shrink coverage; a focused question cannot
    approve the whole task.
 3. Verify claims against current files, diffs, commands, or artifacts.
-   For ordinary filesystem code targets, execute the source navigation and
+   For ordinary filesystem code targets and native formal review, execute the source navigation and
    acceptance actions owned by `review-packet-gate:Source Navigation and
    Acceptance` before first dispatch and coverage acceptance. Keep them in the
    existing packet; preserve formal target-view isolation when that applies.
@@ -44,6 +44,13 @@ Input: `$ARGUMENTS`
    contract. Assurance labels are not route selectors. Validate the target,
    immutable dispatch contract, risk facts, and request identity before
    dispatching either reviewer or verifier; malformed input is `NOT_READY`.
+   A request such as "delegate a subagent for formal deep review" (including
+   "委派 subagent 做正式深度审阅") defaults to `execution_profile=native`.
+   Actually invoke the host's subagent API with a fresh context, use the managed
+   packets and source-bound output acceptance, and retain complete scope and
+   all owner gates. Select `isolated` only for explicitly requested strong
+   isolation with an integrated provider; do not ask for conformance/signing
+   credentials for native execution or silently downgrade an isolated request.
 9. Give the reviewer the sealed dispatch contract. Give verifier Phase A only
    the closed-schema neutral packet emitted by `review-run.mjs phase-a-packet`;
    it must not contain expected rules, relations, dispatch, reviewer ledger,
@@ -74,11 +81,13 @@ gaps.
 ## Review-Run Contract
 
 For `protocol=review-run`, create the managed run root with `init-review-run`
-and accept the request only after provider capability/conformance preflight.
+and follow `review-packet-gate:Execution Selection` and `Dispatch And Return`.
+Native admission validates the actual selected source snapshot; explicitly
+isolated execution requires provider capability/conformance preflight.
 Extract rather than hand-write the Phase-A packet. Seal discovery, enter
 planning, persist the shard plan, and dispatch through separate machine
 transitions. Discover the expected and observed universes
-through two mutually-isolated lanes and close the discovery barrier before
+through two independent lanes and close the discovery barrier before
 comparison. Resolve coding/behavioral authority and versioned dimensions,
 enumerate the changed-surface hunk/line inventory and context fixed point, and
 derive immutable relation/integration obligations with canonical `{id,digest}`

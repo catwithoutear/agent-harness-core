@@ -144,12 +144,12 @@ question or local pass does not establish whole-task readiness. Risk adds
 investigation or required independence; size, material choice, permissions and
 assurance labels cannot subtract dimensions.
 
-For ordinary filesystem-backed review or simplification, execute
+For ordinary filesystem-backed review, native formal review or simplification, execute
 `review-packet-gate:Source Navigation and Acceptance` before the first dispatch
 and when consuming material source evidence. Carry the fixed-root invocation
 in the existing packet; source identity errors require a named gap or return,
-and matching receipts do not establish semantic coverage. Formal provider
-isolation and owner gates remain authoritative.
+and matching receipts do not establish semantic coverage. Owner gates remain
+authoritative; provider isolation applies to explicitly isolated execution.
 
 Before accepting a delegated or inline reuse/necessity result, inspect the
 `Capability Comparison Evidence` defined in
@@ -341,9 +341,17 @@ the request, target identity, risk facts, and immutable dispatch contract before
 dispatching either agent; malformed input is `NOT_READY`.
 
 Persist the exact rules, scope, dimensions, and relation identities in the
-dispatch contract and give it to the reviewer. Verifier Phase A receives only
-the machine-built closed-schema neutral packet after provider capability and
-runtime-conformance preflight; expected rules, relations, dispatch, reviewer
+dispatch contract and give it to the reviewer. New formal requests default to
+`execution_profile=native`, including natural-language requests to delegate a
+subagent for formal deep review. Use the actual native subagent API and a fresh
+conversation when supported; source navigation, returned execution evidence,
+capability comparison and main acceptance remain required. This selection does
+not assert hard isolation or need signing credentials. Only explicitly selected
+`execution_profile=isolated` requires provider capability and runtime-conformance
+preflight; a failure there must not automatically downgrade to native.
+
+Verifier Phase A receives only the machine-built closed-schema neutral packet;
+expected rules, relations, dispatch, reviewer
 output and prior conclusions are forbidden. After both lanes seal, Phase B may
 compare the sealed universes and reviewer ledger. The coordinator alone
 composes `overall_gate`.
@@ -364,8 +372,11 @@ review-facts-closed -> outcomes-selected -> verifier-compared -> gated ->
 completed|invalidated`. Initialize the run root with `init-review-run`; persist
 canonical subject, authority, dimension, surface, context, obligation, dispatch,
 output, finding, invalidation, and gate records below `review-runs/<run-id>/`.
-The discovery barrier closes only after both expected and observed lanes seal
-and their attestations verify. Failed, cancelled, stale, duplicate, and
+The discovery barrier closes only after both expected and observed lanes seal;
+explicitly isolated execution additionally requires its provider attestations.
+Native inventory/review uses distinct actual actor identities and original
+outputs, with source checks and semantic acceptance before closure. Failed,
+cancelled, stale, duplicate, and
 unassigned work remains visible, and missing target, source, or implementation
 evidence is fail-closed.
 
@@ -373,8 +384,12 @@ The portable facade additionally enforces
 `created -> discovering -> discovery-sealed -> planning -> dispatch-ready ->
 running -> aggregating -> terminal`. Admit reviewer attempts with explicit
 deadlines and bounded retries. Diagnostic checkpoints remain non-gating;
-timeout sweeps persist typed failed ledgers. A different run id cannot sanitize
-a provider execution identity that already saw expected-lane data.
+timeout sweeps persist typed failed ledgers. The managed `dispatch` transition
+does not itself start an actor: the coordinator launches the actual host
+subagent, binds its machine packet and returned output, and appends only the
+owner's result. A different run id cannot sanitize an inventory execution that
+already saw expected-lane data. Native records provide traceability; they do not
+prove absent ambient filesystem, tools or memory mounts.
 
 For formal review-run results, always carry the five evidence gates —
 `coverage_gate`, `review_gate`,

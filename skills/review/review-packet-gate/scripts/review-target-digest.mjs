@@ -673,6 +673,10 @@ function createSourceSnapshot(root, values) {
 function readSourceSnapshot(file) {
   let snapshot;
   try { snapshot = parseJsonStrict(fs.readFileSync(file, "utf8")); } catch { fail("SOURCE_SNAPSHOT_INVALID", "source snapshot is unavailable or invalid"); }
+  return validateSourceSnapshot(snapshot);
+}
+
+export function validateSourceSnapshot(snapshot) {
   if (snapshot?.format !== "review-source" || snapshot.version !== 1 || !Array.isArray(snapshot.files) || !snapshot.files.length ||
       !Array.isArray(snapshot.target_paths) || !snapshot.target_paths.length ||
       Object.keys(snapshot).some((key) => !["format", "version", "files", "target_paths", "snapshot_digest"].includes(key))) {
@@ -680,6 +684,7 @@ function readSourceSnapshot(file) {
   }
   const paths = new Set();
   for (const file of snapshot.files) {
+    if (!file || typeof file !== "object" || Array.isArray(file)) fail("SOURCE_SNAPSHOT_INVALID", "invalid source file identity");
     const relative = normalizeRelativePath(file.path, { allowDot: false });
     if (relative !== file.path || paths.has(relative) || !/^sha256:[0-9a-f]{64}$/u.test(file.sha256) ||
         !Number.isSafeInteger(file.bytes) || file.bytes < 0 || !Number.isSafeInteger(file.line_count) || file.line_count < 0 ||
@@ -719,7 +724,7 @@ function sourceRead(root, snapshot, relative, start = 1, end) {
     lines: file.lines.slice(start - 1, end).map((text, offset) => ({ number: start + offset, text })) };
 }
 
-function checkSourceEvidence(root, snapshot, evidence) {
+export function checkSourceEvidence(root, snapshot, evidence) {
   if (!Array.isArray(evidence) || !evidence.length) fail("SOURCE_EVIDENCE_GAP", "source check requires read receipts");
   const gaps = [];
   // Check the entire delivered corpus, including context not quoted in a report.

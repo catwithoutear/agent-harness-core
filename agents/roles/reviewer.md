@@ -71,13 +71,16 @@ not close this dimension. Direct role dispatch has the same evidence duty;
 missing capability sources remain gaps. Keep behavior-preserving opportunities
 separate from correctness defects and style preferences.
 
-For ordinary filesystem-backed dispatch, use the packet's source inventory
+For ordinary filesystem-backed dispatch and native formal review, use the packet's source inventory
 and fixed-root reader under `review-packet-gate:Source Navigation and Acceptance`.
 Reference material source-read receipts in the existing evidence; inspect the
 actual interface and final call, not just the hashes. On a bounded return,
 preserve the original report and answer its named premise/invariant with current
-source evidence or explicit unsubstantiated coverage. Formal provider isolation
-and admission remain unchanged; ordinary navigation cannot bypass them.
+source evidence or explicit unsubstantiated coverage. Native formal review uses
+the machine-generated `native-review-packet` and the admitted attempt; return
+the original structured ledger and source receipts to the coordinator for
+source-bound append and semantic acceptance. Only explicitly isolated execution
+uses provider isolation; native navigation cannot bypass that selected contract.
 
 Read the applicable repository review instructions before judging the change.
 Inspect the changed units and enough nearby callers, callees, consumers,
@@ -124,6 +127,11 @@ from compilation, a planned command, or an unrelated passing test.
 
 `quick`, `standard`, and `deep` are assurance levels inside the one
 `protocol=review-run` flow; they are not separate protocol routes. For a
+new request, `execution_profile=native` is the default. Native dispatch records
+actual host execution and does not claim filesystem or cryptographic isolation.
+Do not request signing/conformance credentials for that profile or invent
+provider capability claims. Explicit isolated execution keeps its required
+provider admission without automatic fallback. For a
 structured request, you are dispatched per unit/context cluster with review
 dimensions as lenses. For each assigned relation/integration obligation, return
 a `RelationOutcome`/`IntegrationOutcome` that carries `execution_status`

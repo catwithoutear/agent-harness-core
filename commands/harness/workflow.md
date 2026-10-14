@@ -79,6 +79,11 @@ Input: `$ARGUMENTS`
     until both lanes seal. Discovery, planning and dispatch are separate
     machine barriers before compare. Target, source, or closure failure is
     `coverage_gate=NOT_READY`.
+    New requests default to `execution_profile=native`: actually launch fresh
+    host subagents, preserve original output/source receipts, and follow
+    `review-packet-gate:Dispatch And Return` acceptance. Only explicit `isolated`
+    execution requires strong provider conformance; native depth must not be
+    blocked by absent signing credentials or claim equivalent hard isolation.
 19. For formal review-run results, carry five evidence decisions:
     `coverage_gate`, `review_gate`,
     `independent_review_gate`, `style_gate`, and
@@ -126,8 +131,9 @@ external blocker prevents it.
 
 ## Review-Run Routing
 
-For `protocol=review-run`, initialize the managed run root, pass provider
-preflight, extract the closed Phase-A packet, and enforce
+For `protocol=review-run`, initialize the managed run root, pass the selected
+execution preflight (native source snapshot by default; provider conformance
+only for explicitly isolated execution), extract the closed Phase-A packet, and enforce
 `discover -> begin-planning -> plan -> dispatch` as separate transitions before
 reviewer-ledger comparison. Retain immutable control revisions and attempts.
 Never infer N/A or completeness from a summary; aggregate the relation ledger

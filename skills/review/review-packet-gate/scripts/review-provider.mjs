@@ -1,9 +1,11 @@
+import { validateSourceSnapshot } from "./review-target-digest.mjs";
 import { DIGEST_RE, PROTOCOL, fail, finalizeRecord, isCanonicalRef, isPlainObject, verifyRecordDigest } from "./review-records.mjs";
 
 /**
  * Discovery execution provider binding and capability matrix (R-035).
  *
- * `assurance=deep` requires a provider whose entire capability matrix is true.
+ * Isolated deep execution requires the full provider capability matrix.
+ * Native deep execution binds a neutral source snapshot and observed host returns.
  * The controller attestation signing key and the provider-lane result signing
  * key MUST be distinct identities; private material is never serialized.
  */
@@ -70,6 +72,51 @@ function rejectUnknownFields(value, allowed, location) {
   if (unknown.length > 0) {
     fail("VERIFIER_INPUT_CONTAMINATED", `${location} contains forbidden or unknown fields: ${unknown.join(", ")}`, { unknown_fields: unknown });
   }
+}
+
+export function executionProfile(record, fallback = "isolated") {
+  const profile = record.execution_profile === undefined ? fallback : record.execution_profile;
+  if (!["native", "isolated"].includes(profile)) fail("INVALID_REVIEW_REQUEST", "unknown execution_profile");
+  return profile;
+}
+
+export function validateNativeSourceScope(snapshot, target, relations = []) {
+  validateSourceSnapshot(snapshot);
+  if (!isPlainObject(target) || !Array.isArray(relations)) fail("SOURCE_EVIDENCE_GAP", "native target/source scope is invalid");
+  const includes = (scope, source) => scope === "." || scope === source || source.startsWith(`${scope}/`);
+  const targetSources = snapshot.files.filter((file) => snapshot.target_paths.some((scope) => includes(scope, file.path)));
+  if (target.files !== undefined && (!Array.isArray(target.files) || target.files.some((declared) => typeof declared !== "string" || !declared || (!snapshot.target_paths.some((scope) => includes(scope, declared)) || !targetSources.some((file) => includes(declared, file.path)))))) {
+    fail("SOURCE_EVIDENCE_GAP", "native source snapshot does not cover declared target files");
+  }
+  for (const relation of relations) {
+    if (!targetSources.some((file) => file.path === relation?.unit_key?.unit_path)) {
+      fail("SOURCE_EVIDENCE_GAP", "native assigned unit is missing from selected target source");
+    }
+  }
+  return snapshot;
+}
+
+export function buildNativeDiscoveryEnvelope(request) {
+  if (request.provider_policy !== undefined || request.deep_preflight !== undefined) fail("VERIFIER_INPUT_CONTAMINATED", "native request must not contain isolated provider admission");
+  rejectUnknownFields(request.native_preflight, new Set(["source_snapshot"]), "native_preflight");
+  const snapshot = validateSourceSnapshot(request.native_preflight.source_snapshot);
+  return validateNativeDiscoveryEnvelope(finalizeRecord({
+    record_type: "verifier-discovery-envelope", protocol: PROTOCOL,
+    execution_profile: "native", run_id: request.run_id, phase: "inventory", assurance: "deep",
+    target_fingerprint: request.target?.fingerprint, source_snapshot: snapshot
+  }, `verifier-envelope:${request.run_id}`), request);
+}
+
+export function validateNativeDiscoveryEnvelope(envelope, request) {
+  rejectUnknownFields(request.native_preflight, new Set(["source_snapshot"]), "native_preflight");
+  if (request.provider_policy !== undefined || request.deep_preflight !== undefined) fail("VERIFIER_INPUT_CONTAMINATED", "native request must not contain isolated provider admission");
+  validateSourceSnapshot(request.native_preflight.source_snapshot);
+  if (typeof envelope.run_id !== "string" || !envelope.run_id || typeof envelope.target_fingerprint !== "string" || !envelope.target_fingerprint) fail("VERIFIER_PACKET_INVALID", "native envelope run/target identity required");
+  rejectUnknownFields(envelope, new Set(["format", "format_version", "record_type", "record_id", "created_from", "record_digest", "canonical_digest", "protocol", "execution_profile", "run_id", "phase", "assurance", "target_fingerprint", "source_snapshot"]), "native discovery envelope");
+  if (envelope.protocol !== PROTOCOL || envelope.record_type !== "verifier-discovery-envelope" || envelope.execution_profile !== "native" || envelope.phase !== "inventory" || envelope.assurance !== "deep" || !verifyRecordDigest(envelope)) fail("VERIFIER_PACKET_INVALID", "invalid native discovery envelope");
+  validateNativeSourceScope(envelope.source_snapshot, request.target, request.dispatch_contract?.relations ?? []);
+  if (envelope.run_id !== request.run_id || envelope.target_fingerprint !== request.target.fingerprint || envelope.source_snapshot.snapshot_digest !== request.native_preflight?.source_snapshot?.snapshot_digest) fail("STALE_REVIEW", "native envelope identity mismatch");
+  return envelope;
 }
 
 export function selectProvider(providerPolicy) {
@@ -188,6 +235,14 @@ export function buildVerifierDiscoveryEnvelope({ request, providerBinding }) {
 
 export function preflightDeepDispatch({ request, routing }) {
   if (routing.selected_mode !== "deep") return null;
+  const profile = executionProfile(routing);
+  if (profile === "native") return finalizeRecord({
+    record_type: "dispatch-preflight", protocol: PROTOCOL, run_id: request.run_id,
+    selected_mode: routing.selected_mode, execution_profile: profile, passed: true,
+    request_ref: { id: request.record_id, digest: request.record_digest },
+    routing_ref: { id: routing.record_id, digest: routing.record_digest },
+    verifier_discovery_envelope: buildNativeDiscoveryEnvelope(request)
+  }, `dispatch-preflight:${request.run_id}`);
   const providerBinding = selectProvider(request.provider_policy);
   const verifierEnvelope = buildVerifierDiscoveryEnvelope({ request, providerBinding });
   return finalizeRecord({
@@ -195,6 +250,7 @@ export function preflightDeepDispatch({ request, routing }) {
     protocol: PROTOCOL,
     run_id: request.run_id,
     selected_mode: routing.selected_mode,
+    execution_profile: profile,
     passed: true,
     request_ref: { id: request.record_id, digest: request.record_digest },
     routing_ref: { id: routing.record_id, digest: routing.record_digest },
