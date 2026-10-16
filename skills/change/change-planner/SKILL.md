@@ -102,6 +102,18 @@ validation and rollback. It does not require a separate solution-design
 artifact or review. Uncertainty about behavior, compatibility, ownership,
 lifecycle, migration, or dependency order disqualifies this path.
 
+## Presenting The Plan
+
+Before sharing a plan with the user, read `design-doc-refiner`'s
+`references/output-contract.md`, section `Reader-Facing Design And Plan`, when
+that skill is available. Locate it through the current manifest or installed
+skill directory; source category paths do not survive flat skill projection.
+Use it for the behavior overview and contextual decisions. If it is unavailable
+in a selective skill install, report the presentation-guidance gap and retain
+this skill's existing plan contract. Preserve dependency-ordered task slices,
+validation, rollback, and the readiness gate. A presentation change does not
+settle an upstream decision or authorize execution.
+
 ## Planning Flow
 
 1. Locate and read the active change through `harness-change-doc` or the
