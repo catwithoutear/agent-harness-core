@@ -75,13 +75,15 @@ that lower-level skill explicitly in the recommendation.
 | "Improve a core skill and its projections." | Use `skill-authoring-governance`, then `subagent-projection-review` if client-visible role or projection behavior changes. |
 | "Deploy or update Harness with no duplicate skills or roles." | Use `harness-deploy` for scope, existing discovery roots, backups and verification; it routes to the existing projector or project deployer. |
 
-For existing ZCode Desktop or DSH profile roles, use the manifest's
-`commands.nativeRoles` entry (`harness-native-roles`) for dry-run or verify.
-Shared `.agents/skills` are projected once through Codex when the installed
-native loader confirms that root. The native adapter refreshes existing roles
-only; check the actual ZCode storage directory or intended DSH profile, review
-the dry-run plan, and apply with `--from-plan`. Do not invent generic client
-support or a `.dsh/agents` directory. Preserve other native settings.
+For existing ZCode Desktop roles, use `commands.nativeRoles`
+(`harness-native-roles`) for dry-run/verify and reviewed `--from-plan` refresh.
+For DSH roles, use `integrations.dsh`: Core's optional host bundle, installed
+through DSH's native `plugin` manager into the explicitly selected profile.
+It reads canonical roles at activation; do not embed personas in presets or use
+the removed `harness-native-roles --client dsh` route. Use `harness-deploy` for
+migration, backups and verification. Shared `.agents/skills` are projected once
+through Codex when the installed native loader confirms that root. Preserve
+native settings; do not invent generic projector client support or `.dsh/agents`.
 
 ## Output
 

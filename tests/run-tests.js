@@ -36,6 +36,11 @@ if (all || requested.has("--native-roles")) {
   await module.run(run);
 }
 
+if (all || requested.has("--dsh-roles")) {
+  const module = await import("./test-dsh-roles.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--skills")) {
   const module = await import("./test-skills.js");
   await module.run(run);

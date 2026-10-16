@@ -41,15 +41,13 @@ that is an actual shipped capability.
 
 ## Existing Native Roles
 
-ZCode and DSH use `harness-native-roles` outside the generic projector's client
-list. Confirm the installed loader consumes the shared skill root before
-projecting shared skills through Codex. Do not add imaginary `--clients zcode`
-or `--clients dsh` routes or invent a `.dsh/agents` directory.
+ZCode uses `harness-native-roles` outside the generic projector's client list.
+DSH uses the optional Core host bundle described by `integrations.dsh`.
+Confirm the installed loader consumes the shared skill root before projecting
+skills through Codex. Do not invent `--clients zcode`, `--clients dsh`, or a
+`.dsh/agents` directory.
 
-For ZCode, resolve the actual storage directory and the existing Desktop global
-agents directory. Do not assume a CLI supports Desktop user agents. For DSH,
-resolve the user-selected existing profile and its installed YAML runtime;
-do not silently choose another profile.
+Resolve ZCode's actual Desktop global agents directory before applying:
 
 ```bash
 node <core-root>/bin/harness-native-roles.js \
@@ -64,23 +62,40 @@ node <core-root>/bin/harness-native-roles.js \
   --client zcode --agents-dir <existing-global-agents> --verify --json
 ```
 
-For DSH, replace `--client zcode --agents-dir <existing-global-agents>` with
-`--client dsh --profile-dir <selected-existing-profile>` in all three commands.
-Read current native definitions before accepting the plan; a matching name does
-not establish that custom content may be overwritten. The plan binds source
-and original-target hashes, and stale plans fail. Missing roles or unknown
-formats stop this refresh; it does not provision profiles or install new roles.
+Read native definitions before accepting the plan; names alone do not establish
+ownership. Stale plans and unknown formats fail before writing. Metadata is
+preserved except canonical name/description and role body. Inspect partial
+`changed`, `failed`, `remaining` and `backups` before retry/recovery. After verify,
+a fresh dry-run should show empty `changed_roles`. Loading requires a new
+session; the tool does not restart a client.
 
-ZCode preserves metadata except canonical name/description and role body.
-DSH replaces existing Harness persona bodies while preserving their wrapper,
-all other configuration bytes and semantics. Do not use a profile generator
-that changes models, permissions or presets. Check the selected installed
-schema when applicable without invoking tagged executable YAML or a model.
+## DSH Host Roles
 
-Apply snapshots drifting files before atomic replacement. A ZCode multi-file
-failure can leave earlier files updated: inspect `changed`, `failed`,
-`remaining` and `backups` before retry or recovery. Save plan/output records
-outside discovery roots and retain only the evidence needed for handoff.
-After verify, run a fresh dry-run; native `changed_roles` should be empty.
-Loading new files may require a new client session or profile reload, which
-these commands do not perform.
+Resolve the selected existing profile and back up its package manifest, lockfile,
+patch and owned role definitions outside loaded roots. Inspect the Core bundle
+patch and proposed removals before authorized writes. Install through the native
+plugin manager; no parallel installer or profile generator is needed:
+
+```bash
+dsh plugin --profile <profile-name> add <core-path-or-tarball>
+```
+
+The Core package registers one host `harness-roles` instance and reads roles from
+its own manifest at activation. Preserve profile-owned model/provider/budget
+settings as `harness-roles.config.agentOptions`; omission inherits the parent.
+Do not copy canonical personas into presets. Remove only verified owned legacy
+Harness role rows and the old `@local/dsh-harness-roles` bundle/dependency via
+native plugin management. Inspect preset-local rows too: local shadowing can
+hide host tools. Retain any linked local plugin until references are replaced;
+remove it only within the authorized deployment scope. The old
+`harness-native-roles --client dsh` path is unavailable.
+
+Verify the selected profile's effective configuration with
+`dsh --profile <profile-name> --dump-config`; protect output that may contain
+private settings. Inventory host and preset tools to exclude duplicate Harness
+roles. In a new or explicitly reloaded session, check role visibility for the lead
+and a teammate, read-only restrictions, leaf/depth behavior and dispatch/output.
+Package checks and configuration dumps do not prove live reload or model behavior.
+If a migration fails, restore the profile snapshot and native dependency state;
+report partial changes and retained recovery artifacts. Never restart services
+as an incidental deployment step.

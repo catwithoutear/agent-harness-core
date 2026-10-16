@@ -2,15 +2,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createRequire } from "node:module";
 import { runNativeRoles } from "../lib/project/native-roles.js";
 import { snapshotTarget } from "../lib/project/backup.js";
 
-const require = createRequire(import.meta.url);
 const manifest = JSON.parse(fs.readFileSync(new URL("../harness.manifest.json", import.meta.url)));
 const roles = manifest.assets.agents;
 const body = (role) => fs.readFileSync(new URL(`../${role.source}`, import.meta.url), "utf8").replace(/^---\n[\s\S]*?\n---\n/, "").trim();
-const prefix = (name) => `You are the \`${name}\` specialist subagent of a DeepSeek Harness agent. The parent agent's dispatch prompt is your Input Packet. Follow the role definition below exactly: respect its Authority, Required Inputs, stop conditions, and Output Packet contract, and return the Output Packet as your final message.\n\n\n`;
 
 function fixture(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "harness-native-test-"));
@@ -107,37 +104,19 @@ export async function runTests(test) {
     assert.equal(run([...args, "--dry-run"]).status, 1); fs.rmSync(target); assert.equal(run([...args, "--dry-run"]).status, 1);
     fs.writeFileSync(path.join(root, "elsewhere"), text); fs.symlinkSync(path.join(root, "elsewhere"), target); assert.equal(run([...args, "--dry-run"]).status, 1); assert(!fs.existsSync(path.join(root, "backup")));
   }));
-  let yamlDirectory;
-  try { yamlDirectory = path.dirname(require.resolve("yaml/package.json")); }
-  catch { process.stdout.write("skip - DSH tests require an installed yaml (profile runtime dependency)\n"); return; }
-  const YAML = require("yaml");
-  function dsh(root) {
-    const profile = path.join(root, "web"); fs.mkdirSync(path.join(profile, "node_modules"), { recursive: true }); fs.symlinkSync(yamlDirectory, path.join(profile, "node_modules", "yaml"));
-    const pieces = ["# user-owned comment\n- id: custom\n  config:\n    script: !!js 'untouched expression'\n"];
-    for (const role of roles) {
-      const key = role.runtimeName.replaceAll("-", "_");
-      pieces.push(`- id: tool-subagent_${key}\n  name: '@deepseek-ai/dsh-tool-subagent'\n  config:\n    toolName: subagent_${key}\n    provider: spawn\n    agentOptions:\n      model: user-model\n    toolFilter: [read, write]\n    persona: |-\n${(prefix(role.runtimeName) + "old role text").split("\n").map((line) => "      " + line).join("\n")}\n`);
+  await test("removed DSH persona refresh fails before profile IO", () => fixture((root) => {
+    const profile = path.join(root, "web"); fs.mkdirSync(profile);
+    const target = path.join(profile, "cordis.patch.yml"); fs.writeFileSync(target, "user-owned profile\n");
+    for (const args of [
+      ["--client", "dsh", "--dry-run"],
+      ["--client", "dsh", "--profile-dir", profile, "--verify"],
+    ]) {
+      const result = run(args); assert.equal(result.status, 1);
+      assert.match(result.result.errors[0], /host plugin via dsh plugin add/);
+      assert.equal(fs.readFileSync(target, "utf8"), "user-owned profile\n");
+      assert.equal(fs.existsSync(path.join(root, "backup")), false);
     }
-    fs.writeFileSync(path.join(profile, "cordis.patch.yml"), pieces.join(""), { mode: 0o640 }); return ["--client", "dsh", "--profile-dir", profile];
-  }
-  const parse = (text) => YAML.parseDocument(text, { customTags: [{ tag: "tag:yaml.org,2002:js", resolve: (value) => value }] }).toJSON();
-  await test("DSH refresh preserves comments, non-persona semantics and original prefix, without executing tags", () => fixture((root) => {
-    const args = dsh(root), target = path.join(root, "web", "cordis.patch.yml"), before = fs.readFileSync(target, "utf8"), plan = approved(root, args);
-    const apply = run([...args, "--from-plan", plan]); assert.equal(apply.status, 0, JSON.stringify(apply));
-    const after = fs.readFileSync(target, "utf8"), old = parse(before), next = parse(after);
-    assert(after.startsWith("# user-owned comment\n")); assert(after.includes("script: !!js 'untouched expression'"));
-    for (let index = 1; index < next.length; index += 1) {
-      const role = roles[index - 1]; assert.equal(next[index].config.persona, prefix(role.runtimeName) + body(role));
-      delete old[index].config.persona; delete next[index].config.persona;
-    }
-    assert.deepEqual(next, old); assert.equal(fs.statSync(target).mode & 0o777, 0o640); assert.equal(run([...args, "--verify"]).status, 0);
-    assert.equal(run([...args, "--dry-run"]).result.records[0].changed, false);
-  }));
-  await test("DSH duplicate native role and malformed profile reject without writing", () => fixture((root) => {
-    const args = dsh(root), target = path.join(root, "web", "cordis.patch.yml");
-    fs.appendFileSync(target, `- id: tool-subagent_${roles[0].runtimeName.replaceAll("-", "_")}\n`);
-    const before = fs.readFileSync(target, "utf8"); assert.equal(run([...args, "--dry-run"]).status, 1); assert.equal(fs.readFileSync(target, "utf8"), before);
-    fs.writeFileSync(target, "bad: [\n"); assert.equal(run([...args, "--dry-run"]).status, 1); assert(!fs.existsSync(path.join(root, "backup")));
+    assert.match(run(["--client", "dsh", "--dry-run"]).result.errors[0], /host plugin/);
   }));
 }
 export { runTests as run };

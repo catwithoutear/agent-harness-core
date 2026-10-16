@@ -160,8 +160,7 @@ resolve loaded roots, preserve external backups and verify that skills and roles
 are not duplicated. It uses the existing projector or owning overlay deployer.
 
 ZCode Desktop and DSH can consume the shared `.agents/skills` roots in their
-verified installed versions. Project those skills once through Codex. Their
-native role refresh is separate from the generic four-client projector:
+verified installed versions. Project those skills once through Codex. ZCode native role refresh is separate from the generic four-client projector:
 
 ```bash
 node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --dry-run --json > zcode-plan.json
@@ -169,16 +168,37 @@ node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --f
 node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --verify --json
 ```
 
-Inspect the dry-run plan and existing role bodies before applying. Resolve
-ZCode's actual storage directory first; user roles are a Desktop capability.
-For DSH, use `--client dsh --profile-dir <existing-profile>` with the same
-plan/apply/verify sequence. The profile must have its runtime `yaml` installed.
-This refreshes existing Harness personas and preserves all other profile
-content, including models, permissions and presets; it does not provision a
-new profile. Unknown formats or stale plans fail before writing. ZCode preserves
-all metadata except canonical name/description. Multi-file failures report the
-updated, failed and remaining roles with backup mappings. Updates need a new
-client session or profile reload; this tool never restarts a service.
+Inspect the plan and existing bodies, and resolve ZCode's actual Desktop storage
+before applying. The tool preserves metadata except canonical name/description,
+rejects stale plans and reports partial writes with backup mappings.
+
+DSH uses an optional host plugin shipped in this package. Install into the
+explicitly selected profile with DSH's native plugin manager:
+
+```bash
+dsh plugin --profile <profile-name> add <core-path-or-tarball>
+```
+
+The bundle inserts one `harness-roles` instance. It reads manifest-declared role
+files from the installed Core package at activation and exposes `subagent_<role>`
+tools to every preset and teammate. The profile must provide `tools`,
+`systemPrompt`, `subagents` and a provider supporting persona, tool filtering and
+depth limits. The default subagent provider is `spawn`, with `maxDepth: 2`.
+Omitted `agentOptions` inherit the parent model route; Core chooses no model.
+Profile overrides of `harness-roles.config` may supply `agentOptions`, an absolute
+`rolesDir`, provider, depth, additional `readOnlyDeny` names or `policy: false`.
+Read-only roles always deny write/edit; shell access remains, so this is not a
+sandbox. Role children deny inherited delegation/team controls and role tools.
+
+When migrating, preserve the selected profile and model settings, remove the
+old embedded Harness role rows and `@local/dsh-harness-roles` bundle/dependency,
+and install the Core bundle. Do not leave two integrations registering the same
+tool names. Retain any linked local plugin directory until the profile no longer
+references it. `harness-native-roles --client dsh` has been removed. Verify the
+effective tree with `dsh --profile <profile-name> --dump-config`, then check role
+tool visibility and dispatch in a fresh or explicitly reloaded session. Source
+or package checks do not prove that a running Web instance reloaded. Core's
+native refresh command never restarts services.
 
 `--conflict backup` stores generic projection snapshots under
 `~/backup/agent-harness-core/`, outside discovery roots. Each private snapshot

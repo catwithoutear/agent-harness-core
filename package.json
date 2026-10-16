@@ -26,6 +26,13 @@
     "rules/",
     "schemas/",
     "skills/",
-    "templates/"
-  ]
+    "templates/",
+    "locale/"
+  ],
+  "main": "./lib/dsh/index.js",
+  "dsh": {
+    "bundle": {
+      "patch": "./lib/dsh/cordis.patch.yml"
+    }
+  }
 }

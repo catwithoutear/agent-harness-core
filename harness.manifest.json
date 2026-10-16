@@ -1545,13 +1545,16 @@
         "audience": "model",
         "source": "skills/third-party/environment-profile-vault",
         "runtimeName": "environment-profile-vault",
-        "description": "Use when a local environment profile must be added, retrieved, updated, deleted, or injected into an automation command without GPG encryption.",
+        "description": "Use when local environment credentials must be saved with a purpose, listed or selected for a task, updated, deleted, or injected into an automation command.",
         "triggers": [
           "environment profile",
           "store test environment credentials",
           "local test environment credentials",
           "update environment profile",
           "reuse environment login",
+          "describe saved credentials",
+          "choose credentials for a task",
+          "list environment profile descriptions",
           "run with saved environment",
           "noninteractive profile upsert"
         ],
@@ -2347,5 +2350,13 @@
       }
     ],
     "tools": []
+  },
+  "integrations": {
+    "dsh": {
+      "kind": "host-plugin",
+      "entry": "lib/dsh/index.js",
+      "bundle": "lib/dsh/cordis.patch.yml",
+      "enabledByDefault": false
+    }
   }
 }

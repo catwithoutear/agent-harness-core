@@ -146,7 +146,7 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 
 使用 `harness-deploy` 技能选择最小授权部署范围、核对实际加载目录、保留外部备份并检查技能和角色是否重复。技能复用现有 projector 或所属 overlay 的部署工具。
 
-经当前安装源码确认，ZCode Desktop 和 DSH 能读取共享 `.agents/skills` 根，技能通过 Codex 投影一次。原生角色刷新独立于通用四客户端 projector：
+经当前安装源码确认，ZCode Desktop 和 DSH 能读取共享 `.agents/skills` 根，技能通过 Codex 投影一次。ZCode 原生角色刷新独立于通用四客户端 projector：
 
 ```bash
 node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --dry-run --json > zcode-plan.json
@@ -154,11 +154,17 @@ node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --f
 node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --verify --json
 ```
 
-应用前检查计划及已有正文，并确认 ZCode 实际 storage 目录；用户角色能力适用于 Desktop。
-DSH 使用 `--client dsh --profile-dir <已有-profile>`，同样先计划、再应用、验证；profile 需有运行时的 `yaml`。
-工具只刷新已有 Harness persona，保留模型、权限、preset 和其他配置，不创建新 profile。
-未知格式或过期计划会在写入前失败。ZCode 保留 canonical name/description 以外的全部元数据。
-多文件失败会报告已更新、失败、未处理角色及备份映射。客户端需新会话或 profile 重载才加载更新；工具不重启服务。
+应用前检查计划、已有正文及 ZCode Desktop 实际 storage 目录。工具保留 canonical name/description 以外的元数据，拒绝过期计划；多文件失败会报告已更新、失败、未处理角色及备份映射。
+
+DSH 使用随 Core 分发的可选宿主插件，通过原生插件管理器安装到明确选定的 profile：
+
+```bash
+dsh plugin --profile <profile-name> add <core-path-or-tarball>
+```
+
+bundle 插入一个 `harness-roles` 实例，在激活时读取已安装 Core 的 manifest 及角色文件，让所有 preset 和队友都能调用 `subagent_<role>` 工具。profile 需提供 `tools`、`systemPrompt`、`subagents`，以及支持 persona、工具过滤和深度限制的 provider。默认子智能体 provider 为 `spawn`，`maxDepth: 2`。省略 `agentOptions` 时继承父智能体模型配置，Core 不选择模型。profile 可覆盖 `harness-roles.config`，指定 `agentOptions`、绝对路径 `rolesDir`、provider、深度、额外的 `readOnlyDeny` 或 `policy: false`。只读角色始终禁用 write/edit，但仍可使用 shell，因此这不是沙箱。角色子进程禁用继承的委派、团队控制和角色工具。
+
+迁移时保留选定 profile 和模型设置，移除旧的内嵌 Harness 角色条目及 `@local/dsh-harness-roles` bundle/依赖，再安装 Core bundle，避免两套接入注册同名工具。profile 不再引用外部链接插件后才能删除其目录。`harness-native-roles --client dsh` 已删除。用 `dsh --profile <profile-name> --dump-config` 核对有效配置，再在新会话或明确重载后检查角色工具可见性与派发。源码或打包检查不能证明运行中的 Web 已重载；Core 原生刷新命令不会重启服务。
 
 通用投影的 `--conflict backup` 将快照保存到 `~/backup/agent-harness-core/`，不会在发现根创建备份。
 原生刷新复用同一快照所有者，每份私有快照记录 original→saved。保留映射用于恢复，交付后清理已检查的计划文件。
