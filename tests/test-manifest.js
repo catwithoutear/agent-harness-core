@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateCurrentManifest } from "../lib/manifest/validate.js";
+import { validateCurrentManifest, validateManifest } from "../lib/manifest/validate.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -17,6 +17,22 @@ export async function run(test) {
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
     assert.equal(result.summary.templates, 9);
+  });
+
+  await test("DSH integration validates optional package entry, bundle and path ownership", () => {
+    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json")));
+    for (const integration of [null, [], { dsh: null },
+      { dsh: { ...source.integrations.dsh, kind: "preset" } },
+      { dsh: { ...source.integrations.dsh, enabledByDefault: true } },
+      { dsh: { ...source.integrations.dsh, entry: "../outside.js" } },
+      { dsh: { ...source.integrations.dsh, entry: "/outside.js" } },
+      { dsh: { ...source.integrations.dsh, entry: "lib/missing.js" } },
+      { dsh: { ...source.integrations.dsh, bundle: "lib/project/native-roles.js" } },
+    ]) {
+      const manifest = { ...source, integrations: integration };
+      const result = validateManifest(manifest, { packageRoot });
+      assert.equal(result.ok, false); assert(result.errors.some((error) => /integrations|DSH/.test(error)), JSON.stringify(result.errors));
+    }
   });
 
   await test("manifest uses core command names", () => {
