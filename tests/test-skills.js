@@ -670,7 +670,7 @@ export async function run(test) {
     assert.match(prototypeSpike, /change-planner task slicing/);
 
     const verificationFirst = fs.readFileSync(path.join(packageRoot, "skills", "change", "verification-first", "SKILL.md"), "utf8");
-    for (const status of ["verified", "not run", "blocked", "partial"]) {
+    for (const status of ["verified", "not run", "blocked", "partial", "unconfirmed"]) {
       assert.match(verificationFirst, new RegExp(status));
     }
     for (const fidelity of ["exact", "equivalent", "approximate", "remote-only"]) {
@@ -679,6 +679,17 @@ export async function run(test) {
     assert.match(verificationFirst, /Validation Fidelity/);
     assert.match(verificationFirst, /Do not claim an `approximate` check proves the broader gate/);
     assert.match(verificationFirst, /review-packet-gate/);
+    // The status vocabulary must name the drift wording it replaces.
+    assert.match(verificationFirst, /\| Do not write \|/);
+    assert.match(verificationFirst, /should pass/);
+    // `unconfirmed` must stay separated from its nearest neighbor.
+    assert.match(verificationFirst, /`partial` versus `unconfirmed`/);
+    // The evidence template must show where an `unconfirmed` result goes.
+    assert.match(verificationFirst, /unconfirmed \(<the confirming method that would settle it>\)/);
+    // The pre-finish gate must keep a checklist and an observable stop rule.
+    assert.match(verificationFirst, /## Before Reporting/);
+    assert.match(verificationFirst, /^\[ \] /m);
+    assert.match(verificationFirst, /report the gap instead of the claim/);
   });
 
   await test("workflow control applies one safe ordered minimal-implementation gate", () => {

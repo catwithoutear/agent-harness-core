@@ -21,7 +21,8 @@ Use this skill for:
 - choosing a reproducer command for a known behavior;
 - deciding whether a build, unit test, integration scenario, artifact validator,
   or manual/source check is the minimum credible loop;
-- reporting `verified`, `not run`, `blocked`, or `partial` evidence.
+- reporting `verified`, `not run`, `blocked`, `partial`, or `unconfirmed`
+  evidence.
 
 Do not use it to diagnose an unknown failure by itself; use `diagnose` first.
 Do not treat document validation, formatting, or a broad build as behavioral
@@ -70,7 +71,8 @@ Rules:
   shape, not outcome.
 - If a repository-owned script reports fidelity, quote that label rather than
   inventing a stronger one.
-- If no fidelity can be determined, report `partial` and name what is missing.
+- If no fidelity can be determined, say so and name the coverage fact that is
+  missing, instead of claiming a fidelity.
 
 ## Change Shape Matrix
 
@@ -95,6 +97,7 @@ Validation:
 - <command or check>: verified (equivalent)
 - <command or check>: not run (remote-only; <reason>)
 - <command or check>: blocked (<environment, approval, dependency, or missing build>)
+- <command or check>: unconfirmed (<the confirming method that would settle it>)
 - <evidence source>: partial / approximate (<what it proves and does not prove>)
 ```
 
@@ -103,13 +106,43 @@ record its reason, observable assertion, fidelity, and remaining gap in the
 existing evidence record. A failed command is useful only when its failure
 matches the prediction being tested.
 
-Use status terms precisely:
+Use status terms precisely. Name the status you mean; do not replace it with a
+softer word:
 
-- `verified`: command/check ran and passed;
-- `not run`: skipped intentionally, with reason;
-- `blocked`: could not run because of environment, dependency, approval, or
-  missing artifact;
-- `partial`: only lower-level, indirect, or source-review evidence exists.
+| Status | Meaning | Must report | Do not write |
+|---|---|---|---|
+| `verified` | command/check ran and passed | the command or check, and its result | "should pass", "looks fine", "probably works" |
+| `not run` | skipped intentionally, with reason | the reason it was skipped | "should be ok", "untested but likely fine" |
+| `blocked` | could not run because of environment, dependency, approval, or missing artifact | which of those applies | "failed", "not run" |
+| `partial` | only lower-level, indirect, or source-review evidence exists | what that evidence proves and does not prove | "verified" |
+| `unconfirmed` | the record does not show whether the check ran or what it returned, and no confirming method has been applied | the confirming method that would settle it | "partial", "unknown", "probably fine" |
+
+Boundaries for `unconfirmed`, so it is neither a softer `partial` nor a skipped
+check:
+
+- `not run` versus `unconfirmed`: `not run` means the check is known not to have
+  run; `unconfirmed` means the record does not establish whether it ran.
+- `blocked` versus `unconfirmed`: `blocked` names a known blocker; `unconfirmed`
+  needs no blocker, only a missing record or method.
+- `partial` versus `unconfirmed`: `partial` has lower-fidelity evidence;
+  `unconfirmed` has no evidence status until the confirming method is applied.
+
+## Before Reporting
+
+Apply this before reporting a conclusion whose scope includes a fix effect,
+runtime behavior, or a check result. Each item must be answerable from what was
+done and what it proved.
+
+```text
+[ ] Does each conclusion name the range it covers?
+[ ] Does each executed check name its command and result?
+[ ] Does each skipped or blocked check name its reason or blocker?
+[ ] Does each unknown judgment name the method that would confirm it?
+[ ] Is fidelity stated when a local check stands in for a broader gate?
+[ ] Is every status word one of the five above, not a softer substitute?
+```
+
+If an item cannot be answered, report the gap instead of the claim.
 
 ## Integration Points
 
