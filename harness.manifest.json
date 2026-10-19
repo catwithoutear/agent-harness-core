@@ -316,6 +316,20 @@
           "omp",
           "zcode"
         ]
+      },
+      {
+        "id": "worktree-branch-policy",
+        "source": "rules/worktree-branch-policy.md",
+        "target": ".rules/worktree-branch-policy.md",
+        "description": "Branch and worktree policy for developing this repository.",
+        "selfOnly": true,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
       }
     ],
     "commands": [

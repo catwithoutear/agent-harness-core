@@ -769,6 +769,36 @@ export async function run(test) {
     });
   });
 
+  await test("selfOnly shared assets stay inside the package checkout", () => {
+    const ruleIds = (target) => {
+      const result = capture(() =>
+        runHarnessProject([
+          "--target",
+          target,
+          "--dry-run",
+          "--clients",
+          "codex",
+          "--content",
+          "rules",
+          "--json"
+        ])
+      );
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      return JSON.parse(result.stdout).records
+        .filter((record) => record.content_kind === "rules")
+        .map((record) => record.asset_id);
+    };
+
+    withTempTarget((target) => {
+      const external = ruleIds(target);
+      assert(!external.includes("worktree-branch-policy"), "selfOnly asset leaked into another target");
+      assert(external.includes("loop-contract"), "distributable rule must still project");
+    });
+
+    const own = ruleIds(packageRoot);
+    assert(own.includes("worktree-branch-policy"), "selfOnly asset must project into the package checkout");
+  });
+
   await test("render projection verify rejects output from an obsolete renderer", () => {
     withTempTarget((target) => {
       const project = capture(() =>
