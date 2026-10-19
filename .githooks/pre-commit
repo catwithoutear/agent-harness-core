@@ -1,0 +1,35 @@
+#!/bin/sh
+# Refuse to commit directly on the integration branch.
+#
+# Activate once per clone:  git config core.hooksPath .githooks
+set -eu
+
+branch=$(git symbolic-ref --short -q HEAD || true)
+# A detached HEAD (rebase, bisect, inspection) has no integration line to protect.
+[ -n "$branch" ] || exit 0
+
+default=$(git symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+if [ -z "$default" ]; then
+  case "$branch" in
+    main|master) default="$branch" ;;
+    *) exit 0 ;;
+  esac
+fi
+[ "$branch" = "$default" ] || exit 0
+
+# Merges, cherry-picks and reverts bring already-reviewed work into the line.
+for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
+  if git rev-parse -q --verify "$marker" >/dev/null 2>&1; then
+    exit 0
+  fi
+done
+
+printf '%s\n' \
+  "refusing to commit on '$branch': it is the integration branch." \
+  "" \
+  "Develop on a <type>/<topic> branch in .worktree/, then integrate through a" \
+  "merge request. See the branch and worktree policy under .rules/." \
+  "" \
+  "Bypass a single commit with --no-verify only when repairing history" \
+  "deliberately." >&2
+exit 1
