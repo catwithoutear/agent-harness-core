@@ -9,6 +9,75 @@ import { runHarnessProject } from "../lib/project/projector.js";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export async function run(test) {
+  await test("Codex role refresh retains model overrides and verifies the refreshed body", () => {
+    withTempTarget((target) => {
+      const args = ["--target", target, "--clients", "codex", "--content", "subagents", "--conflict", "overwrite", "--json"];
+      assert.equal(capture(() => runHarnessProject(args)).status, 0);
+      const role = path.join(target, ".codex/agents/reviewer.toml");
+      const canonical = fs.readFileSync(role, "utf8");
+      const overrides = 'model = "gpt-6-astra"\nmodel_reasoning_effort = "high"\n';
+      fs.writeFileSync(role, canonical.replace("developer_instructions =", overrides + "developer_instructions =").replace("## Dispatch Boundary", "## Old body"));
+      fs.chmodSync(role, 0o600);
+      assert.equal(capture(() => runHarnessProject([...args, "--dry-run"])).status, 0);
+      assert.equal(capture(() => runHarnessProject(args)).status, 0);
+      assert.equal(fs.readFileSync(role, "utf8"), canonical.replace("developer_instructions =", overrides + "developer_instructions ="));
+      assert.equal(fs.statSync(role).mode & 0o777, 0o600);
+      assert.equal(capture(() => runHarnessProject([...args, "--verify"])).status, 0);
+      fs.appendFileSync(role, "# drift\n");
+      assert.equal(capture(() => runHarnessProject([...args, "--verify"])).status, 1);
+    });
+  });
+  await test("unsupported Codex role configuration fails before any role or state changes", () => {
+    withTempTarget((target) => {
+      const args = ["--target", target, "--clients", "codex", "--content", "subagents", "--conflict", "overwrite", "--json"];
+      assert.equal(capture(() => runHarnessProject(args)).status, 0);
+      const role = path.join(target, ".codex/agents/reviewer.toml");
+      const canonical = fs.readFileSync(role, "utf8");
+      for (const fields of ['sandbox_mode = "read-only"\n', 'model = "a"\nmodel = "b"\n']) {
+        const original = canonical.replace("developer_instructions =", fields + "developer_instructions =");
+        fs.writeFileSync(role, original);
+        const state = fs.readFileSync(path.join(target, ".harness/projection-state.json"), "utf8");
+        for (const flags of [[], ["--dry-run"], ["--verify"]]) {
+          const result = capture(() => runHarnessProject([...args, ...flags]));
+          assert.equal(result.status, 1);
+          assert.match(result.stdout, /refusing to discard custom fields/);
+          assert.equal(fs.readFileSync(role, "utf8"), original);
+          assert.equal(fs.readFileSync(path.join(target, ".harness/projection-state.json"), "utf8"), state);
+        }
+      }
+      const trailing = canonical + 'model = "gpt-6-astra"\ncustom = ' + "'''\ntrailing config\n'''\n";
+      fs.writeFileSync(role, trailing);
+      const state = fs.readFileSync(path.join(target, ".harness/projection-state.json"), "utf8");
+      for (const flags of [[], ["--dry-run"], ["--verify"]]) {
+        assert.equal(capture(() => runHarnessProject([...args, ...flags])).status, 1);
+        assert.equal(fs.readFileSync(role, "utf8"), trailing);
+        assert.equal(fs.readFileSync(path.join(target, ".harness/projection-state.json"), "utf8"), state);
+      }
+    });
+  });
+  await test("Codex role preflight rejects live and dangling links without changing destination or state", () => {
+    withTempTarget((target) => {
+      const args = ["--target", target, "--clients", "codex", "--content", "subagents", "--conflict", "overwrite", "--json"];
+      assert.equal(capture(() => runHarnessProject(args)).status, 0);
+      const role = path.join(target, ".codex/agents/reviewer.toml");
+      const state = fs.readFileSync(path.join(target, ".harness/projection-state.json"), "utf8");
+      fs.unlinkSync(role);
+      const destination = path.join(target, "external.toml");
+      fs.symlinkSync(destination, role);
+      for (const live of [false, true]) {
+        if (live) fs.writeFileSync(destination, "preserved\n");
+        for (const flags of [[], ["--dry-run"], ["--verify"]]) {
+          const result = capture(() => runHarnessProject([...args, ...flags]));
+          assert.equal(result.status, 1);
+          assert.match(result.stdout, /refusing to replace a linked Codex role/);
+          assert.equal(fs.lstatSync(role).isSymbolicLink(), true);
+          assert.equal(fs.existsSync(destination), live);
+          if (live) assert.equal(fs.readFileSync(destination, "utf8"), "preserved\n");
+          assert.equal(fs.readFileSync(path.join(target, ".harness/projection-state.json"), "utf8"), state);
+        }
+      }
+    });
+  });
   await test("subagent manifest descriptions match role frontmatter", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
     for (const agent of manifest.assets.agents) {

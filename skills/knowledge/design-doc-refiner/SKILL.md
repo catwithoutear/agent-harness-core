@@ -72,6 +72,8 @@ needs evidence-backed pressure testing before coding.
 
 ## Refinement Rules
 
+- Apply the reader-facing guidance in `references/output-contract.md` before
+  sharing the design; retain the required sections and readiness evidence.
 - Convert vague claims into concrete solution-level behavior and contract
   statements.
 - Preserve technical accuracy over prose quality.

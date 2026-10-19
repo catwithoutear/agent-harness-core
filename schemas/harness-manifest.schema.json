@@ -3,12 +3,61 @@
   "$id": "https://github.com/catwithoutear/agent-harness-core/schemas/harness-manifest.schema.json",
   "title": "Agent Harness Manifest",
   "type": "object",
-  "required": ["name", "version", "clients", "commands", "assets"],
+  "required": [
+    "name",
+    "version",
+    "clients",
+    "commands",
+    "assets"
+  ],
   "properties": {
-    "name": { "type": "string" },
-    "version": { "type": "string" },
-    "clients": { "type": "object" },
-    "commands": { "type": "object" },
-    "assets": { "type": "object" }
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "clients": {
+      "type": "object"
+    },
+    "commands": {
+      "type": "object"
+    },
+    "assets": {
+      "type": "object"
+    },
+    "integrations": {
+      "type": "object",
+      "required": [
+        "dsh"
+      ],
+      "properties": {
+        "dsh": {
+          "type": "object",
+          "required": [
+            "kind",
+            "entry",
+            "bundle",
+            "enabledByDefault"
+          ],
+          "properties": {
+            "kind": {
+              "const": "host-plugin"
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bundle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "enabledByDefault": {
+              "const": false
+            }
+          }
+        }
+      }
+    }
   }
 }

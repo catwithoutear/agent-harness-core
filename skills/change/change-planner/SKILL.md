@@ -7,9 +7,10 @@ description: Use when turning settled requirements, proposals, designs, specs, o
 
 Convert a settled design into executable, reviewable task slices inside the
 active `.changes` workspace. Use this skill after the direction is chosen and
-before coding starts or resumes. On the design path, the solution-design review
-must be ready. On the compact path, a settled local solution and an explicit
-no-design/no-pack reason are enough.
+before coding starts or resumes. When solution design is required, its review
+must be ready. For a settled local solution without a material trigger, record
+an explicit no-design/no-pack reason. `workflow-control:Required Materials`
+owns these conditions; planning modes describe actions, not review coverage.
 
 Use `change-workspace-operator` for regulated file creation, lookup, reading,
 and validation. This skill decides what the tasks should be; it does not replace
@@ -61,11 +62,10 @@ ambiguous, return `NEEDS_USER_DECISION` instead of inventing tasks.
 
 ## Implementation-Design Trigger Rule
 
-On the design path, decide whether the change needs an
-`implementation-design/` topology pack after the solution-design review is
-ready and before task slicing. On the compact path, record why the settled local
-solution does not meet this trigger. Require the pack when any of these are
-true:
+Decide whether the change needs an `implementation-design/` topology pack
+after any required solution-design review is ready and before task slicing.
+For a settled local solution, record why it does not meet this trigger.
+Require the pack when any of these are true:
 
 - the change crosses subsystem boundaries;
 - the change touches two or more modules with dependency-order risk;
@@ -101,6 +101,18 @@ the no-design/no-pack reason is explicit, and the lightweight plan records
 validation and rollback. It does not require a separate solution-design
 artifact or review. Uncertainty about behavior, compatibility, ownership,
 lifecycle, migration, or dependency order disqualifies this path.
+
+## Presenting The Plan
+
+Before sharing a plan with the user, read `design-doc-refiner`'s
+`references/output-contract.md`, section `Reader-Facing Design And Plan`, when
+that skill is available. Locate it through the current manifest or installed
+skill directory; source category paths do not survive flat skill projection.
+Use it for the behavior overview and contextual decisions. If it is unavailable
+in a selective skill install, report the presentation-guidance gap and retain
+this skill's existing plan contract. Preserve dependency-ordered task slices,
+validation, rollback, and the readiness gate. A presentation change does not
+settle an upstream decision or authorize execution.
 
 ## Planning Flow
 

@@ -94,7 +94,7 @@ change before creating the next structured artifact.
   with source references, outcome expectations, constraints, code landscape,
   risk areas, and scoping confidence. Do not create a new template unless the
   existing owning artifact cannot hold the evidence.
-- Design path: challenge the proposal, wait until the solution-design review is
+- When solution design is required: challenge the proposal, wait until the solution-design review is
   ready, then assess the implementation-design trigger. When the trigger
   applies, populate and review the pack before using `change-planner` to create
   task slices. Review the complete task set before implementation. Writers

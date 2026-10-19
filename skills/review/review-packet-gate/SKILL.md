@@ -10,6 +10,21 @@ artifact, source path, design source, or command output that proves the risk.
 
 ## Review Scope
 
+Use `workflow-control:Review Coverage` for complete task scope and shared
+coverage duties. For code, `multi-lens-review` is the one normal code-review
+procedure and supplies its code dimension families; invoke the applicable
+project-native baseline. `multi-lens-design-review` owns design dimensions.
+Enumerate assignments and evidence in the existing packet before judging
+completeness. A focused specialist result cannot stand for the complete review;
+missing source/mapping stays a gap and N/A requires checked evidence. Formal
+closure of declared relations alone cannot prove the semantic dimension set
+complete.
+
+Use `workflow-control:Review Coverage` completion checks to accept
+reuse/necessity coverage, including results from a separate simplification
+pass. Findings, kept-block comparisons, and unsubstantiated coverage are
+different outcomes; no reported defect is not a complete comparison.
+
 For ordinary reviews, gather the target, diff, and available context yourself
 before asking for missing input. Report source-proven defects even when design
 intent or execution evidence is unavailable; qualify the conclusions that depend
@@ -36,6 +51,71 @@ For a formal readiness decision, require:
 Reject the packet as `NOT_READY` when the scope, intended behavior, source
 artifact, or validation expectation is missing. Do not review a vague summary as
 if it were the diff.
+
+## Source Navigation and Acceptance
+
+For filesystem-backed ordinary review and native formal review, including direct
+reviewer and read-only simplification dispatch, prepare source navigation before launching
+the first pass. Resolve the exact root and complete task target as usual; select
+the target files and necessary interface, caller, contract and test context.
+Run the existing target helper's source actions below. Put the immutable output
+and invocation in the existing Review/Scope Packet, not a separate status store.
+The root is explicit in the local invocation; portable receipts contain no root.
+
+```text
+node <review-packet-gate-skill-root>/scripts/review-target-digest.mjs source-snapshot \
+  --code-root <resolved-root> --target-path <target-file-or-directory>... \
+  --include-path <target-or-context-file-or-directory>... --json
+
+node <same-helper> source-inventory --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> [--prefix <relative-directory>] --json
+
+node <same-helper> source-read --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> --path <relative-file> \
+  [--start <one-based-line>] [--end <one-based-line>] --json
+
+node <same-helper> source-check --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> --evidence <read-receipts-array.json> --json
+
+node <same-helper> source-return --code-root <resolved-root> \
+  --snapshot <saved-snapshot.json> --report <original-report> \
+  --path <relative-file> --start <line> --end <line> \
+  --claim <unsupported-premise> --invariant <fixed-behavior-or-comparison> --json
+```
+
+Capture stdout in the existing packet/evidence location. Use inventory to find
+available dependencies instead of guessing names or leaving the selected root.
+Read emits whole-file byte identity and exact numbered lines from one buffer;
+save or reference the material receipts alongside the existing comparison.
+Before accepting coverage, source-check verifies the delivered corpus is still
+current and the cited receipts match its actual slices. Inspect its `status`,
+`source_identity_verified` and named gaps; a successful command invocation alone
+does not mean that evidence passed. An unavailable interface stays a gap; add
+newly justified context through a new snapshot, retaining the prior one. After
+authorized edits, likewise use a new current snapshot, not rewritten old proof.
+
+Then execute `workflow-control:Review Coverage` acceptance on the actual claim
+and final call. Source-check always leaves `semantics_verified=false`; it
+cannot discover all necessary context, validate a copied probe's adaptations,
+prove an API comparison, or establish that a reviewer loaded a skill. Compile
+or exercise the actual candidate when that is needed to support the claim,
+and retain substitution/coverage limits. Do not replace an exact call test
+with a related mechanism or a quoted source fragment.
+
+When a claim remains unsupported, source-return binds the original report hash,
+exact block, premise and invariant for the existing bounded return procedure.
+Keep the original report; the same assigned reviewer returns corrected evidence
+or explicit unsubstantiated coverage. The coordinator rechecks it, rather than
+rewriting reviewer-owned conclusions or treating the return artifact as approval.
+Missing source, changed bytes and mismatched quotes cannot substantiate coverage.
+Neither ordinary source receipts nor a return are formal protocol records.
+
+These read-only helpers are navigation aids, not a filesystem sandbox. Native
+formal review uses the same helpers and fixed-root invocation. For explicitly
+isolated review-run, preserve Target Identity and the admitted provider target
+view. Never give the isolated Phase-A lane a local root, snapshot, expected
+comparison or return; broker-only reads and its closed schema remain mandatory.
+Coordinator local source receipts do not replace any formal owner gate.
 
 ## Completeness Checks
 
@@ -93,6 +173,17 @@ ordinary review report.
 
 ## Re-review
 
+The coordinator reconciles prior findings from the owning review records and
+their dispositions, including relevant nonblocking opportunities and
+owner-withdrawn fixes. Preserve their identity across amendments, rebases and
+scope changes; omission from a later clean report is not a disposition. Match
+the finding's trigger, affected behavior and resolution evidence to the current
+target, not merely an earlier tested fix or a different failure path.
+Honor an explicit deferral or withdrawal: carry its owner, reason and remaining
+risk without treating it as repaired or silently authorizing the deferred edit.
+Keep this reconciliation in the existing Review Packet; do not feed prior
+conclusions into isolated discovery lanes.
+
 On re-review, do not repeat the first review blindly. For each prior finding,
 state one of:
 
@@ -126,6 +217,33 @@ unversioned `protocol=review-run` field. Do not create a second route based on
 assurance labels, Markdown shape, provider, or a reviewer assertion. Requests
 that do not satisfy this contract fail closed; they are not reinterpreted as a
 legacy review.
+
+### Execution Selection
+
+The request's `execution_profile` selects how the existing protocol executes:
+`execution_profile=native` is the default for a new formal review, including requests to delegate
+a subagent for formal deep review. Use the client's actual subagent API and a
+fresh conversation when supported (`fork_turns=none` in Codex). Native requires
+source navigation, real returned actor output, capability comparison and
+coordinator acceptance; it does not require provider conformance or signing
+credentials and does not claim filesystem or cryptographic isolation.
+
+The selected readable source view must cover the complete target and assigned
+units, including any required baseline/deleted-file or diff-only material.
+Native admission does not materialize that history automatically. If a required
+unit has no verifiable source in the selected view, retain the source gap and
+`NOT_READY`; never omit it or replace it with a current unrelated file.
+
+Select `isolated` only for an explicit strong-isolation requirement with an
+integrated provider. Its existing capability/conformance admission remains
+mandatory. Do not substitute native after isolated admission fails. Historical
+persisted routing/preflight records without an execution selection retain their
+legacy isolated interpretation; do not rewrite their digests or lineage.
+
+Assurance (`quick`, `standard`, `deep`) controls evidence depth, not the execution
+profile. Native deep review retains complete scope, independent inventory and
+comparison, immutable attempts and all five owner gates. Admission or a
+successful child execution does not establish readiness.
 
 The coordinator persists one immutable dispatch contract before dispatch:
 
@@ -174,14 +292,17 @@ The helper uses `fingerprint_format=review-target`, UTF-8 declarations with one
 final LF, and fail-closed target errors. The result is evidence for the
 request and discovery record, not a substitute for the dispatch contract.
 
-### Isolated Dispatches
+### Dispatch And Return
 
 ```text
 reviewer: request + dispatch contract + target
   -> correctness findings + relation-level review-ledger
 
-verifier inventory: request + dispatch contract + target
-  -> sealed discovery + shard-plan
+verifier inventory: machine-built neutral Phase-A packet
+  -> original independent inventory + source evidence
+
+coordinator: independent inventory + immutable expected contract
+  -> sealed discovery -> separate shard planning -> managed dispatch
 
 verifier compare: sealed discovery + shard closure + reviewer ledger
   -> coverage aggregate only
@@ -194,10 +315,75 @@ Inventory receives no reviewer ledger, findings, prior comparison, or
 conclusion. The reviewer owns correctness findings and the verifier owns
 coverage comparison. Neither role emits `overall_gate` or mutates the target.
 
-For deep review, do not hand-author the Phase-A prompt. Accept the run only
-after the provider has a current runtime conformance receipt and a complete
-capability matrix, then extract the machine-built packet with
-`review-run.mjs phase-a-packet`. Its closed schema binds the exact protocol,
+For deep review, do not hand-author the Phase-A packet. Extract the machine-built
+packet with `review-run.mjs phase-a-packet`. Native admission binds the target
+and selected source snapshot. Give the actor the separate fixed-root invocation
+and neutral source/rule materials; never expected relations, reviewer output,
+prior findings or a desired alternative. After discovery seals and planning
+completes, use `native-review-packet` for each native deep reviewer assignment.
+Admit its attempt before launching the actual host subagent. Include the
+machine admission output (actual deadline) and immutable request/routing
+records (assurance, discovery policy and retry/checkpoint budgets) with that
+assignment; these expected-lane records must never enter Phase A. Save the original returned
+report and source-read receipts in the existing change-relative Review Packet
+materials. Record the actual child execution identity, input packet digest and
+terminal execution status when submitting discovery or the reviewer ledger.
+Supply `--code-root` for native discovery/append source checks. The `dispatch`
+transition prepares state; it does not launch an actor. Missing, running,
+cancelled or failed output cannot be synthesized into a successful return.
+
+For a native deep request, omit isolated `provider_policy`/`deep_preflight` and
+set `native_preflight: {source_snapshot: <source-snapshot result>}`. The local
+root stays in the invocation, outside portable records. The managed sequence is:
+
+```text
+accept --input <request.json>
+phase-a-packet                     # launch fresh native inventory with this output
+discover --input <discovery.json> --code-root <root>
+begin-planning / plan --input <plan.json> / dispatch
+native-review-packet --shard-id <id> --attempt-id <id>
+admit-attempt --input <admission.json>  # input_digest = reviewer packet.record_digest
+# launch actual native reviewer, then inspect its comparison evidence
+append-attempt --input <ledger.json> --code-root <root>
+aggregate --input <owner-gates.json>
+```
+
+Each invocation uses `review-run.mjs <action> --run-root <managed run> --json`.
+Native successful submissions carry `native_execution` with the actual host
+`execution_id`, `execution_status: "completed"`, machine `input_digest`, and
+`output_ref`/`source_receipts_ref`. Each material ref is exactly
+`{path: "reviews/materials/<run-id>/<name>.json", digest: "sha256:<raw-byte hash>"}`
+relative to the owning change. The receipt material is an array of unchanged
+`source-read` results. The reviewer raw JSON is the original ledger body without
+the coordinator's `native_execution` wrapper.
+
+Raw narrative reports may be JSON material bodies referenced by that ledger.
+If a managed Markdown review is needed, create it through the existing change
+document tool and its review-round template/index contract. An arbitrary raw
+Markdown filename or frontmatter is not a valid regulated review artifact;
+preserve original returns separately when preparing the managed document.
+
+The Phase-A raw JSON has only `observed_units`, `observations`, and `source_refs`.
+Each unit is a `UnitKey`; each observation has `unit_key`, a neutral
+`dimension_id`, `disposition`, and nonempty `evidence_refs`. Preserve this as
+`native_inventory` in discovery and map each observation exactly once through
+`native_observation_mapping: [{observation_index, relation_ids, reason?}]`.
+Context observations may have no relation IDs with an explicit reason; assigned
+relations must all have a mapping. Mapping completeness is structural evidence:
+the verifier must still check whether mapped observations support those rows.
+Do not rewrite child observations or author a successful reviewer ledger on its
+behalf. See the schema for the existing discovery/ledger fields.
+
+The coordinator resolves bounded comparison returns before sealing the ledger,
+then the verifier compares the sealed inventory against the assigned relations
+and reviewer evidence. Preserve original reports and all named gaps. Native
+execution records and matching hashes are traceability, not strong isolation or
+automatic semantic validation. Keep neutral Phase A and expected Phase B
+materials separate even though the host may expose shared filesystem/tools.
+
+For explicitly isolated execution, accept the run only after the provider has
+a current runtime conformance receipt and a complete capability matrix. Its
+closed schema binds the exact protocol,
 run id, phase, target fingerprint, provider, target-view capability and
 firewall policy. Unknown fields—including expected relations, dispatch,
 ledger, findings or a prior conclusion—are contamination and fail closed. A
@@ -215,6 +401,56 @@ unassigned relations remain visible as typed gaps:
 `RULE_SOURCE_GAP`, `UNIT_IDENTITY_GAP`, `RULE_COVERAGE_GAP`,
 `APPLICABILITY_GAP`, `EVIDENCE_GAP`, `STALE_REVIEW`, and
 `CONCLUSION_CONFLICT`.
+
+For reuse/necessity relations, reviewer evidence must reference the compact
+`Capability Comparison Evidence` owned by
+`workflow-control/references/minimal-implementation.md`. Carry this authority
+in the existing rule source and dimension mapping; use existing ledger
+evidence references, not a new gate or parallel report. In Phase B, check that
+the referenced evidence is available and addresses the assigned block; missing
+or unrelated evidence is an `EVIDENCE_GAP`. Correctness of the comparison remains
+the reviewer's responsibility, with coordinator acceptance under
+`workflow-control:Review Coverage`. A coordinator-rejected comparison against
+different behavior does not support `covered`; the reviewer must supply a
+corrected comparison or record `not-covered`. Structural closure cannot
+rehabilitate that result.
+Do not disclose expected comparisons to
+the isolated Phase-A lane.
+
+The reviewer records a missing comparison as `not-covered`, not `covered`.
+If Phase B finds that a claimed comparison is unavailable or unrelated, retain
+that required difference and `independent_review_gate=NOT_READY` until the
+reviewer supplies current evidence and the comparison closes. The coordinator
+must consume that owner result; structural ledger closure cannot override it.
+
+`validateLedger` checks identity, status and nonempty portable evidence
+references; it does not read their targets or prove their semantic adequacy.
+A machine-closed ledger cannot by itself certify capability discovery or a keep
+reason. Preserve this limit when reporting `coverage_gate` and the final gate;
+do not use a passing validator to override a known evidence gap.
+
+Resolve coordinator acceptance returns before `append-attempt` seals the
+reviewer ledger. Preserve the raw report and return with evidence references;
+the reviewer supplies the terminal ledger, recording unresolved required
+comparisons as `not-covered`. An execution may have succeeded while coverage
+remains incomplete. If the reviewer has not returned, keep the admitted
+attempt open and use its existing timeout/cancellation policy; do not synthesize
+a successful ledger. A non-gating `coordinator_source_assessment` cannot stand
+in for this owner response or close the gap.
+
+If the ledger is already immutable, do not edit it or append an overlapping
+successful retry: aggregation treats duplicate relations as gaps, not as a
+newest-result selection. Finish an already recorded `not-covered` run with
+`NOT_READY`, or invalidate an erroneously accepted run, and obtain corrected
+owner evidence in a successor run. Preserve the prior report, rejection and
+run lineage in the existing Review Packet. The filesystem lifecycle does not
+validate this cross-run lineage; the coordinator checks those references.
+Before consuming a gate, read the latest fenced control revision. An
+`invalidated` run's old `READY` file is historical and must not authorize
+progress; invalidation does not rewrite it. `completed` describes lifecycle
+termination, not gate acceptance.
+Recheck the returned comparison and current target before accepting the
+successor; a new run id alone supplies no missing semantic evidence.
 
 Discovery must be sealed before planning, and the sealed discovery plus shard
 closure must exist before dispatch, comparison or aggregation. The runtime

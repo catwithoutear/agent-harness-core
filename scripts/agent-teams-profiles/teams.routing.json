@@ -1,0 +1,36 @@
+{
+  "$comment": "Squad declarations for dsh-agent-teams named profiles. Roles reference agents/roles/<role>.md; provider/model pairs mirror the proven liangshen-roles preset routing. harness-orchestrator is intentionally not rostered: the captain IS the orchestrator.",
+  "plugin": {
+    "id": "agent-teams",
+    "memberMaxDepth": 1,
+    "maxMembers": 8,
+    "stateDir": ".agent-teams",
+    "memberProvider": "spawn"
+  },
+  "provider": "deepseek-official",
+  "preambleTemplate": "You are the `{role}` specialist member of an AgentTeams crew in DeepSeek Harness. Your task assignment message and the task contract (objective, acceptance, inScope, verify) are your Input Packet. Follow the role definition below exactly: respect its Authority, Required Inputs, stop conditions, and Output Packet contract, and deliver the Output Packet as your `agent_teams_update_task` output, followed by a concise report to the captain.",
+  "squads": {
+    "harness-delivery": {
+      "description": "Delivery squad: implementation + verification + review + independent coverage (full quality-gate flow).",
+      "protocol": "Only code-worker and code-simplifier may edit files; every other member is strictly read-only. Produce all outputs through agent_teams_update_task; never touch other members' tasks. The plugin enforces the requirements→implementation→verification→review→integration gate order.",
+      "members": [
+        { "role": "code-worker", "model": "deepseek-v4-flash" },
+        { "role": "code-simplifier", "model": "deepseek-v4-flash" },
+        { "role": "implementation-planner", "model": "deepseek-v4-flash" },
+        { "role": "reviewer", "model": "deepseek-v4-pro" },
+        { "role": "review-verifier", "model": "deepseek-v4-pro" }
+      ]
+    },
+    "harness-research": {
+      "description": "Research squad: mapping, solution design, alternatives, planning review, synthesis (all read-only).",
+      "protocol": "All members are read-only: never edit files. Deliver each task's Output Packet as the task output; mark conflicting conclusions and preserve minority positions (council-synthesizer).",
+      "members": [
+        { "role": "repo-mapper", "model": "deepseek-v4-flash" },
+        { "role": "solution-designer", "model": "deepseek-v4-pro" },
+        { "role": "design-alternatives", "model": "deepseek-v4-pro" },
+        { "role": "planning-reviewer", "model": "deepseek-v4-pro" },
+        { "role": "council-synthesizer", "model": "deepseek-v4-pro" }
+      ]
+    }
+  }
+}

@@ -141,6 +141,8 @@
       "decisions/*.md",
       "timeline/*.md",
       "reviews/*.md",
+      "reviews/materials/*.json",
+      "reviews/materials/**/*.json",
       "tasks/*.md",
       "review-runs/**/*.json"
     ],

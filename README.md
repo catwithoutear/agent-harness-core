@@ -194,6 +194,59 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
+## Existing ZCode and DSH Roles
+
+Use the `harness-deploy` skill to choose the smallest authorized installation,
+resolve loaded roots, preserve external backups and verify that skills and roles
+are not duplicated. It uses the existing projector or owning overlay deployer.
+
+ZCode Desktop and DSH can consume the shared `.agents/skills` roots in their
+verified installed versions. Project those skills once through Codex. ZCode native role refresh is separate from the generic four-client projector:
+
+```bash
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --dry-run --json > zcode-plan.json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --from-plan zcode-plan.json --json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --verify --json
+```
+
+Inspect the plan and existing bodies, and resolve ZCode's actual Desktop storage
+before applying. The tool preserves metadata except canonical name/description,
+rejects stale plans and reports partial writes with backup mappings.
+
+DSH uses an optional host plugin shipped in this package. Install into the
+explicitly selected profile with DSH's native plugin manager:
+
+```bash
+dsh plugin --profile <profile-name> add <core-path-or-tarball>
+```
+
+The bundle inserts one `harness-roles` instance. It reads manifest-declared role
+files from the installed Core package at activation and exposes `subagent_<role>`
+tools to every preset and teammate. The profile must provide `tools`,
+`systemPrompt`, `subagents` and a provider supporting persona, tool filtering and
+depth limits. The default subagent provider is `spawn`, with `maxDepth: 2`.
+Omitted `agentOptions` inherit the parent model route; Core chooses no model.
+Profile overrides of `harness-roles.config` may supply `agentOptions`, an absolute
+`rolesDir`, provider, depth, additional `readOnlyDeny` names or `policy: false`.
+Read-only roles always deny write/edit; shell access remains, so this is not a
+sandbox. Role children deny inherited delegation/team controls and role tools.
+
+When migrating, preserve the selected profile and model settings, remove the
+old embedded Harness role rows and `@local/dsh-harness-roles` bundle/dependency,
+and install the Core bundle. Do not leave two integrations registering the same
+tool names. Retain any linked local plugin directory until the profile no longer
+references it. `harness-native-roles --client dsh` has been removed. Verify the
+effective tree with `dsh --profile <profile-name> --dump-config`, then check role
+tool visibility and dispatch in a fresh or explicitly reloaded session. Source
+or package checks do not prove that a running Web instance reloaded. Core's
+native refresh command never restarts services.
+
+`--conflict backup` stores generic projection snapshots under
+`~/backup/agent-harness-core/`, outside discovery roots. Each private snapshot
+contains its original-to-saved mapping; native role refresh uses the same owner.
+Retain these mappings for recovery, and remove reviewed plan files when done.
+Choose deployment clients explicitly to avoid updating clients you have stopped.
+
 ## User-Global Agent Constitution
 
 The reusable user-global instruction template lives at
@@ -218,18 +271,24 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-Use the lightest workflow that fits the work:
+Use one workflow loop with material requirements determined by the work:
 
-- Fast path: for wording, formatting, or similarly local work that changes no
-  behavior, interface, lifecycle, dependency, migration, or failure contract,
-  observe the current source, make the narrow edit, and verify it.
-- Compact path: for bounded implementation with a settled solution and no
-  implementation-design trigger, record the goal, affected source, why design
-  and the pack are unnecessary, validation, and rollback. Review that plan when
-  its risk warrants review.
-- Design path: challenge the proposal, review the solution design, assess the
-  implementation-design trigger, review the populated pack when required, then
-  create and review task slices before implementation.
+- For wording, formatting, or similarly local work that changes no behavior,
+  interface, lifecycle, dependency, migration, or failure contract, observe the
+  current source, make the narrow edit, and verify it.
+- For bounded implementation with a settled solution and no implementation-design
+  trigger, record goal, affected source, no-design/no-pack reason, validation,
+  and rollback. Review that plan when its risk warrants review.
+- For unresolved solution decisions, challenge the proposal, review solution
+  design, assess the implementation-design trigger, review a required pack,
+  then create and review task slices before implementation.
+
+Every general/final review covers the complete task scope and every current
+code/design dimension family plus the project baseline. Material requirements,
+risk, and role allocation affect investigation depth and independence, not
+scope or dimension inclusion. N/A needs checked evidence; missing evidence
+remains a gap. See `workflow-control` for the authoritative common duty and the
+existing multi-lens skills for the separate code/design dimension lists.
 
 Solution design decides behavior and boundaries. An `implementation-design/`
 pack, when required, maps that accepted solution to code ownership, dependency

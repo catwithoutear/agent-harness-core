@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { ReviewRunError } from "../skills/review/review-packet-gate/scripts/review-records.mjs";
+import { digestValue, ReviewRunError } from "../skills/review/review-packet-gate/scripts/review-records.mjs";
 import {
   REQUIRED_CAPABILITIES,
+  buildNativeDiscoveryEnvelope,
+  executionProfile,
   buildVerifierDiscoveryEnvelope,
   buildDiscoveryLaneAttestation,
   buildProviderBinding,
@@ -53,6 +55,32 @@ function laneAttestation(laneKind, laneId) {
 }
 
 export async function run(run) {
+  await run("execution profile defaults only missing values and rejects explicit null", async () => {
+    assert.equal(executionProfile({}), "isolated");
+    assert.equal(executionProfile({}, "native"), "native");
+    assert.throws(() => executionProfile({ execution_profile: null }), /unknown execution_profile/);
+    assert.throws(() => executionProfile({ execution_profile: "unknown" }), /unknown execution_profile/);
+  });
+  await run("native source selection covers declared targets and target units", async () => {
+    const body = { format: "review-source", version: 1, target_paths: ["src"], files: [
+      { path: "src/a.js", sha256: key("a").digest, bytes: 1, line_count: 1 },
+      { path: "context/api.js", sha256: key("b").digest, bytes: 1, line_count: 1 }
+    ] };
+    const snapshot = { ...body, snapshot_digest: digestValue(body) };
+    const request = { run_id: "native-scope", target: { fingerprint: "target-owned-digest", files: ["src/a.js"] }, native_preflight: { source_snapshot: snapshot }, dispatch_contract: { relations: [{ unit_key: { unit_path: "src/a.js" } }] } };
+    assert.throws(() => buildNativeDiscoveryEnvelope({ ...request, target: { ...request.target, files: ["unrelated.js"] } }), /SOURCE|source|target/);
+    assert.throws(() => buildNativeDiscoveryEnvelope({ ...request, dispatch_contract: { relations: [{ unit_key: { unit_path: "context/api.js" } }] } }), /SOURCE|source|target/);
+    assert.throws(() => buildNativeDiscoveryEnvelope({ ...request, target: { fingerprint: "target-owned-digest" }, dispatch_contract: { relations: [{ unit_key: { unit_path: "deleted.js" } }] } }), /SOURCE|source|target/);
+    assert.equal(buildNativeDiscoveryEnvelope(request).target_fingerprint, "target-owned-digest");
+    assert.doesNotThrow(() => buildNativeDiscoveryEnvelope({ ...request, target: { ...request.target, files: ["src"] } }));
+    const narrowed = { ...body, target_paths: ["src/a.js"] };
+    assert.throws(() => buildNativeDiscoveryEnvelope({ ...request, target: { ...request.target, files: ["src"] }, native_preflight: { source_snapshot: { ...narrowed, snapshot_digest: digestValue(narrowed) } } }), /does not cover declared target files/);
+    assert.doesNotThrow(() => buildNativeDiscoveryEnvelope({ ...request, target: { fingerprint: "target-owned-digest" } }));
+  });
+  await run("native Phase A rejects malformed source and expected relation leakage", async () => {
+    assert.throws(() => buildNativeDiscoveryEnvelope({ run_id: "n", target: { fingerprint: "t" }, native_preflight: { source_snapshot: {} } }), /source snapshot/);
+    assert.throws(() => buildNativeDiscoveryEnvelope({ native_preflight: { source_snapshot: {}, expected_relations: [] } }), /forbidden or unknown/);
+  });
   await run("selectProvider accepts a full capability matrix", async () => {
     const binding = selectProvider(providerPolicy());
     assert.equal(binding.provider_id, "p1");

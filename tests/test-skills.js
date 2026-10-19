@@ -40,6 +40,24 @@ export async function run(test) {
     }
   });
 
+  await test("archify bundle is self-contained and vendored with its runtime", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const archify = manifest.assets.skills.find((skill) => skill.id === "archify");
+    assert(archify, "archify manifest entry missing");
+    const skillRoot = path.join(packageRoot, archify.source);
+    for (const required of [
+      "SKILL.md",
+      "bin/archify.mjs",
+      "schemas/architecture.schema.json",
+      "schemas/workflow.schema.json",
+      "examples/web-app.architecture.json",
+      "LICENSE"
+    ]) {
+      assert.equal(fs.existsSync(path.join(skillRoot, required)), true, `archify missing ${required}`);
+    }
+    assert.equal(fs.existsSync(path.join(skillRoot, "scripts", "check-update.mjs")), false, "archify must stay offline-safe");
+  });
+
   await test("design review uses one actionable project-agnostic principles baseline", () => {
     const skill = fs.readFileSync(
       path.join(packageRoot, "skills", "review", "multi-lens-design-review", "SKILL.md"),
@@ -174,7 +192,11 @@ export async function run(test) {
       "dispatch contract",
       "### Target Identity",
       "review-target",
-      "### Isolated Dispatches",
+      "### Execution Selection",
+      "### Dispatch And Return",
+      "execution_profile=native",
+      "native-review-packet",
+      "native_observation_mapping",
       "### Relation Ledger",
       "canonical JSON",
       "init-review-run",
@@ -208,6 +230,39 @@ export async function run(test) {
     assert.match(text, /not a new role, protocol, or gate/i);
   });
 
+  await test("ordinary code review uses the unified multi-lens procedure", () => {
+    const multiLens = fs.readFileSync(path.join(packageRoot, "skills", "review", "multi-lens-review", "SKILL.md"), "utf8");
+    const workflow = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
+    const gate = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
+    const command = fs.readFileSync(path.join(packageRoot, "commands", "harness", "review.md"), "utf8");
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const entry = manifest.assets.skills.find((skill) => skill.id === "multi-lens-review");
+    const normalize = (text) => text.replace(/\s+/g, " ");
+
+    assert(entry, "multi-lens-review manifest entry missing");
+    for (const trigger of ["code review", "review this diff", "review this commit", "review this MR", "review current task"]) {
+      assert(entry.triggers.includes(trigger), `multi-lens-review missing ordinary routing trigger: ${trigger}`);
+    }
+    assert.doesNotMatch(entry.negativeTriggers.join("\n"), /ordinary (?:baseline|code) review/i);
+    for (const negative of [
+      "requirements or design review without implementation review",
+      "review packet or formal gate without implementation review",
+      "skill or subagent package review without implementation review"
+    ]) {
+      assert(entry.negativeTriggers.includes(negative), `multi-lens-review missing scoped negative trigger: ${negative}`);
+    }
+
+    assert.match(normalize(multiLens), /one normal code-review procedure/i);
+    assert.match(normalize(multiLens), /mandatory project-native baseline/i);
+    assert.match(normalize(multiLens), /plan or report without implementation is not a code target/i);
+    assert.match(normalize(multiLens), /workflow-control:Review Coverage/);
+    assert.match(normalize(multiLens), /review-packet-gate:Packet/);
+    assert.match(normalize(workflow), /multi-lens-review.*one normal code-review procedure/i);
+    assert.match(normalize(gate), /multi-lens-review.*one normal code-review procedure/i);
+    assert.match(normalize(command), /multi-lens-review.*ordinary code, commit, diff, merge request, or complete task/i);
+    assert.match(normalize(command), /grill-diff.*interactive hunk review/i);
+  });
+
   await test("MR finding lifecycle separates disposition, state, and knowledge promotion", () => {
     const skill = fs.readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8");
     const lifecycle = fs.readFileSync(
@@ -238,6 +293,21 @@ export async function run(test) {
       assert.match(lifecycle, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `lifecycle missing ${required}`);
     }
     assert.match(skill, /references\/mr-finding-lifecycle\.md/);
+    const normalize = (text) => text.replace(/\s+/g, " ");
+    for (const boundary of [
+      "including relevant nonblocking opportunities and owner-withdrawn fixes",
+      "omission from a later clean report is not a disposition",
+      "Match the finding's trigger, affected behavior and resolution evidence to the current target",
+      "without treating it as repaired or silently authorizing the deferred edit",
+      "do not feed prior conclusions into isolated discovery lanes"
+    ]) assert(normalize(skill).includes(boundary), `re-review boundary missing ${boundary}`);
+    for (const boundary of [
+      "Before attributing a review miss",
+      "a known deferred issue, a withdrawn fix",
+      "Missing records leave the historical cause unknown",
+      "whether earlier review detected it"
+    ]) assert(normalize(lifecycle).includes(boundary), `retrospective boundary missing ${boundary}`);
+    assert.doesNotMatch(lifecycle, /why self-review\/skill\/automation missed it/);
     assert.match(discuss, /discussions\/<discussion-id>\/notes/);
     assert.match(discuss, /"resolved":true/);
     assert.match(discuss, /explicit mutation authorization/);
@@ -262,86 +332,44 @@ export async function run(test) {
     }
   });
 
-  await test("workflow convergence requires workflow plus overall-completion intent", () => {
-    const workflowControl = fs.readFileSync(
-      path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"),
-      "utf8"
-    );
-    const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
-    const workflowCommand = fs.readFileSync(
-      path.join(packageRoot, "commands", "harness", "workflow.md"),
-      "utf8"
-    );
-    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
-    const workflowAsset = manifest.assets.skills.find((skill) => skill.id === "workflow-control");
-
-    assert(workflowAsset, "workflow-control manifest entry missing");
-    for (const trigger of [
-      "workflow with convergence intent",
-      "workflow with continue-until-complete intent",
-      "workflow with overall-acceptance intent"
+  await test("execution completion is consistent across workflow surfaces without magic words", () => {
+    for (const file of [
+      "skills/workflow/workflow-control/SKILL.md",
+      "rules/loop-contract.md",
+      "commands/harness/workflow.md",
+      "agents/roles/harness-orchestrator.md"
     ]) {
-      assert(workflowAsset.triggers.includes(trigger), `workflow-control trigger missing ${trigger}`);
-    }
-    for (const standalone of ["continue until complete", "按照 workflow 推动收敛"]) {
-      assert.equal(
-        workflowAsset.triggers.includes(standalone),
-        false,
-        `workflow-control manifest should not depend on standalone fixed trigger ${standalone}`
-      );
-    }
-
-    for (const [name, text] of [
-      ["workflow-control", workflowControl],
-      ["loop contract", loopRule],
-      ["workflow command", workflowCommand]
-    ]) {
-      const normalized = text.replace(/\s+/g, " ");
-      for (const required of [
-        "workflow-use signal",
-        "overall-completion signal",
-        "fixed phrase",
-        "overall objective",
-        "acceptance criteria",
-        "without asking the user",
-        "READY_WITH_NOTES",
-        "NEEDS_USER_DECISION",
-        "handoff",
-        "context-compaction"
-      ]) {
-        assert.match(
-          normalized,
-          new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
-          `${name} missing convergence contract: ${required}`
-        );
+      const text = fs.readFileSync(path.join(packageRoot, file), "utf8").replace(/\s+/g, " ");
+      assert.match(text, /no workflow keyword or fixed phrase is required/i, file);
+      for (const boundary of ["plan-only", "review-only", "budget", "staged-stop", "acceptance criteria", "external blocker"]) {
+        assert(text.includes(boundary), `${file} missing ${boundary}`);
       }
+      assert.doesNotMatch(text, /both signals|combines both|no workflow-use signal/i, file);
+      assert.match(text, /NEEDS_USER_DECISION/, file);
     }
+  });
 
-    for (const example of [
-      "按照 workflow 收敛",
-      "使用 workflow 持续推进直到完成",
-      "走 workflow，把剩余问题全部闭环",
-      "follow the workflow until the overall goal is complete",
-      "use the workflow and continue until all acceptance criteria pass"
-    ]) {
-      assert.match(
-        workflowControl,
-        new RegExp(example.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-        `workflow-control missing positive convergence example: ${example}`
-      );
-    }
-    assert.match(
-      workflowControl,
-      /`use the workflow to inspect the current state` \| Ordinary workflow; no overall-completion signal\./
-    );
-    assert.match(
-      workflowControl,
-      /`continue until complete` \| Do not activate this contract; no workflow-use signal\./
-    );
-
-    assert.match(workflowControl, /`NOT_READY`[\s\S]*not terminal/i);
-    assert.match(workflowCommand, /If it\s+is incomplete[\s\S]*re-enter the\s+appropriate phase/i);
-    assert.match(loopRule, /Finish only when every applicable acceptance criterion passes/i);
+  await test("authorization and specialist stops preserve task scope", () => {
+    const read = (file) => fs.readFileSync(path.join(packageRoot, file), "utf8").replace(/\s+/g, " ");
+    const constitution = read("templates/user-global/AGENTS.md");
+    assert.match(constitution, /Existing authorization covering the target, scope, and side effects remains valid/);
+    assert.match(constitution, /Preserve stricter operation-specific confirmation requirements/);
+    assert.match(constitution, /Never interpret silence, a timeout, or a suggested answer as approval/);
+    assert.doesNotMatch(constitution, /By default, read the whole target file/);
+    const simplify = read("skills/workflow/simplify/SKILL.md");
+    assert.match(simplify, /Choose edit mode from current authorization/);
+    assert.doesNotMatch(simplify, /if you did not just make/);
+    const review = read("skills/review/review-packet-gate/SKILL.md");
+    assert.match(review, /Never silently downgrade a required formal gate/);
+    assert.match(review, /Phase A receives only the machine-built neutral packet/);
+    const clarify = read("skills/workflow/clarify/SKILL.md");
+    assert.match(clarify, /少量彼此独立且必要的问题可以一次提出/);
+    assert.match(clarify, /未收到回答、超时或预选项均不构成答案或审批/);
+    const archify = read("skills/third-party/archify/SKILL.md");
+    assert.match(archify, /never reuse the old receipt for changed bytes/);
+    assert.match(archify, /stop repeating the same repair strategy/);
+    const pve = read("skills/third-party/pve-vm-operations/SKILL.md");
+    assert.match(pve, /Ask for explicit user confirmation immediately before execution/);
   });
 
   await test("change workspace skill documents tool entrypoints", () => {
@@ -478,7 +506,8 @@ export async function run(test) {
       assert.match(text, /return to\s+solution\s+design/i, `${name} does not return changed solutions to design`);
     }
 
-    assert.match(workflowControl, /Fast path:[\s\S]*Compact path:[\s\S]*Design path:/);
+    assert.match(workflowControl, /## Required Materials[\s\S]*## Review Coverage/);
+    assert.doesNotMatch(workflowControl, /Fast path:|Compact path:|Design path:/);
     assert.match(workflowControl, /does not\s+change behavior, interfaces, lifecycle, dependencies, migration, or failure\s+contracts/);
     assert.match(workflowControl, /Review that lightweight plan when the risk warrants it/);
     assert.match(planner, /File\s+presence is not readiness evidence/);
@@ -492,7 +521,7 @@ export async function run(test) {
     );
     assert.match(
       planCommand,
-      /compact `plan-only`[\s\S]*A separate solution-design artifact and review are unnecessary/
+      /`plan-only`[\s\S]*A separate solution-design artifact and review are unnecessary/
     );
     for (const text of [planner, planCommand]) {
       assert.match(
@@ -555,9 +584,9 @@ export async function run(test) {
     assert.doesNotMatch(template, /required.*digest/i);
 
     for (const required of [
-      "Fast path:",
-      "Compact path:",
-      "Design path:",
+      "Use one workflow loop",
+      "complete task scope",
+      "every current code/design dimension family",
       "Solution design decides behavior and boundaries",
       "File presence or structural validation is not approval",
       "Review the populated pack before deriving task slices"
@@ -566,20 +595,20 @@ export async function run(test) {
     }
     assert.match(
       workflowSection,
-      /Fast path:.*changes no behavior, interface, lifecycle, dependency, migration, or failure contract/
+      /For wording.*changes no behavior, interface, lifecycle, dependency, migration, or failure contract/
     );
     assert.match(
       workflowSection,
-      /Compact path:.*settled solution.*no implementation-design trigger.*Review that plan when its risk warrants review/
+      /For bounded implementation.*settled solution.*no implementation-design trigger.*Review that plan when its risk warrants review/
     );
     assert.match(
       workflowSection,
-      /Design path:.*review the solution design.*assess the implementation-design trigger.*review the populated pack.*create and review task slices/
+      /For unresolved solution decisions.*review solution design.*assess the implementation-design trigger.*review a required pack.*create and review task slices/
     );
     for (const required of [
-      "快速路径",
-      "紧凑路径",
-      "设计路径",
+      "使用一个工作循环",
+      "完整任务范围",
+      "全部代码/设计维度",
       "Solution design 决定行为和边界",
       "文件存在或结构校验通过都不等于获得批准",
       "完成 pack 后先审阅，再推导 task slices"
@@ -588,15 +617,15 @@ export async function run(test) {
     }
     assert.match(
       workflowSectionCn,
-      /快速路径.*不改变行为、接口、生命周期、依赖关系、迁移或失败契约/
+      /措辞、格式.*不改变行为、接口、生命周期、依赖、迁移或失败契约/
     );
     assert.match(
       workflowSectionCn,
-      /紧凑路径.*方案已经明确.*不触发 implementation-design.*风险需要时再审阅/
+      /方案已明确.*不触发 implementation-design.*风险需要时审阅/
     );
     assert.match(
       workflowSectionCn,
-      /设计路径.*审阅 solution design.*判断是否触发 implementation-design.*完成并审阅 pack.*创建和审阅 task slices/
+      /方案决策尚未明确.*审阅 solution design.*判断 implementation-design 触发条件.*需要 pack 时先审阅.*创建和审阅 task slices/
     );
 
     for (const text of [normalizedTemplate, workflowSection, workflowSectionCn]) {
@@ -641,7 +670,7 @@ export async function run(test) {
     assert.match(prototypeSpike, /change-planner task slicing/);
 
     const verificationFirst = fs.readFileSync(path.join(packageRoot, "skills", "change", "verification-first", "SKILL.md"), "utf8");
-    for (const status of ["verified", "not run", "blocked", "partial"]) {
+    for (const status of ["verified", "not run", "blocked", "partial", "unconfirmed"]) {
       assert.match(verificationFirst, new RegExp(status));
     }
     for (const fidelity of ["exact", "equivalent", "approximate", "remote-only"]) {
@@ -650,6 +679,17 @@ export async function run(test) {
     assert.match(verificationFirst, /Validation Fidelity/);
     assert.match(verificationFirst, /Do not claim an `approximate` check proves the broader gate/);
     assert.match(verificationFirst, /review-packet-gate/);
+    // The status vocabulary must name the drift wording it replaces.
+    assert.match(verificationFirst, /\| Do not write \|/);
+    assert.match(verificationFirst, /should pass/);
+    // `unconfirmed` must stay separated from its nearest neighbor.
+    assert.match(verificationFirst, /`partial` versus `unconfirmed`/);
+    // The evidence template must show where an `unconfirmed` result goes.
+    assert.match(verificationFirst, /unconfirmed \(<the confirming method that would settle it>\)/);
+    // The pre-finish gate must keep a checklist and an observable stop rule.
+    assert.match(verificationFirst, /## Before Reporting/);
+    assert.match(verificationFirst, /^\[ \] /m);
+    assert.match(verificationFirst, /report the gap instead of the claim/);
   });
 
   await test("workflow control applies one safe ordered minimal-implementation gate", () => {
@@ -783,7 +823,7 @@ export async function run(test) {
   await test("core skills include behavior-calibrating examples", () => {
     const expected = [
       ["entry", "ask-harness", "## Example Routes"],
-      ["workflow", "workflow-control", "## Fast Path Examples"],
+      ["workflow", "workflow-control", "## Example Materials"],
       ["workflow", "stacked-branch-workflow", "## Output Templates"],
       ["workflow", "workflow-packaging-auditor", "## Candidate Qualification Rules"],
       ["workflow", "grill-me", "## Example Question"],
@@ -846,6 +886,27 @@ export async function run(test) {
     }
     assert.match(template, /\{\{REPORT_TITLE\}\}/);
     assert.match(template, /\{\{TRACEABILITY_TABLE\}\}/);
+  });
+
+  await test("design code explainer routes visuals without duplicating renderer contracts", () => {
+    const skill = fs.readFileSync(
+      path.join(packageRoot, "skills", "knowledge", "design-code-explainer", "SKILL.md"),
+      "utf8"
+    );
+    const contract = fs.readFileSync(
+      path.join(packageRoot, "skills", "knowledge", "design-code-explainer", "references", "report-contract.md"),
+      "utf8"
+    );
+    for (const text of [skill, contract]) {
+      assert.match(text, /`show-me`/);
+      assert.match(text, /`archify`/);
+      assert.match(text, /inline SVG|simple HTML/);
+    }
+    assert.match(skill, /do not duplicate its JSON IR, schema, or validation contract here/);
+    assert.match(
+      skill,
+      /source-grounded:[\s\S]*show-me's view choice and archify's\s+rendering never substitute for design or code evidence/
+    );
   });
 
   await test("design doc refiner preserves review-only boundary", () => {
@@ -956,7 +1017,7 @@ export async function run(test) {
     assert.doesNotMatch(grillWithDocs, /CONTEXT\.md/);
     assert.doesNotMatch(grillWithDocs, /\bADR\b/);
 
-    const simplify = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"), "utf8");
+    const simplify = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"), "utf8").replace(/\s+/g, " ");
     assert.match(simplify, /after modifying code/i);
     assert.match(simplify, /code-simplifier/);
     assert.match(simplify, /review-only/);
@@ -999,8 +1060,119 @@ export async function run(test) {
     assert(byId.simplify.negativeTriggers.includes("externally authored diff without edit permission"));
   });
 
+  await test("review duties retain complete semantic coverage across entry points", () => {
+    const read = (relative) => fs.readFileSync(path.join(packageRoot, relative), "utf8");
+    const workflow = read("skills/workflow/workflow-control/SKILL.md");
+    const code = read("skills/review/multi-lens-review/SKILL.md");
+    const design = read("skills/review/multi-lens-design-review/SKILL.md");
+    assert.match(workflow, /multi-lens-review:Lens Selection/);
+    assert.match(workflow, /multi-lens-design-review:Design Lenses/);
+    assert.match(workflow, /false activation/);
+    assert.match(workflow, /runtime verifies declared identities/);
+    assert.match(code, /operation-level public capability reuse and block necessity/);
+    for (const boundary of ["first durable or externally visible state change", "including unchanged shared frameworks", "when that protection becomes active", "name any untraced boundary"]) {
+      assert(code.replace(/\s+/g, " ").includes(boundary), `stateful review execution missing ${boundary}`);
+    }
+    assert.match(code, /project idioms/);
+    assert.doesNotMatch(code, /Use only lenses justified|lenses were skipped|security was skipped/);
+    assert.doesNotMatch(design, /Do not run all lenses|Select only lenses|smallest set/);
+    for (const family of ["design_quality", "over_engineering", "boundary_contracts", "topology_readiness", "control_lifecycle", "failure_recovery", "verification_observability", "implementation_readiness", "artifact_chain"]) {
+      assert.match(design, new RegExp("`" + family + "`"));
+    }
+    for (const relative of ["commands/harness/review.md", "commands/harness/workflow.md", "rules/loop-contract.md", "agents/roles/reviewer.md", "agents/roles/planning-reviewer.md", "agents/roles/harness-orchestrator.md", "skills/review/review-packet-gate/SKILL.md"]) {
+      assert.match(read(relative), /Review Coverage/, relative);
+    }
+    const minimal = read("skills/workflow/workflow-control/references/minimal-implementation.md");
+    for (const marker of ["Operation-Level Discovery", "strongest", "producer -> projection/adaptor -> traversal -> consumer", "final signature", "single-factor ablation", "verification-first"]) {
+      assert(minimal.includes(marker), marker);
+    }
+    const evaluation = read("skills/workflow/workflow-control/references/minimality-behavior-evaluation.md");
+    assert.match(evaluation, /Negative control/);
+    assert(evaluation.includes("Cross-call failure responsibility"));
+    assert(evaluation.includes("The caller already finalizes that failure, or the whole path fails before any externally visible state change"));
+    assert(evaluation.includes("Layer-local contract"));
+    assert.match(evaluation, /proactive detections separately/);
+    assert.match(evaluation, /LIVE_AB_NOT_RUN/);
+    for (const text of [minimal, evaluation]) assert.doesNotMatch(text, /string_sprintf|MEMBER_RANGE|OBJECT_OF|DBackup|cnware/);
+  });
+
+  await test("capability comparison has one owner and is required across review paths", () => {
+    const read = (relative) => fs.readFileSync(path.join(packageRoot, relative), "utf8").replace(/\s+/g, " ");
+    const reference = read("skills/workflow/workflow-control/references/minimal-implementation.md");
+    for (const fact of ["Block and purpose", "Capability checked", "Alternative and keep reason", "Safety and disposition"]) {
+      assert(reference.includes(fact), `comparison owner missing ${fact}`);
+    }
+    for (const boundary of ["per-operation options and failure behavior", "pre-read type check", "observable side effect", "temporary lifetime", "No exhaustive table or new artifact"]) {
+      assert(reference.includes(boundary), `comparison owner missing ${boundary}`);
+    }
+    for (const step of ["steps in order before choosing", "fixed behavior constraints", "rejects that candidate, not every simplification", "why the questioned operations are needed"]) {
+      assert(reference.includes(step), `comparison procedure missing ${step}`);
+    }
+    for (const step of ["selection guidance", "original input and the full required result combination", "actual overloads", "index is not proof of absence", "retaining every required destination", "closest competing public capability", "authorized final signatures", "required result form"]) {
+      assert(reference.includes(step), `capability discovery execution missing ${step}`);
+    }
+    for (const relative of [
+      "skills/review/multi-lens-review/SKILL.md",
+      "skills/workflow/simplify/SKILL.md",
+      "skills/workflow/workflow-control/SKILL.md",
+      "skills/review/review-packet-gate/SKILL.md",
+      "agents/roles/reviewer.md",
+      "agents/roles/code-simplifier.md",
+      "agents/roles/review-verifier.md"
+    ]) {
+      const text = read(relative);
+      assert(text.includes("Capability Comparison Evidence"), `${relative} does not require the canonical comparison`);
+      assert(!text.includes("### Capability Comparison Evidence"), `${relative} duplicates the comparison owner`);
+    }
+    const workflow = read("skills/workflow/workflow-control/SKILL.md");
+    assert(workflow.includes("Do not infer a missed inspection merely from a missing record"));
+    assert(workflow.includes("Reject blanket"));
+    assert(workflow.includes("source check or bounded follow-up"));
+    assert(workflow.includes("comparison targets the retained operations under the same behavior constraints"));
+    assert(workflow.includes("mismatched comparisons as unsubstantiated coverage"));
+    assert(workflow.includes("The coordinator does not rewrite reviewer-owned outcomes"));
+    for (const step of ["explicit unresolved coverage", "no findings does not resolve the named gap", "current source", "actual strongest factual keep premise", "within its declared scope"]) {
+      assert(workflow.includes(step), `comparison acceptance execution missing ${step}`);
+    }
+    const packet = read("skills/review/review-packet-gate/SKILL.md");
+    assert(packet.includes("it does not read their targets or prove their semantic adequacy"));
+    assert(packet.includes("not a new gate or parallel report"));
+    assert(packet.includes("Do not disclose expected comparisons"));
+    assert(packet.includes("coordinator-rejected comparison against different behavior does not support `covered`"));
+    assert(packet.includes("before `append-attempt` seals the reviewer ledger"));
+    assert(packet.includes("do not edit it or append an overlapping successful retry"));
+    const simplifier = read("agents/roles/code-simplifier.md");
+    assert(simplifier.includes("only when coverage and the required capability comparisons are complete"));
+    assert(simplifier.includes("as hypotheses to check, not final dispositions"));
+    assert(simplifier.indexOf("Then classify necessity") > simplifier.indexOf("Round 3 - Dimensional Review"));
+    const reviewer = read("agents/roles/reviewer.md");
+    assert(reviewer.includes("Direct role dispatch has the same evidence duty"));
+    for (const relative of ["skills/workflow/simplify/SKILL.md", "skills/review/multi-lens-review/SKILL.md", "agents/roles/code-simplifier.md", "agents/roles/reviewer.md"]) {
+      assert(read(relative).includes("behavior invariants held fixed"), `${relative} omits the comparison's execution constraint`);
+    }
+    const evaluation = read("skills/workflow/workflow-control/references/minimality-behavior-evaluation.md");
+    assert(evaluation.includes("coordinator acceptance separately from reviewer discovery"));
+    assert(evaluation.includes("an earlier tested fix that the owner later withdrew"));
+    assert(evaluation.includes("supplied prior findings in a coordinator packet are not proactive reviewer detections"));
+    assert(evaluation.includes("not a text-pattern validator"));
+    assert(evaluation.includes("prompted recovery, separately from autonomous discovery"));
+    assert(evaluation.includes("no-argument, value-returning member projection"));
+    assert(evaluation.includes("explicit unresolved coverage signal"));
+    assert(evaluation.includes("exclusions already stated in the report"));
+    assert(evaluation.includes("a fresh workspace or fork alone does not prove it"));
+    assert(evaluation.includes("invalidate isolation even without a tool read"));
+    assert(evaluation.includes("definitions and routing delivered to each arm"));
+    assert(evaluation.includes("Delivered context/tools:"));
+    assert(evaluation.includes("exclude the arm from the controlled treatment comparison"));
+    assert(evaluation.includes("Do not inspect private model reasoning"));
+    assert(evaluation.includes("nominal time cap and actual inspection/termination times separately"));
+    assert(evaluation.includes("First report and isolation deviations:"));
+    assert(evaluation.includes("Fresh rerun:"));
+    assert(evaluation.includes("Time: <nominal cap, actual inspection/termination and sealing times>"));
+  });
+
   await test("simplification review resolves task scope before inspecting code", () => {
-    const simplify = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"), "utf8");
+    const simplify = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "simplify", "SKILL.md"), "utf8").replace(/\s+/g, " ");
     for (const required of [
       "Scope Packet",
       "git diff --cached",
@@ -1019,16 +1191,10 @@ export async function run(test) {
       "validation_target",
       "Pass the Scope Packet to `code-simplifier`",
       "active `.changes/<task>/`",
-      "quick",
-      "standard",
-      "deep",
-      "Use a deep pass only when",
-      "user explicitly asks",
-      "unit-by-unit cleanup",
-      "simplification/refactor task",
-      "authorized slice is itself de-redundancy",
-      "effective logic diff lines <= 40",
-      "changed units <= 3",
+      "complete Unit Inventory",
+      "every class, function, method, and key block",
+      "record reasoned N/A only after checking applicability",
+      "operation-level public capability reuse and block necessity",
       "Do not treat an empty current diff as an empty review"
     ]) {
       assert.match(simplify, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -1071,6 +1237,12 @@ export async function run(test) {
       "grill-diff"
     ]) {
       assert.match(codeSimplifier, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    for (const text of [simplify, codeSimplifier]) {
+      assert.doesNotMatch(text, /## Coverage Mode|for deep mode|for standard mode|effective logic diff lines|Use a deep pass only when/);
+      assert.match(text, /complete.*(?:task scope|resolved scope)/s);
+      assert.match(text, /requested_mode=opportunities/);
     }
 
     const grillDiff = fs.readFileSync(path.join(packageRoot, "skills", "review", "grill-diff", "SKILL.md"), "utf8");

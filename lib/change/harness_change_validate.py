@@ -662,6 +662,124 @@ def validate_review_execution_policy(request, path: Path, errors: list):
         errors.append(f"{path}: checkpoint interval must be shorter than attempt timeout")
 
 
+def review_value_digest(value):
+    encoded = json.dumps(review_canonical(value), ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def review_source_snapshot(snapshot):
+    if not isinstance(snapshot, dict) or set(snapshot) != {"format", "version", "files", "target_paths", "snapshot_digest"} or snapshot.get("format") != "review-source" or snapshot.get("version") != 1:
+        raise ValueError("invalid source snapshot shape")
+    files, targets = snapshot.get("files"), snapshot.get("target_paths")
+    if not isinstance(files, list) or not files or not isinstance(targets, list) or not targets:
+        raise ValueError("empty source snapshot")
+    def relative(value, allow_dot=False):
+        return isinstance(value, str) and bool(value) and "\\" not in value and not value.startswith("/") and not re.match(r"^[A-Za-z]:", value) and (value == "." and allow_dot or all(part not in ("", ".", "..") for part in value.split("/")))
+    paths = set()
+    for item in files:
+        if not isinstance(item, dict) or set(item) != {"path", "sha256", "bytes", "line_count"} or not relative(item["path"]) or item["path"] in paths or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(item["sha256"])) or any(type(item[key]) is not int or not 0 <= item[key] <= 9007199254740991 for key in ("bytes", "line_count")):
+            raise ValueError("invalid source file identity")
+        paths.add(item["path"])
+    for target in targets:
+        if not relative(target, True) or not any(target == "." or path == target or path.startswith(target + "/") for path in paths):
+            raise ValueError("invalid source target")
+    if snapshot["snapshot_digest"] != review_value_digest({key: value for key, value in snapshot.items() if key != "snapshot_digest"}):
+        raise ValueError("source snapshot digest mismatch")
+
+
+def review_native_source_scope(snapshot, target, relations):
+    review_source_snapshot(snapshot)
+    if not isinstance(target, dict) or not isinstance(relations, list):
+        raise ValueError("SOURCE_EVIDENCE_GAP: native target/source scope is invalid")
+    def includes(scope, source):
+        return scope == "." or scope == source or source.startswith(scope + "/")
+    target_sources = [item for item in snapshot["files"] if any(includes(scope, item["path"]) for scope in snapshot["target_paths"])]
+    if "files" in target and (not isinstance(target["files"], list) or any(not isinstance(declared, str) or not declared or (not any(includes(scope, declared) for scope in snapshot["target_paths"]) or not any(includes(declared, item["path"]) for item in target_sources)) for declared in target["files"])):
+        raise ValueError("SOURCE_EVIDENCE_GAP: native source snapshot does not cover declared target files")
+    for relation in relations:
+        if not isinstance(relation, dict) or not isinstance(relation.get("unit_key"), dict) or not any(item["path"] == relation["unit_key"].get("unit_path") for item in target_sources):
+            raise ValueError("SOURCE_EVIDENCE_GAP: native assigned unit is missing from selected target source")
+
+
+def review_native_packet(request, preflight, discovery, plan, ledger):
+    shard = next((item for item in plan["shards"] if item["shard_id"] == ledger["shard_id"]), None)
+    if shard is None:
+        raise ValueError("unknown native shard")
+    relations = [item for item in discovery["relations"] if item["relation_id"] in shard["relation_ids"]]
+    review_native_source_scope(preflight["verifier_discovery_envelope"]["source_snapshot"], request["target"], relations)
+    packet = {"format": "review-run", "format_version": 1, "created_from": [],
+        "record_type": "review-assignment", "protocol": "review-run", "execution_profile": "native",
+        "run_id": request["run_id"], "shard_id": ledger["shard_id"], "attempt_id": ledger["attempt_id"],
+        "target": request["target"], "source_snapshot": preflight["verifier_discovery_envelope"]["source_snapshot"],
+        "contract_digest": request["dispatch_contract"]["contract_digest"], "discovery_digest": discovery["record_digest"],
+        "scope": request["dispatch_contract"]["scope"], "rules": request["dispatch_contract"]["rules"],
+        "dimensions": request["dispatch_contract"]["dimensions"],
+        "relations": relations,
+        "record_id": f"native-assignment:{request['run_id']}:{ledger['shard_id']}:{ledger['attempt_id']}"}
+    packet["record_digest"] = packet["canonical_digest"] = review_digest(packet)
+    return packet
+
+
+def review_native_execution(run_dir, record, packet):
+    execution = record.get("native_execution")
+    if not isinstance(execution, dict) or set(execution) != {"execution_id", "execution_status", "input_digest", "output_ref", "source_receipts_ref"} or not isinstance(execution["execution_id"], str) or not execution["execution_id"].strip() or execution["execution_status"] != "completed" or execution["input_digest"] != packet["record_digest"]:
+        raise ValueError("native execution must bind a completed child and machine packet")
+    change = run_dir.parent.parent.resolve()
+    reviews = (change / "reviews").resolve(strict=True)
+    if reviews != change / "reviews":
+        raise ValueError("reviews directory escapes change root")
+    def material(ref):
+        if not isinstance(ref, dict) or set(ref) != {"path", "digest"} or not isinstance(ref["path"], str) or not ref["path"].startswith("reviews/materials/") or not ref["path"].endswith(".json") or "\\" in ref["path"] or any(part in ("", ".", "..") for part in ref["path"].split("/")) or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(ref["digest"])):
+            raise ValueError("invalid native material reference")
+        location = (change / ref["path"]).resolve(strict=True)
+        if not location.is_relative_to(reviews):
+            raise ValueError("native material escapes reviews directory")
+        if "sha256:" + hashlib.sha256(location.read_bytes()).hexdigest() != ref["digest"]:
+            raise ValueError("native material digest mismatch")
+        return review_json_load(location)
+    returned = material(execution["output_ref"])
+    if record.get("record_type") == "discovery":
+        if not isinstance(returned, dict) or set(returned) != {"observed_units", "observations", "source_refs"} or any(not isinstance(returned[key], list) or not returned[key] for key in returned) or returned != record.get("native_inventory"):
+            raise ValueError("discovery must preserve the complete neutral child inventory")
+        source_paths = {item["path"] for item in packet["source_snapshot"]["files"]}
+        def unit_valid(unit):
+            return isinstance(unit, dict) and set(unit) == {"unit_path", "anchor_kind", "anchor_value"} and all(isinstance(value, str) and value for value in unit.values()) and unit["unit_path"] in source_paths
+        if any(not unit_valid(unit) for unit in returned["observed_units"]) or any(not isinstance(ref, str) or ref not in source_paths for ref in returned["source_refs"]) or any(not isinstance(observation, dict) or set(observation) != {"unit_key", "dimension_id", "disposition", "evidence_refs"} or not unit_valid(observation["unit_key"]) or observation["unit_key"] not in returned["observed_units"] or not isinstance(observation["dimension_id"], str) or not observation["dimension_id"] or not isinstance(observation["disposition"], str) or not observation["disposition"] or not isinstance(observation["evidence_refs"], list) or not observation["evidence_refs"] for observation in returned["observations"]):
+            raise ValueError("native inventory contains invalid or non-neutral observations")
+        mapping = record.get("native_observation_mapping")
+        if not isinstance(mapping, list):
+            raise ValueError("native observation relation mapping required")
+        seen, linked = set(), set()
+        ids = {item["relation_id"] for item in record["relations"]}
+        for item in mapping:
+            if not isinstance(item, dict) or not {"observation_index", "relation_ids"}.issubset(item) or not set(item).issubset({"observation_index", "relation_ids", "reason"}) or type(item["observation_index"]) is not int or not 0 <= item["observation_index"] < len(returned["observations"]) or item["observation_index"] in seen or not isinstance(item["relation_ids"], list) or (not item["relation_ids"] and (not isinstance(item.get("reason"), str) or not item["reason"].strip())) or ("reason" in item and (not isinstance(item["reason"], str) or not item["reason"].strip())) or len(set(item["relation_ids"])) != len(item["relation_ids"]) or not set(item["relation_ids"]).issubset(ids):
+                raise ValueError("invalid native observation relation mapping")
+            seen.add(item["observation_index"])
+            linked.update(item["relation_ids"])
+        if len(seen) != len(returned["observations"]) or linked != ids:
+            raise ValueError("native discovery dropped observations or left unbound relations")
+    else:
+        ignored = {"native_execution", "format", "format_version", "record_id", "created_from", "record_digest", "canonical_digest"}
+        original = {key: value for key, value in returned.items() if key not in ignored - {"native_execution"}} if isinstance(returned, dict) else None
+        body = {key: value for key, value in record.items() if key not in ignored}
+        if isinstance(original, dict) and record.get("record_type") == "review-ledger":
+            original.setdefault("attempt_status", "succeeded")
+            body.setdefault("attempt_status", "succeeded")
+        if body != original:
+            raise ValueError("record differs from original child output")
+    receipts = material(execution["source_receipts_ref"])
+    if not isinstance(receipts, list) or not receipts:
+        raise ValueError("native source receipts required")
+    snapshot = packet["source_snapshot"]
+    for receipt in receipts:
+        source = next((item for item in snapshot["files"] if isinstance(receipt, dict) and item["path"] == receipt.get("path")), None)
+        if source is None or set(receipt) != {"format", "snapshot_digest", "path", "sha256", "start_line", "end_line", "lines"} or receipt.get("format") != "review-source-read" or receipt.get("snapshot_digest") != snapshot["snapshot_digest"] or receipt.get("sha256") != source["sha256"] or type(receipt.get("start_line")) is not int or type(receipt.get("end_line")) is not int or not 1 <= receipt["start_line"] <= receipt["end_line"] <= source["line_count"] or not isinstance(receipt.get("lines"), list) or len(receipt["lines"]) != receipt["end_line"] - receipt["start_line"] + 1 or any(not isinstance(line, dict) or set(line) != {"number", "text"} or line.get("number") != receipt["start_line"] + index or not isinstance(line.get("text"), str) for index, line in enumerate(receipt["lines"])):
+            raise ValueError("native source receipt identity/range mismatch")
+
+    if record.get("record_type") == "discovery" and any(not any(receipt["path"] == ref for receipt in receipts) for ref in record["native_inventory"]["source_refs"]):
+        raise ValueError("inventory source_refs lack read receipts")
+
+
 def validate_review_deep_preflight(request, routing, preflight, path: Path, errors: list):
     if routing.get("selected_mode") != "deep":
         return
@@ -673,6 +791,25 @@ def validate_review_deep_preflight(request, routing, preflight, path: Path, erro
         return
     if preflight.get("run_id") != request.get("run_id"):
         errors.append(f"{path}: dispatch preflight run_id mismatch")
+    profile = routing.get("execution_profile", "isolated")
+    if profile not in ("native", "isolated") or preflight.get("execution_profile", "isolated") != profile or request.get("execution_profile", profile) != profile:
+        errors.append(f"{path}: execution profile mismatch")
+        return
+    if profile == "native":
+        try:
+            if "provider_binding" in preflight or "provider_policy" in request or "deep_preflight" in request or set(request.get("native_preflight", {})) != {"source_snapshot"}:
+                raise ValueError("native preflight contamination")
+            envelope = preflight["verifier_discovery_envelope"]
+            allowed = {"format", "format_version", "record_type", "record_id", "created_from", "record_digest", "canonical_digest", "protocol", "execution_profile", "run_id", "phase", "assurance", "target_fingerprint", "source_snapshot"}
+            if set(envelope) != allowed or envelope.get("record_type") != "verifier-discovery-envelope" or envelope.get("protocol") != "review-run" or envelope.get("execution_profile") != "native" or envelope.get("phase") != "inventory" or envelope.get("assurance") != "deep" or envelope.get("run_id") != request.get("run_id") or envelope.get("target_fingerprint") != request.get("target", {}).get("fingerprint") or envelope.get("record_digest") != review_digest(envelope):
+                raise ValueError("native discovery envelope identity/shape mismatch")
+            review_native_source_scope(envelope["source_snapshot"], request["target"], request.get("dispatch_contract", {}).get("relations", []))
+            review_source_snapshot(request["native_preflight"]["source_snapshot"])
+            if envelope["source_snapshot"] != request["native_preflight"]["source_snapshot"] or preflight.get("request_ref") != {"id": request["record_id"], "digest": request["record_digest"]} or preflight.get("routing_ref") != {"id": routing["record_id"], "digest": routing["record_digest"]}:
+                raise ValueError("native preflight stale binding")
+        except (ValueError, KeyError, TypeError) as error:
+            errors.append(f"{path}: {error}")
+        return
     provider = preflight.get("provider_binding")
     if not isinstance(provider, dict) or provider.get("runtime_verified") is not True or not review_is_canonical_ref(provider.get("conformance_receipt_ref")):
         errors.append(f"{path}: provider runtime conformance is not attestable")
@@ -729,6 +866,12 @@ def validate_review_run_evidence(change_dir: Path, errors: list):
         discovery = records.get("discovery")
         if discovery is not None and discovery.get("record_type") != "discovery":
             errors.append(f"{run_dir / 'discovery.json'}: invalid discovery record")
+        native = records.get("routing-decision", {}).get("selected_mode") == "deep" and records.get("routing-decision", {}).get("execution_profile") == "native"
+        if native and discovery is not None:
+            try:
+                review_native_execution(run_dir, discovery, records["dispatch-preflight"]["verifier_discovery_envelope"])
+            except (ValueError, KeyError, TypeError, OSError) as error:
+                errors.append(f"{run_dir / 'discovery.json'}: {error}")
         plan = records.get("shard-plan")
         if plan is not None and plan.get("record_type") != "shard-plan":
             errors.append(f"{run_dir / 'shard-plan.json'}: invalid shard-plan record")
@@ -743,6 +886,14 @@ def validate_review_run_evidence(change_dir: Path, errors: list):
                     errors.append(f"{attempt}: invalid ledger record")
                 elif ledger is not None:
                     status = ledger.get("attempt_status", "succeeded")
+                    if native and status == "succeeded":
+                        try:
+                            packet = review_native_packet(request, records["dispatch-preflight"], discovery, plan, ledger)
+                            if ledger["input_digest"] != packet["record_digest"] or ledger.get("native_execution", {}).get("execution_id") == discovery.get("native_execution", {}).get("execution_id"):
+                                raise ValueError("native reviewer input/identity mismatch")
+                            review_native_execution(run_dir, ledger, packet)
+                        except (ValueError, KeyError, TypeError, OSError) as error:
+                            errors.append(f"{attempt}: {error}")
                     entries = ledger.get("entries")
                     if not isinstance(ledger.get("input_digest"), str) or not ledger["input_digest"]:
                         errors.append(f"{attempt}: ledger input_digest is required")
@@ -953,6 +1104,8 @@ def layout_file_status(change_dir: Path, schema: dict, mode: str, rel_path: str)
             return "expected", "allowed review-run JSON evidence record"
         return "expected", "allowed review-run JSON evidence directory entry"
     if directory in policy.managed_change_directories():
+        if directory == "reviews" and fnmatch.fnmatch(rel_path, "reviews/materials/*.json"):
+            return "expected", "allowed Review Packet JSON material"
         if rel_path == f"{directory}/README.md" or fnmatch.fnmatch(rel_path, f"{directory}/*.md"):
             return "expected", "allowed v2 managed directory file"
         return "unexpected", "file is under a v2 managed directory but does not match allowed patterns"

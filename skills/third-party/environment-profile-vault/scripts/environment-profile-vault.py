@@ -22,7 +22,8 @@ STORE_SCHEMA_VERSION = 1
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 ENVIRONMENT_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]{0,127}$")
 PROFILE_REQUIRED_FIELDS = ("address", "username", "password")
-PROFILE_FIELD_NAMES = (*PROFILE_REQUIRED_FIELDS, "ssh_known_hosts")
+PROFILE_FIELD_NAMES = (*PROFILE_REQUIRED_FIELDS, "description", "ssh_known_hosts")
+MAX_DESCRIPTION_LENGTH = 1_024
 MAX_SSH_KNOWN_HOSTS_LENGTH = 32_768
 
 
@@ -47,13 +48,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.address_env,
                 args.username_env,
                 args.password_env,
+                args.description_env,
             )
         elif args.command == "delete":
             delete_profile(vault_dir, args.profile)
         elif args.command == "set-ssh-known-hosts":
             set_ssh_known_hosts(vault_dir, args.profile)
+        elif args.command == "set-description":
+            set_description(vault_dir, args.profile, args.description_env)
         elif args.command == "list":
-            list_profiles(vault_dir)
+            list_profiles(vault_dir, as_json=args.json, names_only=args.names_only)
         elif args.command == "get":
             get_field(vault_dir, args.profile, args.field)
         elif args.command == "run":
@@ -88,11 +92,18 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     upsert.add_argument("--address-env", default="ENV_PROFILE_ADDRESS")
     upsert.add_argument("--username-env", default="ENV_PROFILE_USERNAME")
     upsert.add_argument("--password-env", default="ENV_PROFILE_PASSWORD")
+    upsert.add_argument("--description-env", default="ENV_PROFILE_DESCRIPTION")
     delete = commands.add_parser("delete", help="Delete one local profile.")
     delete.add_argument("profile", help="Profile identifier.")
     pin = commands.add_parser("set-ssh-known-hosts", help="Interactively replace a profile's SSH known_hosts value.")
     pin.add_argument("profile", help="Profile identifier.")
-    commands.add_parser("list", help="List profile identifiers.")
+    describe = commands.add_parser("set-description", help="Set a profile's non-secret purpose without changing credentials.")
+    describe.add_argument("profile", help="Profile identifier.")
+    describe.add_argument("--description-env", help="Read the description from this environment variable instead of prompting.")
+    listing = commands.add_parser("list", help="List profile identifiers and non-secret descriptions.")
+    list_format = listing.add_mutually_exclusive_group()
+    list_format.add_argument("--json", action="store_true", help="Print name/description objects; missing descriptions are null.")
+    list_format.add_argument("--names-only", action="store_true", help="Print only identifiers for older consumers.")
     get = commands.add_parser("get", help="Print one profile field.")
     get.add_argument("profile", help="Profile identifier.")
     get.add_argument("--field", required=True, choices=PROFILE_FIELD_NAMES)
@@ -132,21 +143,28 @@ def upsert_profile_from_environment(
     address_env: str,
     username_env: str,
     password_env: str,
+    description_env: str,
 ) -> None:
     """Store direct-child values without placing a credential in argv or output."""
     profile_name = validate_profile_name(profile_name)
     environment_names = tuple(
         validate_environment_name(name)
-        for name in (address_env, username_env, password_env)
+        for name in (address_env, username_env, password_env, description_env)
     )
     if len(set(environment_names)) != len(environment_names):
         raise VaultError("profile source environment names must be distinct")
     values = {
         field: required_environment_value(name)
-        for field, name in zip(PROFILE_REQUIRED_FIELDS, environment_names, strict=True)
+        for field, name in zip(PROFILE_REQUIRED_FIELDS, environment_names[:3], strict=True)
     }
     profiles = load_profiles(vault_dir)
     existing = profiles.get(profile_name)
+    if description_env in os.environ:
+        values["description"] = validate_description(os.environ[description_env])
+    elif existing is not None and "description" in existing:
+        values["description"] = existing["description"]
+    else:
+        raise VaultError("provide a non-secret description in the description environment variable")
     if existing is not None and "ssh_known_hosts" in existing:
         values["ssh_known_hosts"] = existing["ssh_known_hosts"]
     profiles[profile_name] = validate_profile_values(values)
@@ -170,9 +188,35 @@ def set_ssh_known_hosts(vault_dir: Path, profile_name: str) -> None:
     write_profiles(vault_dir, profiles)
 
 
-def list_profiles(vault_dir: Path) -> None:
-    for profile_name in sorted(load_profiles(vault_dir)):
-        print(profile_name)
+def set_description(vault_dir: Path, profile_name: str, description_env: str | None) -> None:
+    profile_name = validate_profile_name(profile_name)
+    profiles = load_profiles(vault_dir)
+    values = required_profile(profiles, profile_name)
+    if description_env is None:
+        values["description"] = prompt_description()
+    else:
+        values["description"] = validate_description(
+            required_environment_value(validate_environment_name(description_env))
+        )
+    profiles[profile_name] = values
+    write_profiles(vault_dir, profiles)
+
+
+def list_profiles(vault_dir: Path, *, as_json: bool = False, names_only: bool = False) -> None:
+    profiles = load_profiles(vault_dir)
+    summaries = [
+        {"name": name, "description": profiles[name].get("description")}
+        for name in sorted(profiles)
+    ]
+    if as_json:
+        print(json.dumps(summaries, ensure_ascii=False))
+    else:
+        for summary in summaries:
+            if names_only:
+                print(summary["name"])
+            else:
+                description = summary["description"] or "[missing description]"
+                print(f"{summary['name']}\t{description}")
 
 
 def get_field(vault_dir: Path, profile_name: str, field: str) -> None:
@@ -337,10 +381,12 @@ def required_environment_value(name: str) -> str:
 def validate_profile_values(values: object) -> dict[str, str]:
     if not isinstance(values, dict):
         raise VaultError("plaintext profile store has invalid fields")
-    allowed = set(PROFILE_REQUIRED_FIELDS) | {"ssh_known_hosts"}
+    allowed = set(PROFILE_FIELD_NAMES)
     if set(values) - allowed or not set(PROFILE_REQUIRED_FIELDS) <= set(values):
         raise VaultError("plaintext profile store has invalid fields")
     normalized = {field: validate_nonempty_text(field, values[field]) for field in PROFILE_REQUIRED_FIELDS}
+    if "description" in values:
+        normalized["description"] = validate_description(values["description"])
     if "ssh_known_hosts" in values:
         known_hosts = validate_nonempty_text("ssh_known_hosts", values["ssh_known_hosts"])
         if len(known_hosts) > MAX_SSH_KNOWN_HOSTS_LENGTH:
@@ -366,6 +412,7 @@ def prompt_profile_values() -> dict[str, str]:
     require_interactive("add")
     try:
         values = {
+            "description": input("Description (service, environment, account role, permitted use; no secrets): "),
             "address": input("Address: ").strip(),
             "username": input("Username: ").strip(),
             "password": getpass.getpass("Password: "),
@@ -378,12 +425,15 @@ def prompt_profile_values() -> dict[str, str]:
 def prompt_updated_profile_values(current: dict[str, str]) -> dict[str, str]:
     require_interactive("update")
     try:
+        description = input("Description [leave empty to keep current; no secrets]: ")
         address = input("Address [leave empty to keep current]: ").strip()
         username = input("Username [leave empty to keep current]: ").strip()
         password = getpass.getpass("Password [leave empty to keep current]: ")
     except EOFError as error:
         raise VaultError("profile input was not completed") from error
     values = dict(current)
+    if description:
+        values["description"] = description
     if address:
         values["address"] = address
     if username:
@@ -391,6 +441,27 @@ def prompt_updated_profile_values(current: dict[str, str]) -> dict[str, str]:
     if password:
         values["password"] = password
     return validate_profile_values(values)
+
+
+def prompt_description() -> str:
+    require_interactive("set-description")
+    try:
+        value = input("Description (service, environment, account role, permitted use; no secrets): ")
+    except EOFError as error:
+        raise VaultError("description input was not completed") from error
+    return validate_description(value)
+
+
+def validate_description(value: object) -> str:
+    value = validate_nonempty_text("description", value)
+    if len(value) > MAX_DESCRIPTION_LENGTH:
+        raise VaultError("description is too long")
+    if any(ord(character) < 32 or 127 <= ord(character) <= 159 for character in value):
+        raise VaultError("description must be a single line without control characters")
+    value = value.strip()
+    if not value:
+        raise VaultError("description must be a non-empty text value")
+    return value
 
 
 def prompt_ssh_known_hosts() -> str:

@@ -299,7 +299,8 @@
     "project": "harness-project",
     "changeDoc": "harness-change-doc",
     "changeValidate": "harness-change-validate",
-    "aggregate": "harness"
+    "aggregate": "harness",
+    "nativeRoles": "harness-native-roles"
   },
   "assets": {
     "rules": [
@@ -673,6 +674,44 @@
         ]
       },
       {
+        "id": "novelty-assessment",
+        "category": "workflow",
+        "audience": "user",
+        "source": "skills/workflow/novelty-assessment",
+        "runtimeName": "novelty-assessment",
+        "description": "Use when judging whether a research idea or paper carries a defensible contribution against prior work: novelty challenges, reviewer claims of overlap, related-work framing, and defending or abandoning an innovation claim.",
+        "triggers": [
+          "is my idea novel",
+          "novelty assessment",
+          "closest related work",
+          "prior work overlap",
+          "reviewer says we overlap",
+          "is this worth pursuing",
+          "创新点",
+          "有没有 novelty",
+          "撞车",
+          "论证创新性",
+          "值不值得做"
+        ],
+        "negativeTriggers": [
+          "literature summary without a contribution judgment",
+          "implementation question with no research claim",
+          "wording-only polish of a related work section"
+        ],
+        "requires": [
+          "the candidate idea and its claimed contribution",
+          "access to the closest related work, by search or supplied papers"
+        ],
+        "priority": 80,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
         "id": "change-workspace-operator",
         "category": "change",
         "audience": "model",
@@ -957,6 +996,9 @@
         "description": "Use when tracing implementation code back to design intent, mapping design decisions to source anchors, producing architecture/layout/I-O traceability, or generating source-grounded Markdown/HTML/PDF handoff reports.",
         "triggers": [
           "design-code mapping",
+          "design to code mapping",
+          "code to design traceability",
+          "source-grounded handoff",
           "implementation handoff",
           "traceability report",
           "architecture walkthrough",
@@ -1009,6 +1051,44 @@
           "intended audience"
         ],
         "priority": 75,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
+        "id": "show-me",
+        "category": "knowledge",
+        "audience": "model",
+        "source": "skills/knowledge/show-me",
+        "runtimeName": "show-me",
+        "description": "Use when helping a user understand the current topic visually via the smallest fitting view: pseudocode, call tree, component tree, file tree, Mermaid, diff, or a focused HTML artifact.",
+        "triggers": [
+          "show me",
+          "explain visually",
+          "visualize this",
+          "draw the structure",
+          "diagram this",
+          "make it visual",
+          "show the flow",
+          "understand at a glance",
+          "present the topic visually"
+        ],
+        "negativeTriggers": [
+          "show me the code or diff",
+          "implementation task",
+          "raw Mermaid source or theme rendering",
+          "typed JSON IR authoring",
+          "design-code traceability report"
+        ],
+        "requires": [
+          "conversation topic or repository context to explain",
+          "archify skill when a polished HTML artifact is requested"
+        ],
+        "priority": 80,
         "clients": [
           "codex",
           "claude",
@@ -1155,8 +1235,13 @@
         "audience": "model",
         "source": "skills/review/multi-lens-review",
         "runtimeName": "multi-lens-review",
-        "description": "Use when a review needs multiple independent lenses, fresh outside-voice passes, confidence calibration, false-positive suppression, or synthesis after the baseline review method is selected.",
+        "description": "Use when reviewing code, a diff, commit, merge request, or current task across complete scope and code dimensions with the mandatory project-native baseline and optional fresh supplemental passes.",
         "triggers": [
+          "code review",
+          "review this diff",
+          "review this commit",
+          "review this MR",
+          "review current task",
           "multi-lens review",
           "outside-voice review",
           "fresh-agent review",
@@ -1164,12 +1249,14 @@
           "reviewer synthesis"
         ],
         "negativeTriggers": [
-          "ordinary baseline review",
-          "review method not yet selected"
+          "requirements or design review without implementation review",
+          "interactive hunk review",
+          "review packet or formal gate without implementation review",
+          "skill or subagent package review without implementation review"
         ],
         "requires": [
-          "baseline review method",
-          "review packet or target diff"
+          "review target or current task scope",
+          "applicable project-native baseline"
         ],
         "priority": 80,
         "clients": [
@@ -1296,6 +1383,41 @@
           "remaining task list"
         ],
         "priority": 70,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
+        "id": "harness-deploy",
+        "category": "operations",
+        "audience": "model",
+        "source": "skills/operations/harness-deploy",
+        "runtimeName": "harness-deploy",
+        "description": "Use when installing, updating, or migrating Harness skills, agent roles, or client projections into user-global or project locations.",
+        "triggers": [
+          "deploy harness",
+          "minimal harness deployment",
+          "update harness skills or agents",
+          "migrate harness projections",
+          "部署 Harness",
+          "最简部署",
+          "部署时避免重复技能或智能体"
+        ],
+        "negativeTriggers": [
+          "application release or service rollout without harness assets",
+          "skill inventory or cleanup report without deployment",
+          "creating a skill without deployment"
+        ],
+        "requires": [
+          "canonical Core manifest and any project-owned deployment procedure",
+          "requested clients, scope, targets and assets",
+          "current loaded roots, projection state and existing definitions"
+        ],
+        "priority": 75,
         "clients": [
           "codex",
           "claude",
@@ -1432,25 +1554,35 @@
         ]
       },
       {
-        "id": "architecture-diagram",
+        "id": "archify",
         "category": "third-party",
         "audience": "model",
-        "source": "skills/third-party/architecture-diagram",
-        "runtimeName": "architecture-diagram",
-        "description": "Use when creating standalone HTML/SVG architecture, cloud, infrastructure, service, database, or deployment diagrams.",
+        "source": "skills/third-party/archify",
+        "runtimeName": "archify",
+        "description": "Use when creating polished, validated architecture, workflow, sequence, data-flow, or lifecycle/state diagrams as explorable standalone HTML, or when converting pasted Mermaid input or repository evidence into such an artifact.",
         "triggers": [
-          "architecture diagram",
-          "cloud diagram",
-          "infrastructure diagram",
-          "service topology",
-          "deployment diagram"
+          "archify",
+          "validated architecture diagram",
+          "interactive architecture map",
+          "infrastructure or cloud topology diagram",
+          "service or deployment topology",
+          "workflow diagram",
+          "API sequence or request lifecycle diagram",
+          "data flow, pipeline, or lineage diagram",
+          "state machine or lifecycle diagram",
+          "convert Mermaid to interactive HTML diagram",
+          "architecture delta compare"
         ],
         "negativeTriggers": [
-          "Mermaid source requested",
-          "design-code traceability report"
+          "raw Mermaid source or Mermaid theme rendering",
+          "simple inline ASCII or code-shape sketch",
+          "non-diagram prose"
         ],
         "requires": [
-          "system components and relationships"
+          "Node.js >= 18 to run bundled bin/archify.mjs",
+          "typed JSON IR intent, Mermaid input, or system description",
+          "repository evidence when the diagram must reflect real code",
+          "Chrome/Chromium only for optional visual-check captures"
         ],
         "priority": 30,
         "enabledByDefault": false,
@@ -1591,13 +1723,16 @@
         "audience": "model",
         "source": "skills/third-party/environment-profile-vault",
         "runtimeName": "environment-profile-vault",
-        "description": "Use when a local environment profile must be added, retrieved, updated, deleted, or injected into an automation command without GPG encryption.",
+        "description": "Use when local environment credentials must be saved with a purpose, listed or selected for a task, updated, deleted, or injected into an automation command.",
         "triggers": [
           "environment profile",
           "store test environment credentials",
           "local test environment credentials",
           "update environment profile",
           "reuse environment login",
+          "describe saved credentials",
+          "choose credentials for a task",
+          "list environment profile descriptions",
           "run with saved environment",
           "noninteractive profile upsert"
         ],
@@ -2215,7 +2350,7 @@
         "kind": "specialist",
         "source": "agents/roles/code-simplifier.md",
         "runtimeName": "code-simplifier",
-        "description": "Use when a simplification Scope Packet asks for apply or opportunities mode across explicit coverage modes.",
+        "description": "Use when a simplification Scope Packet asks for apply or opportunities across the complete resolved task scope.",
         "clients": [
           "codex",
           "claude",
@@ -2433,5 +2568,13 @@
       }
     ],
     "tools": []
+  },
+  "integrations": {
+    "dsh": {
+      "kind": "host-plugin",
+      "entry": "lib/dsh/index.js",
+      "bundle": "lib/dsh/cordis.patch.yml",
+      "enabledByDefault": false
+    }
   }
 }

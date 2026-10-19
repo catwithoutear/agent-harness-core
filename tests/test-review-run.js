@@ -7,6 +7,11 @@ import { runChangeDoc } from "../lib/change/doc-tool.js";
 import { runChangeValidate } from "../lib/change/validator.js";
 import {
   acceptRun,
+  nativeReviewPacket,
+  buildNativeReviewPacket,
+  verifierPhaseAPacket,
+  validateDispatchPreflight,
+  sha256Text,
   admitAttempt,
   aggregateCoverage,
   aggregateRun,
@@ -19,6 +24,7 @@ import {
   checkpointAttempt,
   dispatchRun,
   expireAttempt,
+  failAttempt,
   parseJsonStrict,
   persistDiscovery,
   persistShardPlan,
@@ -33,6 +39,8 @@ import {
   validateLedger,
   validateRequest
 } from "../skills/review/review-packet-gate/scripts/review-run.mjs";
+
+import { executeReviewTargetDigest } from "../skills/review/review-packet-gate/scripts/review-target-digest.mjs";
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
 const cref = (id, character) => ({ id, digest: digest(character) });
@@ -116,6 +124,7 @@ function request(overrides = {}) {
     request_id: "run-test",
     run_id: "run-test",
     active_change: "review-verifier-v2",
+    execution_profile: "isolated",
     target: { fingerprint: "sha256:target", files: ["src/a.js", "src/b.js"] },
     risk_facts: { mandatory_deep: true, risk_level: "critical" },
     execution_policy: executionPolicy(),
@@ -185,6 +194,185 @@ function readyGateEvidence() {
 }
 
 export async function run(test) {
+  await test("native default binds returned output, source evidence and machine packets with validator parity", () => {
+    withTempDir((repo) => {
+      writeStructuredChange(repo);
+      const codeRoot = path.join(repo, "code");
+      fs.mkdirSync(path.join(codeRoot, "src"), { recursive: true });
+      fs.writeFileSync(path.join(codeRoot, "src/a.js"), "function run() {}\n");
+      fs.writeFileSync(path.join(codeRoot, "src/b.js"), "function stop() {}\n");
+      fs.mkdirSync(path.join(codeRoot, "context"));
+      fs.writeFileSync(path.join(codeRoot, "context/api.js"), "function api() {}\n");
+      const snapshot = executeReviewTargetDigest(["source-snapshot", "--code-root", codeRoot, "--include-path", "src", "--include-path", "context", "--target-path", "src"]).body;
+      const manifest = path.join(repo, "snapshot.json");
+      fs.writeFileSync(manifest, JSON.stringify(snapshot));
+      const receipts = snapshot.files.map((file) => executeReviewTargetDigest(["source-read", "--code-root", codeRoot, "--snapshot", manifest, "--path", file.path]).body);
+      const change = path.join(repo, ".changes/review-verifier-v2");
+      const runRoot = path.join(change, "review-runs/native-run");
+      fs.mkdirSync(path.join(change, "reviews/materials/native-run"), { recursive: true });
+      fs.writeFileSync(path.join(change, "reviews/README.md"), artifactFrontMatter("reviews-index", "workflow") + "# Reviews\n\n## Child Index\n\n| path | artifact | status | order | description |\n|---|---|---|---|---|\n");
+      const material = (name, value) => {
+        const text = JSON.stringify(value, null, 2) + "\n";
+        const relative = `reviews/materials/native-run/${name}.json`;
+        fs.writeFileSync(path.join(change, relative), text);
+        return { path: relative, digest: sha256Text(text) };
+      };
+      const execution = (id, packet, raw, name) => ({ execution_id: id, execution_status: "completed", input_digest: packet.record_digest,
+        output_ref: material(name, raw), source_receipts_ref: material(`${name}-receipts`, receipts) });
+      const rawRequest = request({ request_id: "native-run", run_id: "native-run", native_preflight: { source_snapshot: snapshot } });
+      delete rawRequest.execution_profile;
+      delete rawRequest.provider_policy;
+      delete rawRequest.deep_preflight;
+      initializeRunRoot(runRoot);
+      const accepted = acceptRun(runRoot, rawRequest, { now: () => 0 });
+      assert.equal(accepted.routing.execution_profile, "native");
+      assert.equal(accepted.preflight.provider_binding, undefined);
+      const extraRelation = { ...accepted.request.dispatch_contract.relations[0], relation_id: "context-relation", unit_key: { unit_path: "context/api.js", anchor_kind: "function", anchor_value: "api" }, discovery_origin: "target-derived" };
+      const expanded = validateDiscovery({ ...discovery(accepted.request), relations: [...accepted.request.dispatch_contract.relations, extraRelation] }, accepted.request.dispatch_contract);
+      const expandedPlan = { ...plan(accepted.request, expanded), shards: [{ shard_id: "shard-1", relation_ids: expanded.relations.map((item) => item.relation_id) }] };
+      assert.throws(() => buildNativeReviewPacket({ request: accepted.request, preflight: accepted.preflight, discovery: expanded, plan: expandedPlan, shard_id: "shard-1", attempt_id: "context-attempt" }), /assigned unit/);
+      const phaseA = verifierPhaseAPacket(runRoot);
+      assert.equal(phaseA.expected_relations, undefined);
+      assert.equal(phaseA.contract_digest, undefined);
+      assert.deepEqual(phaseA.source_snapshot, snapshot);
+      assert.throws(() => validateDispatchPreflight(finalizeRecord({ ...accepted.preflight, execution_profile: "isolated" }), accepted.request, accepted.routing), /profile mismatch/);
+      const inventory = { observed_units: rawRequest.dispatch_contract.relations.map((relation) => relation.unit_key),
+        observations: rawRequest.dispatch_contract.relations.map((relation) => ({ unit_key: relation.unit_key, dimension_id: "correctness", disposition: "inspect", evidence_refs: [relation.unit_key.unit_path] })), source_refs: ["src/a.js", "src/b.js"] };
+      inventory.observations.push({ unit_key: inventory.observed_units[0], dimension_id: "context", disposition: "context only", evidence_refs: ["src/a.js"] });
+      const rawDiscovery = discovery(accepted.request);
+      rawDiscovery.native_inventory = inventory;
+      rawDiscovery.native_observation_mapping = [{ observation_index: 0, relation_ids: ["rel-1"] }, { observation_index: 1, relation_ids: ["rel-2"] }, { observation_index: 2, relation_ids: [], reason: "Context preserved for Phase B assessment" }];
+      rawDiscovery.native_execution = execution("child-inventory", phaseA, inventory, "inventory");
+      assert.throws(() => persistDiscovery(runRoot, rawDiscovery, { now: () => 100 }), /code-root/);
+      for (const status of ["queued", "running", "failed"]) assert.throws(() => persistDiscovery(runRoot, { ...rawDiscovery, native_execution: { ...rawDiscovery.native_execution, execution_status: status } }, { now: () => 100, codeRoot }), /completed child/);
+      assert.throws(() => persistDiscovery(runRoot, { ...rawDiscovery, native_execution: { ...rawDiscovery.native_execution, input_digest: digest("9") } }, { now: () => 100, codeRoot }), /machine packet/);
+      assert.throws(() => persistDiscovery(runRoot, { ...rawDiscovery, native_observation_mapping: [{ observation_index: 0, relation_ids: ["rel-1", "rel-2"] }] }, { now: () => 100, codeRoot }), /dropped observations/);
+      const forgedReceipts = structuredClone(receipts);
+      forgedReceipts[0].lines[0].text = "invented";
+      assert.throws(() => persistDiscovery(runRoot, { ...rawDiscovery, native_execution: { ...rawDiscovery.native_execution, source_receipts_ref: material("forged", forgedReceipts) } }, { now: () => 100, codeRoot }), /source evidence failed/);
+      fs.symlinkSync(manifest, path.join(change, "reviews/materials/native-run/escape.json"));
+      assert.throws(() => persistDiscovery(runRoot, { ...rawDiscovery, native_execution: { ...rawDiscovery.native_execution, output_ref: { path: "reviews/materials/native-run/escape.json", digest: sha256Text(fs.readFileSync(manifest)) } } }, { now: () => 100, codeRoot }), /escapes reviews/);
+      fs.writeFileSync(path.join(codeRoot, "src/b.js"), "changed\n");
+      assert.throws(() => persistDiscovery(runRoot, rawDiscovery, { now: () => 100, codeRoot }), /source evidence failed/);
+      fs.writeFileSync(path.join(codeRoot, "src/b.js"), "function stop() {}\n");
+      const sealed = persistDiscovery(runRoot, rawDiscovery, { now: () => 100, codeRoot });
+      beginShardPlanning(runRoot);
+      persistShardPlan(runRoot, plan(accepted.request, sealed));
+      dispatchRun(runRoot);
+      const packet = nativeReviewPacket(runRoot, { shard_id: "shard-1", attempt_id: "attempt-1" });
+      assert.deepEqual(packet.relations.map((relation) => relation.relation_id), ["rel-1", "rel-2"]);
+      assert.throws(() => admitAttempt(runRoot, { shard_id: "shard-1", attempt_id: "attempt-1", input_digest: digest("7") }, { now: () => 200 }), /machine reviewer packet/);
+      admitAttempt(runRoot, { shard_id: "shard-1", attempt_id: "attempt-1", input_digest: packet.record_digest }, { now: () => 200 });
+      const failedPacket = nativeReviewPacket(runRoot, { shard_id: "shard-1", attempt_id: "failed-native" });
+      admitAttempt(runRoot, { shard_id: "shard-1", attempt_id: "failed-native", input_digest: failedPacket.record_digest }, { now: () => 200 });
+      const failed = failAttempt(runRoot, { attempt_id: "failed-native", kind: "PROVIDER_RUNTIME_GAP", phase: "correctness-review", message: "Child returned no successful output" }, { now: () => 250 });
+      assert.equal(failed.attempt_status, "failed");
+      assert.equal(failed.native_execution, undefined);
+      const rawLedger = { ...ledger(accepted.request, sealed), input_digest: packet.record_digest };
+      const nativeLedger = { ...rawLedger, native_execution: execution("child-reviewer", packet, rawLedger, "reviewer") };
+      assert.throws(() => appendLedgerAttempt(runRoot, { ...nativeLedger, native_execution: { ...nativeLedger.native_execution, execution_id: "child-inventory" } }, { now: () => 300, codeRoot }), /reused Phase A/);
+      appendLedgerAttempt(runRoot, nativeLedger, { now: () => 300, codeRoot });
+      const result = aggregateRun(runRoot, { now: () => 400, gateEvidence: readyGateEvidence() });
+      assert.equal(result.gate_result.overall_gate, "READY");
+      const jsValidate = () => capture(() => runChangeValidate(["--state-root", repo, "--change", "review-verifier-v2", "--strict-layout"]));
+      const pyValidate = () => spawnSync("python3", ["lib/change/harness_change_validate.py", "--state-root", repo, "--change", "review-verifier-v2", "--strict-layout"], { encoding: "utf8" });
+      const js = jsValidate();
+      assert.equal(js.status, 0, js.stdout + js.stderr);
+      const py = pyValidate();
+      assert.equal(py.status, 0, py.stdout + py.stderr);
+      const ledgerPath = path.join(runRoot, "attempts/attempt-1.json");
+      const originalLedgerBytes = fs.readFileSync(ledgerPath);
+      const originalOutputBytes = fs.readFileSync(path.join(change, nativeLedger.native_execution.output_ref.path));
+      const missingExecution = JSON.parse(originalLedgerBytes.toString("utf8"));
+      delete missingExecution.attempt_status;
+      delete missingExecution.native_execution;
+      fs.writeFileSync(ledgerPath, JSON.stringify(finalizeRecord(missingExecution)));
+      const jsMissingExecution = jsValidate();
+      const pyMissingExecution = pyValidate();
+      assert.notEqual(jsMissingExecution.status, 0);
+      assert.match(jsMissingExecution.stdout + jsMissingExecution.stderr, /native_execution|native execution/);
+      assert.notEqual(pyMissingExecution.status, 0);
+      assert.match(pyMissingExecution.stdout + pyMissingExecution.stderr, /native execution/);
+      fs.writeFileSync(ledgerPath, originalLedgerBytes);
+      assert.deepEqual(fs.readFileSync(path.join(change, nativeLedger.native_execution.output_ref.path)), originalOutputBytes);
+      assert.equal(jsValidate().status, 0);
+      assert.equal(pyValidate().status, 0);
+      const tamperedRequest = finalizeRecord({ ...accepted.request, target: { ...accepted.request.target, files: ["missing.js"] } });
+      const tamperedRouting = finalizeRecord({ ...accepted.routing, request_digest: tamperedRequest.record_digest });
+      const tamperedPreflight = finalizeRecord({ ...accepted.preflight, request_ref: { id: tamperedRequest.record_id, digest: tamperedRequest.record_digest }, routing_ref: { id: tamperedRouting.record_id, digest: tamperedRouting.record_digest } });
+      for (const [name, record] of [["request", tamperedRequest], ["routing-decision", tamperedRouting], ["dispatch-preflight", tamperedPreflight]]) fs.writeFileSync(path.join(runRoot, `${name}.json`), JSON.stringify(record));
+      const jsScopeGap = jsValidate();
+      const pyScopeGap = pyValidate();
+      assert.notEqual(jsScopeGap.status, 0);
+      assert.match(jsScopeGap.stdout + jsScopeGap.stderr, /does not cover declared target files/);
+      assert.notEqual(pyScopeGap.status, 0);
+      assert.match(pyScopeGap.stdout + pyScopeGap.stderr, /does not cover declared target files/);
+      for (const [name, record] of [["request", accepted.request], ["routing-decision", accepted.routing], ["dispatch-preflight", accepted.preflight]]) fs.writeFileSync(path.join(runRoot, `${name}.json`), JSON.stringify(record));
+      const discoveryPath = path.join(runRoot, "discovery.json");
+      const contaminated = structuredClone(sealed);
+      contaminated.native_inventory.observations[0].expected_relation_id = "rel-1";
+      const contaminatedRaw = material("contaminated-inventory", contaminated.native_inventory);
+      contaminated.native_execution.output_ref = contaminatedRaw;
+      fs.writeFileSync(discoveryPath, JSON.stringify(finalizeRecord(contaminated)));
+      assert.notEqual(jsValidate().status, 0);
+      assert.notEqual(pyValidate().status, 0);
+      fs.writeFileSync(discoveryPath, JSON.stringify(sealed));
+      material("inventory", inventory);
+      fs.writeFileSync(path.join(change, "reviews/unowned.json"), "{}");
+      assert.notEqual(jsValidate().status, 0);
+      assert.notEqual(pyValidate().status, 0);
+    });
+  });
+
+  await test("native machine assignment explicitly rejects quick and standard dispatched runs", () => {
+    withTempDir((root) => {
+      for (const assurance of ["quick", "standard"]) {
+        const runRoot = path.join(root, assurance);
+        const raw = request({ request_id: assurance, run_id: assurance, execution_profile: "native", requested_assurance: assurance, risk_facts: { mandatory_deep: false } });
+        delete raw.provider_policy;
+        delete raw.deep_preflight;
+        initializeRunRoot(runRoot);
+        const accepted = acceptRun(runRoot, raw);
+        const sealed = persistDiscovery(runRoot, discovery(accepted.request));
+        beginShardPlanning(runRoot);
+        persistShardPlan(runRoot, plan(accepted.request, sealed));
+        assert.equal(dispatchRun(runRoot).state, "running");
+        assert.throws(() => nativeReviewPacket(runRoot, { shard_id: "shard-1", attempt_id: "attempt-1" }), (error) => error.code === "INVALID_STATE_TRANSITION" && error.message.includes("supports deep"));
+      }
+    });
+  });
+
+  await test("legacy persisted profile remains isolated without rewriting immutable routing or preflight", () => {
+    withTempDir((root) => {
+      const runRoot = path.join(root, "run-test");
+      initializeRunRoot(runRoot);
+      const accepted = acceptRun(runRoot, request());
+      const legacyRequest = structuredClone(accepted.request);
+      delete legacyRequest.execution_profile;
+      const normalized = finalizeRecord(legacyRequest);
+      const legacyRouting = structuredClone(accepted.routing);
+      delete legacyRouting.execution_profile;
+      legacyRouting.request_digest = normalized.record_digest;
+      const routing = finalizeRecord(legacyRouting);
+      const legacyPreflight = structuredClone(accepted.preflight);
+      delete legacyPreflight.execution_profile;
+      legacyPreflight.request_ref = { id: normalized.record_id, digest: normalized.record_digest };
+      legacyPreflight.routing_ref = { id: routing.record_id, digest: routing.record_digest };
+      const preflight = finalizeRecord(legacyPreflight);
+      for (const [name, record] of [["request", normalized], ["routing-decision", routing], ["dispatch-preflight", preflight]]) fs.writeFileSync(path.join(runRoot, `${name}.json`), JSON.stringify(record));
+      const before = ["routing-decision", "dispatch-preflight"].map((name) => fs.readFileSync(path.join(runRoot, `${name}.json`), "utf8"));
+      assert.equal(acceptRun(runRoot, normalized).routing.execution_profile, undefined);
+      assert.equal(verifierPhaseAPacket(runRoot).provider_binding_ref.id, preflight.provider_binding.record_id);
+      assert.deepEqual(["routing-decision", "dispatch-preflight"].map((name) => fs.readFileSync(path.join(runRoot, `${name}.json`), "utf8")), before);
+      assert.throws(() => validateRequest(request({ execution_profile: "unknown" })), /unknown execution_profile/);
+      const invalidRoot = path.join(root, "null-profile");
+      initializeRunRoot(invalidRoot);
+      assert.throws(() => acceptRun(invalidRoot, request({ request_id: "null-profile", run_id: "null-profile", execution_profile: null })), /unknown execution_profile/);
+      assert.equal(fs.existsSync(path.join(invalidRoot, "request.json")), false);
+      assert.equal(fs.existsSync(path.join(invalidRoot, "routing-decision.json")), false);
+    });
+  });
+
   await test("canonical JSON is key-order independent and duplicate-key safe", () => {
     const left = { b: 2, a: { z: true, y: ["x", 1] } };
     const right = { a: { y: ["x", 1], z: true }, b: 2 };
@@ -284,6 +472,32 @@ export async function run(test) {
     );
   });
 
+  await test("ledger closure validates references without attesting semantic evidence adequacy", () => {
+    const req = validateRequest(request());
+    const sealed = requireDiscovery(req);
+    const unsupported = ledger(req, sealed);
+    for (const entry of unsupported.entries) {
+      entry.evidence = [{ kind: "source", ref: "unread/blanket-coverage-claim.md" }];
+    }
+    // The runtime deliberately has no target resolver here. A machine READY
+    // is not proof that the cited document exists or substantiates a keep reason.
+    assert.doesNotThrow(() => validateLedger(unsupported, sealed));
+    const aggregate = aggregateCoverage(sealed, [unsupported]);
+    assert.equal(aggregate.coverage_gate, "READY");
+    const gateEvidence = readyGateEvidence();
+    const independent = gateEvidence.find((item) => item.gate_name === "independent_review_gate");
+    independent.status = "NOT_READY";
+    independent.blocking_reasons = ["EVIDENCE_GAP: comparison unavailable"];
+    for (const selectedMode of ["quick", "standard", "deep"]) {
+      const result = composeGateResult({ aggregate, selectedMode, gateEvidence });
+      assert.equal(result.independent_review_gate, "NOT_READY");
+      assert.equal(result.overall_gate, "NOT_READY");
+      if (selectedMode === "deep") assert.equal(result.coverage_gate, "NOT_READY");
+    }
+    unsupported.entries[0].evidence = [];
+    assert.throws(() => validateLedger(unsupported, sealed), /must not be empty/);
+  });
+
   await test("durable run lifecycle enforces the discovery barrier and persists five evidence gates plus overall", () => {
     withTempDir((root) => {
       const runRoot = path.join(root, "run-test");
@@ -314,6 +528,80 @@ export async function run(test) {
       assert.equal(fs.existsSync(path.join(runRoot, "control", "current.json")), true);
       assert.equal(fs.existsSync(path.join(runRoot, "aggregate-report.json")), true);
       assert.equal(fs.existsSync(path.join(runRoot, "gate-result.json")), true);
+    });
+  });
+
+  await test("pending owner attempt and not-covered block acceptance while a new run preserves prior evidence", () => {
+    withTempDir((root) => {
+      function start(runId) {
+        const runRoot = path.join(root, runId);
+        const accepted = acceptRun(runRoot, request({ request_id: runId, run_id: runId }), { now: () => 0 });
+        const sealed = persistDiscovery(runRoot, discovery(accepted.request), { now: () => 100 });
+        beginShardPlanning(runRoot);
+        persistShardPlan(runRoot, plan(accepted.request, sealed));
+        dispatchRun(runRoot);
+        admitAttempt(runRoot, { attempt_id: "attempt-1", shard_id: "shard-1", input_digest: "sha256:attempt-input" }, { now: () => 200 });
+        return { runRoot, req: accepted.request, sealed };
+      }
+      const first = start("return-open");
+      // An owner has not yet resolved the coordinator return. An assessment
+      // or passing verification receipt cannot stand in for that response.
+      const coordinatorSourceAssessment = {
+        owner: "coordinator", status: "READY",
+        evidence: [{ kind: "source-review", ref: "reports/coordinator-assessment.md" }]
+      };
+      assert.throws(() => aggregateRun(first.runRoot, { now: () => 250, gateEvidence: readyGateEvidence(), coordinatorSourceAssessment }), /attempts remain active/);
+      const response = ledger(first.req, first.sealed);
+      response.entries[0].status = "not-covered";
+      response.entries[0].evidence = [{ kind: "source-review", ref: "reports/unresolved-comparison.md" }];
+      const accepted = appendLedgerAttempt(first.runRoot, response, { now: () => 300 });
+      const priorBytes = fs.readFileSync(path.join(first.runRoot, "attempts", "attempt-1.json"), "utf8");
+      const blocked = aggregateRun(first.runRoot, { now: () => 400, gateEvidence: readyGateEvidence(), coordinatorSourceAssessment });
+      assert.equal(blocked.control.state, "completed");
+      assert.equal(blocked.gate_result.coverage_gate, "NOT_READY");
+      assert.equal(blocked.gate_result.overall_gate, "NOT_READY");
+      assert.equal(blocked.gate_result.coordinator_source_assessment.gating, false);
+      assert.deepEqual(blocked.aggregate.exact_gaps.map((gap) => [gap.type, gap.relation_id]), [["NOT_COVERED", "rel-1"]]);
+      const amended = ledger(first.req, first.sealed);
+      assert.throws(() => appendLedgerAttempt(first.runRoot, amended), /already has a terminal result/);
+
+      const successor = start("return-corrected");
+      assert.equal(successor.req.target.fingerprint, first.req.target.fingerprint);
+      assert.equal(successor.req.dispatch_contract.contract_digest, first.req.dispatch_contract.contract_digest);
+      const corrected = ledger(successor.req, successor.sealed);
+      // This reference is coordinator-supplied lineage, not validated by the
+      // filesystem runtime. The original report/return belongs in Review Packet.
+      corrected.created_from = [accepted.record_digest];
+      corrected.entries[0].evidence = [{ kind: "source-review", ref: "reports/corrected-comparison.md" }];
+      // Correctness of this comparison is an owner/coordinator judgment. These
+      // synthetic receipts exercise only the already-owned runtime lifecycle.
+      appendLedgerAttempt(successor.runRoot, corrected, { now: () => 300 });
+      const closed = aggregateRun(successor.runRoot, { now: () => 400, gateEvidence: readyGateEvidence() });
+      assert.equal(closed.gate_result.overall_gate, "READY");
+      assert.equal(fs.readFileSync(path.join(first.runRoot, "attempts", "attempt-1.json"), "utf8"), priorBytes);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(first.runRoot, "gate-result.json"), "utf8")).overall_gate, "NOT_READY");
+    });
+  });
+
+  await test("overlapping successful retry cannot replace a sealed not-covered relation", () => {
+    withTempDir((root) => {
+      const runRoot = path.join(root, "duplicate-return");
+      const { request: req } = acceptRun(runRoot, request({ request_id: "duplicate-return", run_id: "duplicate-return" }), { now: () => 0 });
+      const sealed = persistDiscovery(runRoot, discovery(req), { now: () => 100 });
+      beginShardPlanning(runRoot);
+      persistShardPlan(runRoot, plan(req, sealed));
+      dispatchRun(runRoot);
+      for (const [index, attemptId] of ["attempt-1", "attempt-2"].entries()) {
+        admitAttempt(runRoot, { attempt_id: attemptId, shard_id: "shard-1", input_digest: "sha256:attempt-input" }, { now: () => 200 + index * 100 });
+        const response = ledger(req, sealed);
+        response.attempt_id = attemptId;
+        if (index === 0) response.entries[0].status = "not-covered";
+        appendLedgerAttempt(runRoot, response, { now: () => 250 + index * 100 });
+      }
+      const result = aggregateRun(runRoot, { now: () => 400, gateEvidence: readyGateEvidence() });
+      assert.equal(result.aggregate.coverage_gate, "NOT_READY");
+      assert(result.aggregate.exact_gaps.some((gap) => gap.type === "DUPLICATE_RELATION" && gap.relation_id === "rel-1"));
+      assert.equal(result.gate_result.overall_gate, "NOT_READY");
     });
   });
 

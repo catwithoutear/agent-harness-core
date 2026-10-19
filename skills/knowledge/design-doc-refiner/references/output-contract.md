@@ -2,6 +2,36 @@
 
 Use this contract unless the user requests another structure.
 
+## Reader-Facing Design And Plan
+
+Apply this presentation guidance when sharing a solution design or implementation
+plan with the user. It does not replace required design sections, ordered task
+slices, or readiness gates.
+
+- Lead with observable behavior or guarantees: what someone can do, what changes
+  on success or failure, and which relevant behavior stays outside the scope.
+  Group that overview by behavior, then expand into mechanisms and source
+  locations. Keep execution steps in dependency order.
+- Make the overview understandable without opening every detail. Keep failure
+  behavior, material risks, uncertainty, and validation gaps visible; use short
+  sentences in the user's language rather than fixed word or nesting limits.
+- Support each material behavior with the most useful evidence or illustration:
+  a before/after example, state transition, call path, schema, or code excerpt.
+  Use current source anchors for existing code. Label proposed code and mockups
+  as sketches; do not invent existing paths or line numbers.
+- Place each unresolved decision beside the behavior or mechanism it changes.
+  Explain the meaningful options, the recommendation and its reason, and the
+  effect on scope, behavior, compatibility, or validation. Give decisions stable
+  labels when other artifacts or feedback need to refer to them.
+- Ask only about choices that affect the solution and cannot be resolved from
+  accepted requirements, existing authorization, or current evidence. Do not
+  manufacture a question quota or reopen settled decisions. Unselected options
+  and unopened defaults are not approval; pause only dependent work when a user
+  decision is required, following `workflow-control:Continuous Convergence`.
+- Choose the smallest useful presentation through `show-me` when a visual helps.
+  Use HTML when navigation, comparison, or contextual feedback materially helps
+  the reader; a short plan can remain Markdown.
+
 ## Output Sections
 
 Return these sections in order:
@@ -26,6 +56,11 @@ Before returning the document, check whether it answers these questions:
 
 ```markdown
 # Title
+
+## Behavior Summary
+
+Describe the observable changes or preserved guarantees before implementation
+detail. Apply Reader-Facing Design And Plan above.
 
 ## Background
 

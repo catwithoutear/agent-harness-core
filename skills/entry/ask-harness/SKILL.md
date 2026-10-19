@@ -73,6 +73,17 @@ that lower-level skill explicitly in the recommendation.
 | "Which command validates this change workspace?" | `harness-change-validate` first; use `change-workspace-operator` only if the user needs guidance interpreting or fixing output. |
 | "Review this project-domain MR." | Use the overlay MR review skill and the overlay domain skill named by the manifest; do not route to a generic core review skill as a replacement. |
 | "Improve a core skill and its projections." | Use `skill-authoring-governance`, then `subagent-projection-review` if client-visible role or projection behavior changes. |
+| "Deploy or update Harness with no duplicate skills or roles." | Use `harness-deploy` for scope, existing discovery roots, backups and verification; it routes to the existing projector or project deployer. |
+
+For existing ZCode Desktop roles, use `commands.nativeRoles`
+(`harness-native-roles`) for dry-run/verify and reviewed `--from-plan` refresh.
+For DSH roles, use `integrations.dsh`: Core's optional host bundle, installed
+through DSH's native `plugin` manager into the explicitly selected profile.
+It reads canonical roles at activation; do not embed personas in presets or use
+the removed `harness-native-roles --client dsh` route. Use `harness-deploy` for
+migration, backups and verification. Shared `.agents/skills` are projected once
+through Codex when the installed native loader confirms that root. Preserve
+native settings; do not invent generic projector client support or `.dsh/agents`.
 
 ## Output
 

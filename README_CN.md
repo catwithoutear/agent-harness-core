@@ -165,6 +165,34 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
+## 已有 ZCode 与 DSH 角色
+
+使用 `harness-deploy` 技能选择最小授权部署范围、核对实际加载目录、保留外部备份并检查技能和角色是否重复。技能复用现有 projector 或所属 overlay 的部署工具。
+
+经当前安装源码确认，ZCode Desktop 和 DSH 能读取共享 `.agents/skills` 根，技能通过 Codex 投影一次。ZCode 原生角色刷新独立于通用四客户端 projector：
+
+```bash
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --dry-run --json > zcode-plan.json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --from-plan zcode-plan.json --json
+node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --verify --json
+```
+
+应用前检查计划、已有正文及 ZCode Desktop 实际 storage 目录。工具保留 canonical name/description 以外的元数据，拒绝过期计划；多文件失败会报告已更新、失败、未处理角色及备份映射。
+
+DSH 使用随 Core 分发的可选宿主插件，通过原生插件管理器安装到明确选定的 profile：
+
+```bash
+dsh plugin --profile <profile-name> add <core-path-or-tarball>
+```
+
+bundle 插入一个 `harness-roles` 实例，在激活时读取已安装 Core 的 manifest 及角色文件，让所有 preset 和队友都能调用 `subagent_<role>` 工具。profile 需提供 `tools`、`systemPrompt`、`subagents`，以及支持 persona、工具过滤和深度限制的 provider。默认子智能体 provider 为 `spawn`，`maxDepth: 2`。省略 `agentOptions` 时继承父智能体模型配置，Core 不选择模型。profile 可覆盖 `harness-roles.config`，指定 `agentOptions`、绝对路径 `rolesDir`、provider、深度、额外的 `readOnlyDeny` 或 `policy: false`。只读角色始终禁用 write/edit，但仍可使用 shell，因此这不是沙箱。角色子进程禁用继承的委派、团队控制和角色工具。
+
+迁移时保留选定 profile 和模型设置，移除旧的内嵌 Harness 角色条目及 `@local/dsh-harness-roles` bundle/依赖，再安装 Core bundle，避免两套接入注册同名工具。profile 不再引用外部链接插件后才能删除其目录。`harness-native-roles --client dsh` 已删除。用 `dsh --profile <profile-name> --dump-config` 核对有效配置，再在新会话或明确重载后检查角色工具可见性与派发。源码或打包检查不能证明运行中的 Web 已重载；Core 原生刷新命令不会重启服务。
+
+通用投影的 `--conflict backup` 将快照保存到 `~/backup/agent-harness-core/`，不会在发现根创建备份。
+原生刷新复用同一快照所有者，每份私有快照记录 original→saved。保留映射用于恢复，交付后清理已检查的计划文件。
+部署时明确选择客户端，避免更新已经停止使用的客户端。
+
 ## User-Global Agent Constitution
 
 可复用的 user-global instruction template 位于 `templates/user-global/AGENTS.md`。
@@ -185,11 +213,13 @@ writing any global file.
 
 ## Change Workspace Design Packs
 
-根据工作复杂度选择最轻量的适用路径：
+使用一个工作循环，由任务条件决定需要哪些材料：
 
-- 快速路径：适用于措辞、格式或类似的局部修改，前提是不改变行为、接口、生命周期、依赖关系、迁移或失败契约。读取当前源码，完成小范围修改并验证即可。
-- 紧凑路径：适用于方案已经明确、且不触发 implementation-design 的有限实现。记录目标、影响范围、不需要 solution design 和 pack 的原因、验证方式以及回滚方式；风险需要时再审阅这份计划。
-- 设计路径：先挑战 proposal，再审阅 solution design；随后判断是否触发 implementation-design。需要 pack 时，先完成并审阅 pack，再创建和审阅 task slices，最后进入实现。
+- 措辞、格式或类似的局部修改，不改变行为、接口、生命周期、依赖、迁移或失败契约时，读取当前源码，完成小范围修改并验证。
+- 方案已明确且不触发 implementation-design 的有限实现，记录目标、源码范围、不需要 design/pack 的原因、验证及回滚；风险需要时审阅这份计划。
+- 方案决策尚未明确时，挑战 proposal、审阅 solution design、判断 implementation-design 触发条件；需要 pack 时先审阅，再创建和审阅 task slices。
+
+每次一般或最终审阅必须覆盖完整任务范围及全部代码/设计维度与项目基线。材料条件、风险和角色分工只影响调查深度及独立性，不减少范围或维度。不适用须经过检查并有证据；缺失证据保留为缺口。共同义务由 `workflow-control` 拥有，代码和设计清单分别由原 multi-lens 技能拥有。
 
 Solution design 决定行为和边界。需要 `implementation-design/` pack 时，它负责把已接受的方案映射到代码归属、依赖方向、运行与失败流程、实施顺序和测试点。文件存在或结构校验通过都不等于获得批准。后续工作如果改变了方案决策，应回到 solution design，并重新检查依赖它的 pack 和 task evidence。
 

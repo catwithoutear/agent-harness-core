@@ -80,13 +80,13 @@ Raw diagram source policy:
 
 Renderer routing:
 
-- `show-me`, when installed, chooses the smallest visual form when the
-  explanation stays in chat or Markdown.
-- `archify`, when installed, renders polished, validated, interactive, or
-  exportable HTML diagrams; follow its SKILL.md and do not duplicate its JSON
-  IR, schema, or validation contract here.
-- `mermaid-diagrams`, when available, renders, themes, or batch-converts raw
-  Mermaid source.
+- `show-me` chooses the smallest visual form when the explanation stays in chat
+  or Markdown.
+- `archify` (opt-in) renders polished, validated, interactive, or exportable
+  HTML diagrams; follow its SKILL.md and do not duplicate its JSON IR, schema,
+  or validation contract here.
+- `mermaid-diagrams` (opt-in) renders, themes, or batch-converts raw Mermaid
+  source.
 - If no renderer is available, fall back to inline SVG or simple HTML and state
   the fallback in the report.
 

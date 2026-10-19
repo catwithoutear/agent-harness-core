@@ -34,7 +34,7 @@ Input: `$ARGUMENTS`
 - Commands run:
 - Results:
 - Fidelity:
-- Not run or blocked:
+- Not run, blocked, or unconfirmed:
 - Next validation step:
 
 Use `READY`, `READY_WITH_NOTES`, `NOT_READY`, or `NEEDS_USER_DECISION` only when

@@ -28,7 +28,7 @@ honest final verification statement.
 2. Build a compact context packet from verified sources.
 3. When custom code is proposed, apply the Minimal Implementation Gate after
    understanding the behavior and before selecting the implementation approach.
-4. Choose the lightest path that fits the work.
+4. Determine required materials from the conditions below within this one loop.
 5. When the solution is not settled, draft and challenge a proposal, then write
    and review the solution design.
 6. After the solution-design review is ready, apply the
@@ -98,23 +98,116 @@ blocker persists after reasonable safe attempts, report partial status, the
 missing capability/input, and the next action; do not loop indefinitely or claim
 completion. Continue independent authorized work when possible.
 
-## Workflow Paths
+## Required Materials
 
-- Fast path: low-risk wording, formatting, or similarly local work that does not
+Use one workflow loop; material requirements follow the work, not a selected
+mode. These conditions never reduce review scope or dimension coverage:
+
+- For low-risk wording, formatting, or similarly local work that does not
   change behavior, interfaces, lifecycle, dependencies, migration, or failure
-  contracts. Observe, make the narrow edit, and verify it. A proposal, design,
-  pack, and task set are unnecessary.
-- Compact path: bounded implementation with a settled solution and no
-  implementation-design trigger. Record the goal, affected source, why design
-  and the pack are unnecessary, validation, and rollback in a plan or slice.
+  contracts, a context packet and direct edit/verification suffice. A separate
+  proposal, design, pack, and task set are unnecessary.
+- For bounded implementation with a settled solution and no
+  implementation-design trigger, record goal, affected source, explicit
+  no-design/no-pack reason, validation, and rollback in a plan or slice.
   Review that lightweight plan when the risk warrants it.
-- Design path: use proposal and challenge, reviewed solution design,
-  implementation-design assessment, a reviewed pack when required, and a
-  reviewed task set before implementation.
+- When material behavior, compatibility, ownership, lifecycle, migration, or
+  dependency decisions remain unresolved after bounded source inspection,
+  challenge a proposal and review solution design. Apply the pack trigger after
+  solution-design review, then review the required pack and complete task set
+  before implementation.
 
-Resolve ordinary technical uncertainty through bounded source inspection first.
-Escalate from the fast or compact path only when material behavior, compatibility,
-ownership, lifecycle, migration, or dependency decisions remain unresolved.
+## Review Coverage
+
+Every general/final review covers the complete current task scope and checks
+all authoritative dimension families. For code, `multi-lens-review` is the one
+normal code-review procedure and `multi-lens-review:Lens Selection` owns the
+code families; invoke the applicable project-native baseline.
+`multi-lens-design-review:Design Lenses` owns planning/design. Read those
+current owners rather than maintaining a second checklist here.
+
+Resolve staged/unstaged changes, in-scope new files, committed task changes,
+and necessary callers, contracts, consumers, generated surfaces and tests.
+An empty latest diff is not an empty task. Exclude unrelated work with reasons;
+this does not authorize whole-repository cleanup or additional edits.
+
+For each family, inspect applicability and investigate to the depth needed to
+support its disposition. N/A requires a source-backed reason after inspection;
+unavailable source, uncertain applicability or evidence remains a named gap.
+Record the dimension mapping and material evidence in the existing Review
+Packet. Group identical dispositions when they share scope and evidence; do
+not create an exhaustive unit-by-dimension report merely for row count.
+
+The coordinator allocates bounded role packets and accounts for the whole
+scope and all dimensions; each specialist covers its assignment. A focused
+question or local pass does not establish whole-task readiness. Risk adds
+investigation or required independence; size, material choice, permissions and
+assurance labels cannot subtract dimensions.
+
+For ordinary filesystem-backed review, native formal review or simplification, execute
+`review-packet-gate:Source Navigation and Acceptance` before the first dispatch
+and when consuming material source evidence. Carry the fixed-root invocation
+in the existing packet; source identity errors require a named gap or return,
+and matching receipts do not establish semantic coverage. Owner gates remain
+authoritative; provider isolation applies to explicitly isolated execution.
+
+Before accepting a delegated or inline reuse/necessity result, inspect the
+`Capability Comparison Evidence` defined in
+`references/minimal-implementation.md`. Reconcile it with the scoped key blocks,
+including retained blocks with multiple operations or intermediate state.
+Follow each material keep reason to the inspected interface and proposed final
+call form, including the applicable selection guidance and the full result
+combination; check that the cited semantics support the claimed difference and
+preserve the named invariants. Verify that the comparison targets the retained
+operations under the same behavior constraints. A reason to retain validation
+or local state does not justify surrounding operations, and rejection of an
+unsafe alternative does not establish that the block is irreducible. Treat
+these mismatched comparisons as unsubstantiated coverage, even when an
+inventory, source anchors and a keep decision are present.
+Reopen unsupported comparisons with a targeted
+source check or bounded follow-up, rather than adding reviewers or rerunning
+unrelated tests. Do not infer a missed inspection merely from a missing record;
+record that coverage is not yet substantiated and obtain the missing evidence.
+
+Reconcile explicit unresolved coverage from a verifier or another pass before
+closing that dimension. A later invocation, complete file inventory or no
+findings does not resolve the named gap; require the missing comparison or
+retain the gap. After fixes change an operation or its result combination,
+obtain a comparison of that changed block on the current source; earlier review
+of a different operation cannot close it. Use the existing Review Packet and
+coverage evidence, without introducing a second status store.
+
+Locate the report's final keep claim and test its actual strongest factual keep
+premise on that same block, without turning a readability preference into an
+impossibility claim. A boundary in another example cannot substantiate this
+block's comparison. Accept a supported bounded
+claim within its declared scope; do not demand proof of irreducibility for
+operations the report explicitly leaves unclaimed. A return should identify
+the unsupported premise or named missing evidence, not merely ask for more
+documentation or substitute a weaker rejected candidate.
+
+A bounded return names the block, the unsupported claim, and the invariant or
+comparison object that was not held fixed; it need not prescribe a replacement.
+Keep the original report. The assigned reviewer rechecks the interface and
+returns a corrected comparison or an explicit uncovered block. Accept only the
+scope this return substantiates; silence, a repeated keep label, and unrelated
+passing checks do not close the return. In formal runs, use the ledger and
+immutable-record procedure in `review-packet-gate:Relation Ledger` before
+aggregation. The coordinator does not rewrite reviewer-owned outcomes.
+
+Distinguish dispatch/return from supported coverage: assigning a dimension
+proves allocation; a clean report proves only that no finding was reported;
+static checks prove their exercised properties. None replaces the comparison.
+Reject blanket "covered", "no simplification needed", or a passing command as
+completion evidence for that dimension. Keep useful correctness findings while
+qualifying incomplete ordinary coverage; apply the formal evidence-gap rules
+when a required gate is involved.
+
+For formal review-run, map these source owners into the existing versioned
+DimensionRef/relations and dispatch contract. Do not use absent dimensions or
+false activation as N/A evidence. The runtime verifies declared identities and
+closure, not an intrinsic semantic checklist; missing semantic mapping remains
+a coverage gap. Preserve existing machine fields, gates and evidence authority.
 
 ## Evidence Skills
 
@@ -171,14 +264,13 @@ task slicing when any of these are true:
   seam mapping to keep agents from improvising structure.
 
 For localized work that does not meet those triggers, record an explicit
-no-design reason in the plan or task slice and continue with the lightweight
-path. Do not create a seven-file pack just to fill empty tables.
+no-design reason in the plan or task slice and continue with the recorded local plan. Do not create a seven-file pack just to fill empty tables.
 
 When a pack is required, directory presence is not readiness. Read the populated
 pack and require a ready review before creating task slices. Review the complete
 task set before implementation dispatch.
 
-## Fast Path Examples
+## Example Materials
 
 Low-risk docs wording:
 
@@ -250,21 +342,29 @@ the request, target identity, risk facts, and immutable dispatch contract before
 dispatching either agent; malformed input is `NOT_READY`.
 
 Persist the exact rules, scope, dimensions, and relation identities in the
-dispatch contract and give it to the reviewer. Verifier Phase A receives only
-the machine-built closed-schema neutral packet after provider capability and
-runtime-conformance preflight; expected rules, relations, dispatch, reviewer
+dispatch contract and give it to the reviewer. New formal requests default to
+`execution_profile=native`, including natural-language requests to delegate a
+subagent for formal deep review. Use the actual native subagent API and a fresh
+conversation when supported; source navigation, returned execution evidence,
+capability comparison and main acceptance remain required. This selection does
+not assert hard isolation or need signing credentials. Only explicitly selected
+`execution_profile=isolated` requires provider capability and runtime-conformance
+preflight; a failure there must not automatically downgrade to native.
+
+Verifier Phase A receives only the machine-built closed-schema neutral packet;
+expected rules, relations, dispatch, reviewer
 output and prior conclusions are forbidden. After both lanes seal, Phase B may
 compare the sealed universes and reviewer ledger. The coordinator alone
 composes `overall_gate`.
 
 The `requested_assurance` values `quick`, `standard`, and `deep` control the
 amount of evidence inside this one protocol. They do not select different
-protocols. Requested or risk-mandated formal independent coverage assurance uses
+protocols or reduce the full task scope and semantic dimensions. Requested or risk-mandated formal independent coverage assurance uses
 the review-run lifecycle. A fresh independent perspective alone is not a request
 for formal coverage assurance. Never downgrade an applicable formal gate
 without owner authorization or claim equivalent assurance from a plain review.
-Reviewer outcomes carry `execution_status` separately from the derived
-`conclusion`; immutable `ReviewFinding` records preserve
+Reviewer outcomes carry `execution_status` separately
+from the derived `conclusion`; immutable `ReviewFinding` records preserve
 `blocking_class` and evidence, and no finding is hidden by a later clear retry.
 
 The managed lifecycle is `created -> target-view-sealed -> run-binding-sealed ->
@@ -273,8 +373,11 @@ review-facts-closed -> outcomes-selected -> verifier-compared -> gated ->
 completed|invalidated`. Initialize the run root with `init-review-run`; persist
 canonical subject, authority, dimension, surface, context, obligation, dispatch,
 output, finding, invalidation, and gate records below `review-runs/<run-id>/`.
-The discovery barrier closes only after both expected and observed lanes seal
-and their attestations verify. Failed, cancelled, stale, duplicate, and
+The discovery barrier closes only after both expected and observed lanes seal;
+explicitly isolated execution additionally requires its provider attestations.
+Native inventory/review uses distinct actual actor identities and original
+outputs, with source checks and semantic acceptance before closure. Failed,
+cancelled, stale, duplicate, and
 unassigned work remains visible, and missing target, source, or implementation
 evidence is fail-closed.
 
@@ -282,8 +385,12 @@ The portable facade additionally enforces
 `created -> discovering -> discovery-sealed -> planning -> dispatch-ready ->
 running -> aggregating -> terminal`. Admit reviewer attempts with explicit
 deadlines and bounded retries. Diagnostic checkpoints remain non-gating;
-timeout sweeps persist typed failed ledgers. A different run id cannot sanitize
-a provider execution identity that already saw expected-lane data.
+timeout sweeps persist typed failed ledgers. The managed `dispatch` transition
+does not itself start an actor: the coordinator launches the actual host
+subagent, binds its machine packet and returned output, and appends only the
+owner's result. A different run id cannot sanitize an inventory execution that
+already saw expected-lane data. Native records provide traceability; they do not
+prove absent ambient filesystem, tools or memory mounts.
 
 For formal review-run results, always carry the five evidence gates —
 `coverage_gate`, `review_gate`,

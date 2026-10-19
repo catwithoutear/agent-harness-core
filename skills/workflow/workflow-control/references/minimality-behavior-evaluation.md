@@ -1,7 +1,7 @@
 # Minimality Behavior Evaluation
 
 Use this evaluation only to measure whether a harness instruction or role change
-improves implementation behavior. It is not a substitute for repository tests,
+improves implementation or proactive review behavior. It is not a substitute for repository tests,
 and source-text assertions or successful projection do not count as behavior
 evidence.
 
@@ -24,6 +24,35 @@ reuse one arm's workspace, context, or generated artifacts in the other arm.
 Record the exact revisions and material settings used; do not add a new durable
 state or evidence protocol for the run.
 
+Verify isolation using delivered instruction metadata and public tool calls
+and readbacks; a fresh workspace or fork alone does not prove it. Account for
+automatically supplied memory and global skill routing. Freeze the allowed
+context, including common client-provided instructions and the public tool
+definitions and routing delivered to each arm. If actual delivery cannot be
+verified, mark the affected controlled comparison `INCONCLUSIVE`. Candidate guidance,
+task-specific evidence or prior results delivered outside that context
+invalidate isolation even without a tool read. Reading any unassigned source
+or rule also invalidates isolation. Preserve the first report, mark the
+deviation and exclude the arm from the controlled treatment comparison.
+Freeze corrected allowed inputs before a fresh rerun; do not silently repair
+the original record. Do not inspect private model reasoning.
+
+Record the nominal time cap and actual inspection/termination times separately.
+Before dispatch, identify the runner's cancellation mechanism and arrange a
+deadline check. At the deadline, request cancellation through that mechanism;
+a stop instruction alone is not evidence that inspection stopped. If the
+runner cannot enforce the cap, record that limit rather than claim a hard cap.
+After closing inspection, allow only sealing of existing observations and gaps.
+An observed overrun cannot support a strict equal-budget or cost claim.
+
+Classify each attempt from its own runtime outcome, including terminal errors,
+and bind it to the actor and turn identity. Distinguish failed, interrupted,
+completed and unknown attempts from delivery of a report. A completion event
+name or a report file alone does not establish a successful return; a file left
+by a failed attempt remains an uncompleted draft. Preserve retries and
+seal-only continuations separately. A completed return supports only its
+declared scope after evidence review, not automatic coverage or gate approval.
+
 ## Backend Scenario Set
 
 Use the smallest backend scenario set that covers the changed decision contract.
@@ -37,6 +66,73 @@ Use the smallest backend scenario set that covers the changed decision contract.
 Adapt filenames and commands to the seeded repository, but keep the behavior
 questions stable. Add a scenario only when a changed harness rule has no coverage
 in this set; do not build a broad benchmark catalog by default.
+
+## Review Opportunity Calibration
+
+For a change in review discovery, use the same fair isolation contract with a
+read-only review task. Freeze source, task intent, allowed context and the
+expected opportunities before dispatch. Keep expected answers and prior user
+suggestions out of both review packets. Use source-backed project miss cases
+in the applicable overlay; Core examples remain language and project neutral.
+
+| Case | Positive opportunity | Negative control |
+|---|---|---|
+| Operation/result reuse | A helper combines policy with manual formatting; an existing formatter covers only the formatting. | A fixed literal needs no formatter, or output/error semantics differ. |
+| Algorithm/result fit | Search produces a position used only for existence; a supported predicate algorithm matches the contract. | The caller needs the position, key lookup, or full evaluation for required side effects. |
+| Necessity | A wrapper/assertion/intermediate state protects no required distinction or invariant. | The same-looking construct enforces an external contract or failure diagnostic. |
+| Ownership/evaluation | A destructive projection moves data during lazy dereference although explicit final consumption is clearer. | A pure reference projection or proven last-use move with the intended traversal. |
+| Proposed alternative | A by-value final-use input can replace redundant local state. | A reused callback/state must remain available to later consumers. |
+| Comparison under fixed behavior | Repeated adjacent operations can use an existing per-operation policy while retaining validation, defaults and local destinations. | A required validation or observable action must occur between operations and the combined interface cannot express it. |
+| Projection and construction | A pure no-argument, value-returning member projection can use a supported eager collection capability. | Composite construction, output parameters, filtering, moves or failure short-circuiting require a different comparison; do not redesign interfaces solely to fit the projection. |
+| Cross-call failure responsibility | A caller changes durable state before a callee can fail outside its cleanup protection. | The caller already finalizes that failure, or the whole path fails before any externally visible state change. |
+| Layer-local contract | A migration-layer comment assumes a producer contract that only a later layer establishes. | Every applicable producer in the reviewed layer actually establishes that contract. |
+| Failure-channel equivalence | Reuse moves a fallible operation across a catch or termination boundary and changes caller-visible failure handling. | The applicable contract accepts the changed failure policy, or the operation cannot fail under verified preconditions; do not infer a defect solely from different syntax. |
+
+Score proactive detections separately from suggestions adopted after a user
+prompt. Name missed valid opportunities, false positives, evidence quality,
+behavior regressions and review cost. A useful finding identifies the exact
+operation and an equivalent simpler mechanism or a concrete keep reason; an API
+name alone earns no detection credit. A clean review, more rounds, fewer lines,
+or agreement after prompting cannot establish better recall. A calibration
+instrument must distinguish both positive and negative cases before a live A/B.
+
+Evaluate coordinator acceptance separately from reviewer discovery. Supply a
+fresh coordinator with the same frozen source and neutral candidate reports:
+one rejects an alternative that drops a required safeguard and then claims the
+whole block must stay; another compares the actual operations with safeguards
+preserved; a negative control cites a real intervening boundary. Require the
+coordinator to identify the mismatched comparison as unsubstantiated, request a
+bounded source check or follow-up, and accept the concrete keep reason only
+when its cited boundary matches the source. Do not put expected verdicts in the
+dispatch or count prompted repair as proactive discovery. This is semantic
+evaluation by an agent or human, not a text-pattern validator or proof that all
+future coverage gaps will be caught.
+
+Include acceptance with an explicit unresolved coverage signal followed by a
+no-findings report: require evidence that resolves that named gap, not merely
+proof that another pass ran. Also change an operation during a fix and check
+that its earlier comparison is not reused for the new result combination.
+Score a supported bounded claim separately from an unsupported broader claim;
+do not reward extra return requests for exclusions already stated in the report.
+
+For re-review acceptance, include an earlier tested fix that the owner later
+withdrew, and a nonblocking reuse opportunity whose alternative changes a
+failure or confirmation contract. A later clean report must not erase either
+disposition or use old validation to prove the current target repaired. Pair
+this with a supported explicit deferral: respect the operation boundary and
+carry the residual risk instead of mechanically requiring the deferred edit.
+Score historical attribution separately from source discovery; supplied prior
+findings in a coordinator packet are not proactive reviewer detections.
+
+Exercise the return as well as the first verdict: preserve the first report,
+give only the named comparison gap to its owner, and inspect the corrected
+comparison or explicit uncovered result. Record this as prompted recovery,
+separately from autonomous discovery. Check that unresolved owner evidence
+blocks acceptance and that a real intervening boundary remains protected.
+For formal-record tests, exercise pending attempts, `not-covered` closure,
+immutable prior results, duplicate relations and a corrected successor using
+the existing runtime. Synthetic receipts in these tests verify protocol
+behavior, not real provider isolation or model judgment.
 
 ## Instrument Self-Check
 
@@ -90,9 +186,15 @@ Evaluation status: LIVE_AB_COMPLETE | LIVE_AB_NOT_RUN | INCONCLUSIVE
 Baseline/candidate revisions: <exact revisions>
 Client/model/settings: <same settings or mismatch>
 Isolation check: <pass/fail and evidence>
+Delivered context/tools: <per-arm public definitions/routing and evidence, or unknown>
+First report and isolation deviations: <preserved original and excluded arms>
+Fresh rerun: <corrected allowed-context revision and report, or not run>
+Time: <nominal cap, actual inspection/termination and sealing times>
+Attempts: <actor/turn, runtime outcome, report delivery or draft, retry/seal-only scope>
 Instrument self-check: <pass/fail per scenario>
 Hard gates: <correctness, safety/compatibility, completeness per arm>
 Minimality signals: <only gate-passing runs>
+Review discovery: <proactive hits, misses, prompted adoption, false positives, cost>
 Conclusion: <improvement, regression, null result, or inconclusive>
 Limitations: <scenario, run-count, environment, or unexecuted-live-run limits>
 ```

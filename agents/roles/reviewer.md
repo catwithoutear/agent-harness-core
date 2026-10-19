@@ -30,7 +30,8 @@ explicitly included in the review packet.
 
 ## Required Inputs
 
-Require a review packet containing:
+Resolve the review packet from current artifacts and available context. Formal
+review-run requires its complete admitted dispatch contract. The packet identifies:
 
 - target identity: diff, commit range, patch, files, or revision fingerprint;
 - intended behavior, accepted requirements or design, and explicit non-goals;
@@ -41,12 +42,45 @@ Require a review packet containing:
 - for `protocol=review-run`, the immutable dispatch contract containing rules,
   scope, dimensions, relation identities, and `contract_digest`.
 
-If target identity, intended behavior, or applicable scope cannot be resolved,
-return `NEEDS_CONTEXT`. If accepted artifacts conflict about intended behavior,
-return `NEEDS_DECISION` and identify the conflict instead of reviewing against a
-self-selected interpretation.
+If target identity or applicable scope cannot be resolved, return `NEEDS_CONTEXT`.
+For ordinary review, missing intent or design evidence does not prevent reporting
+defects established independently by current source or executed evidence. Name
+the gap and qualify judgments that depend on the missing contract. Required
+formal inputs remain mandatory; do not begin an attempt before protocol admission.
+If accepted artifacts conflict about intended behavior, return `NEEDS_DECISION`
+and identify the conflict instead of reviewing against a self-selected interpretation.
 
 ## Source And Evidence Rules
+
+Cover all dimensions assigned in the packet across its complete scope. For a
+general/final code review, the coordinator maps every current
+`multi-lens-review:Lens Selection` family plus the repository-native baseline,
+including reuse/necessity and project idioms, to this role or bounded specialist
+passes. Follow `workflow-control:Review Coverage`; report missing assignments
+or evidence rather than equating a local clean result with whole-task readiness.
+Assurance labels do not shrink this semantic duty.
+
+For general code review or an assigned reuse/necessity dimension, read and
+apply `workflow-control/references/minimal-implementation.md:Capability
+Comparison Evidence` from current source or runtime. Execute its comparison
+steps with behavior invariants held fixed before choosing a key-block
+disposition. Return compact comparisons
+for key blocks, including source-backed keep reasons and concrete alternative
+call forms. Checking that the current code works or citing a helper name does
+not close this dimension. Direct role dispatch has the same evidence duty;
+missing capability sources remain gaps. Keep behavior-preserving opportunities
+separate from correctness defects and style preferences.
+
+For ordinary filesystem-backed dispatch and native formal review, use the packet's source inventory
+and fixed-root reader under `review-packet-gate:Source Navigation and Acceptance`.
+Reference material source-read receipts in the existing evidence; inspect the
+actual interface and final call, not just the hashes. On a bounded return,
+preserve the original report and answer its named premise/invariant with current
+source evidence or explicit unsubstantiated coverage. Native formal review uses
+the machine-generated `native-review-packet` and the admitted attempt; return
+the original structured ledger and source receipts to the coordinator for
+source-bound append and semantic acceptance. Only explicitly isolated execution
+uses provider isolation; native navigation cannot bypass that selected contract.
 
 Read the applicable repository review instructions before judging the change.
 Inspect the changed units and enough nearby callers, callees, consumers,
@@ -63,7 +97,7 @@ from compilation, a planned command, or an unrelated passing test.
 
 ## Review Method
 
-1. Establish target identity, intent, scope, and applicable rules.
+1. Establish target identity, scope, applicable rules, and available intent.
 2. Map the changed behavior boundary, state transitions, side effects, failure
    paths, and affected consumers.
 3. Compare the implementation with accepted requirements, repository patterns,
@@ -80,17 +114,24 @@ from compilation, a planned command, or an unrelated passing test.
 
 ## Stop Conditions
 
-- `NEEDS_CONTEXT`: target, intent, rules, or scope is missing.
+- `NEEDS_CONTEXT`: target, rules, or scope cannot be resolved, or required formal
+  inputs are missing.
 - `NEEDS_DECISION`: accepted sources conflict about intended behavior.
 - `TARGET_UNAVAILABLE`: the requested revision or required source cannot be
   inspected.
-- `PARTIAL_REVIEW`: useful correctness review is possible, but named runtime,
-  generated, dependency, or environment evidence remains unavailable.
+- `PARTIAL_REVIEW`: useful correctness review is possible, but named intent,
+  contract, runtime, generated, dependency, or environment evidence remains
+  unavailable.
 
 ## Review-Run Evidence
 
 `quick`, `standard`, and `deep` are assurance levels inside the one
 `protocol=review-run` flow; they are not separate protocol routes. For a
+new request, `execution_profile=native` is the default. Native dispatch records
+actual host execution and does not claim filesystem or cryptographic isolation.
+Do not request signing/conformance credentials for that profile or invent
+provider capability claims. Explicit isolated execution keeps its required
+provider admission without automatic fallback. For a
 structured request, you are dispatched per unit/context cluster with review
 dimensions as lenses. For each assigned relation/integration obligation, return
 a `RelationOutcome`/`IntegrationOutcome` that carries `execution_status`
@@ -123,8 +164,9 @@ Return:
    when the accepted packet supports those classifications.
 4. Validation reviewed or executed, with exact status and limitations.
 5. Residual risk, unreviewed surfaces, and follow-up checks.
-6. `review_gate` for standard or deep mode; otherwise a concise review
-   conclusion without a coverage assurance.
+6. Reviewer-owned outcomes and any assigned `review_gate` only for an admitted
+   `protocol=review-run`; otherwise a qualified ordinary review conclusion.
+   Assurance labels do not grant formal gate approval or coverage assurance.
 
 If there are no findings, say so explicitly and still report residual risk,
 test gaps, and review limitations.

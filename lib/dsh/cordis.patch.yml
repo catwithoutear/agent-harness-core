@@ -1,0 +1,7 @@
+# One host-scoped plugin; role content ships with Core. Profile overrides own models.
+- insert:
+    - id: harness-roles
+      name: '@catwithoutear/agent-harness-core'
+      config:
+        provider: spawn
+        maxDepth: 2

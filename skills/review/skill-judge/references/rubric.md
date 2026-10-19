@@ -41,12 +41,18 @@ Good:
 - Long rubrics, examples, templates, and API details live in `references/`,
   `templates/`, `assets/`, or `scripts/`.
 - The body says exactly when to read each resource.
+- Required pointers identify a concrete resource and when it must be read; an
+  always-required long rubric has an explicit entry step.
+- Common operating steps stay visible; a short self-contained skill is not
+  penalized for having no extra resource.
 
 Bad:
 
 - One giant `SKILL.md` with all examples and background loaded every time.
 - References exist but are never mentioned.
 - Deep reference chains that hide required instructions.
+- A vague pointer hides a required step, or a tiny body is split without a
+  behavioral reason.
 
 ## Procedure And Failure Handling
 
@@ -55,12 +61,16 @@ Good:
 - The skill tells the agent how to start, what to inspect, when to stop, and how
   to report.
 - It says what to do when inputs are missing or evidence conflicts.
+- Steps that gate later work have observable completion evidence; exceptions
+  that change the step are kept nearby.
 
 Bad:
 
 - The procedure is just a checklist of qualities.
 - The skill silently authorizes edits, deletion, publishing, or external calls
   without a clear user request.
+- A vague done condition or a distant caveat makes the next action or its
+  authority unclear.
 
 ## Resources And Validation
 
@@ -70,11 +80,15 @@ Good:
 - The skill has a validation path such as `quick_validate.py`, package tests, or
   realistic forward tests.
 - Assets are output resources, not extra instruction dumps.
+- Changing values remain at their authoritative source; stable executable
+  instructions are verified against the current package.
 
 Bad:
 
 - Bundled files are unrelated or undocumented.
 - The skill depends on a project path while presenting itself as generic.
+- Copied environment state drifts, or a behavioral improvement/no-op claim
+  rests only on prose length or keyword presence.
 
 ## Output Contract
 

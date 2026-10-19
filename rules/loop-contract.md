@@ -8,13 +8,16 @@ Use a small evidence loop for non-trivial agent work:
 
 1. Observe the current state.
 2. Build a context packet from verified sources.
-3. Choose a fast, compact, or design path.
-4. On the design path, challenge the proposal, then review the solution design.
+3. Apply `workflow-control:Required Materials` within the common loop.
+4. When solution decisions are unresolved, challenge the proposal, then review
+   the solution design.
 5. After solution-design review, assess whether `implementation-design` is
    required; review the pack before task slicing when it is.
 6. Derive bounded tasks from accepted upstream artifacts and review the task set.
 7. Implement the current slice.
-8. Review against the packet and plan.
+8. Review against the packet and plan using `workflow-control:Review Coverage`:
+   complete task scope, all current code/design/project dimensions, checked N/A
+   and explicit evidence gaps; role allocation cannot reduce coverage.
 9. Verify with commands or source evidence.
 10. Persist the useful result or hand off the remaining work.
 
@@ -35,8 +38,8 @@ evidence, and ordinary technical uncertainty feed the next iteration. A handoff
 or context-compaction checkpoint must preserve the exact next action and does
 not terminate convergence.
 
-Finish only when every applicable acceptance criterion passes. Pause dependent
-work with `NEEDS_USER_DECISION` when an owner-controlled decision cannot be resolved from
+Finish only when every applicable acceptance criterion passes. Pause dependent work with
+`NEEDS_USER_DECISION` when an owner-controlled decision cannot be resolved from
 accepted requirements and current evidence. `READY_WITH_NOTES` is completion
 only when the acceptance criteria explicitly allow every residual note.
 

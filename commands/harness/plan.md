@@ -25,17 +25,17 @@ Input: `$ARGUMENTS`
    `architecture-scout`, `diagnose`, `prototype-spike`, or
    `verification-first`.
 5. Classify planning first:
-   - compact `plan-only`: the local solution is settled; record the bounded
+   - `plan-only`: the local solution is settled; record the bounded
      goal, affected source, explicit no-design/no-pack reason, validation, and
      rollback. A separate solution-design artifact and review are unnecessary;
    - `design-to-tasks`: refuse slicing while the solution or its review is
      unresolved. Apply the implementation-design trigger only after the
      solution-design review is ready.
    Require a populated and reviewed `implementation-design/` topology pack when
-   design-path work crosses subsystem boundaries, touches 2+ modules with
+   work crosses subsystem boundaries, touches 2+ modules with
    dependency risk, adds lifecycle/failure semantics, or needs
    dependency/file/class/test-seam constraints.
-6. For compact `plan-only`, output the bounded lightweight plan and stop after
+6. For `plan-only`, output the bounded lightweight plan and stop after
    repository validation; review it only when risk warrants review. Do not
    create formal task slices or require a task-set review.
 7. For `design-to-tasks`, produce bounded task slices from the accepted solution
@@ -48,6 +48,10 @@ Input: `$ARGUMENTS`
    instead of settling it inside the task.
 10. Keep unrelated future work out of the executable plan. Record it as a
    deferred note only when it affects current decisions.
+
+Planning modes describe different actions and output artifacts, not review
+coverage. Review required artifacts through `workflow-control:Review Coverage`
+and every current design family plus the project baseline.
 
 ## Output
 

@@ -13,10 +13,26 @@ export async function run(test) {
     assert.equal(result.ok, true);
     assert.equal(result.summary.clients, 5);
     assert.equal(result.summary.commands, 6);
-    assert.equal(result.summary.skills, 51);
+    assert.equal(result.summary.skills, 54);
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
     assert.equal(result.summary.templates, 9);
+  });
+
+  await test("DSH integration validates optional package entry, bundle and path ownership", () => {
+    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json")));
+    for (const integration of [null, [], { dsh: null },
+      { dsh: { ...source.integrations.dsh, kind: "preset" } },
+      { dsh: { ...source.integrations.dsh, enabledByDefault: true } },
+      { dsh: { ...source.integrations.dsh, entry: "../outside.js" } },
+      { dsh: { ...source.integrations.dsh, entry: "/outside.js" } },
+      { dsh: { ...source.integrations.dsh, entry: "lib/missing.js" } },
+      { dsh: { ...source.integrations.dsh, bundle: "lib/project/native-roles.js" } },
+    ]) {
+      const manifest = { ...source, integrations: integration };
+      const result = validateManifest(manifest, { packageRoot });
+      assert.equal(result.ok, false); assert(result.errors.some((error) => /integrations|DSH/.test(error)), JSON.stringify(result.errors));
+    }
   });
 
   await test("ZCode descriptor uses shared public paths and native agent paths", () => {
@@ -149,6 +165,25 @@ export async function run(test) {
     }
   });
 
+  await test("show-me is a default knowledge skill that routes to archify", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    const showMe = manifest.assets.skills.find((skill) => skill.id === "show-me");
+    assert(showMe, "show-me manifest entry missing");
+    assert.equal(showMe.category, "knowledge");
+    assert.equal(showMe.enabledByDefault, undefined, "show-me should be default, not opt-in");
+    assert.equal(fs.existsSync(path.join(packageRoot, showMe.source, "SKILL.md")), true);
+    const body = fs.readFileSync(path.join(packageRoot, showMe.source, "SKILL.md"), "utf8");
+    assert.match(body, /`archify`/);
+    assert.match(body, /`archify` is not available/i);
+    assert.match(body, /re-state or approximate\s+Archify/);
+    const archify = manifest.assets.skills.find((skill) => skill.id === "archify");
+    assert(archify, "archify should exist for show-me routing");
+    assert.equal(archify.category, "third-party");
+    assert.equal(archify.enabledByDefault, false, "archify must stay opt-in");
+  });
+
   await test("third-party skills are optional manifest assets", () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
@@ -163,6 +198,8 @@ export async function run(test) {
     assert(thirdParty.some((skill) => skill.id === "redmine"));
     assert(thirdParty.some((skill) => skill.id === "mermaid-diagrams"));
     assert(thirdParty.some((skill) => skill.id === "environment-profile-vault"));
+    assert(thirdParty.some((skill) => skill.id === "archify"));
+    assert(!thirdParty.some((skill) => skill.id === "architecture-diagram"));
     const pveVmOperations = thirdParty.find((skill) => skill.id === "pve-vm-operations");
     assert(pveVmOperations);
     assert(

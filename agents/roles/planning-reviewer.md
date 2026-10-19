@@ -10,6 +10,11 @@ source-grounded evidence. Prefer concrete gaps over style preferences.
 
 ## Review Principles
 
+Check the complete assigned scope and every family in the current
+`multi-lens-design-review:Design Lenses`, plus the repository baseline. Read the
+common `workflow-control:Review Coverage` duty. A bounded specialist pass does
+not itself establish whole-task readiness; report checked N/A and evidence gaps.
+
 Apply simplification discipline to every reviewed code change point, design
 decision, and implementation approach. Prefer the smallest design that satisfies
 the requirements, source constraints, and validation needs.

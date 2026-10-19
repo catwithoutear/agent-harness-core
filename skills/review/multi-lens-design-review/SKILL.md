@@ -34,7 +34,7 @@ Perform an applicability screen across the baseline's code and architecture
 families, then investigate and report only the principles material to the
 target. Preserve reasoned `N/A` decisions and accepted tradeoffs when their
 omission would otherwise make readiness ambiguous. The applicability screen does
-not require printing every principle or running every lens.
+not require printing every principle; it does require checking every family.
 
 ## Protocol
 
@@ -45,7 +45,8 @@ not require printing every principle or running every lens.
    evidence, and owner assumptions.
 4. For code or architecture design, apply the design-principles baseline and
    identify the material principle families before choosing detailed lenses.
-5. Select only lenses justified by the artifact shape and risk.
+5. Check every Design Lenses family and project baseline across the complete
+   task scope. Deepen investigation according to artifact semantics and risk.
 6. Dispatch independent passes only for separable design risks.
 7. Synthesize one readiness report with blockers, should-fix notes, accepted
    deferrals, validation gaps, and residual unknowns.
@@ -54,7 +55,7 @@ not require printing every principle or running every lens.
 
 ## Design Lenses
 
-Use these lens families as needed:
+Authoritative design-review dimension families; check each:
 
 - `design_quality`: responsibility, cohesion, information hiding, contracts,
   dependency and composition choices, ownership, state, resource safety,
@@ -81,8 +82,10 @@ Use these lens families as needed:
 - `artifact_chain`: consistency between upstream goals, design decisions,
   implementation tasks, review notes, and timeline/status evidence.
 
-Do not run all lenses by default. Select the smallest set that can falsify the
-readiness claim.
+Check all families before readiness. Preserve source-backed N/A and gaps in
+existing review evidence; risk and agent allocation change investigation depth,
+not dimension coverage. `workflow-control:Review Coverage` owns the common
+scope/disposition duty. Missing evidence is not a completed check.
 
 `over_engineering` is independently selectable when avoidable implementation
 cost is the material risk. It may run alone for that question or alongside other
@@ -120,7 +123,7 @@ Use the shared readiness vocabulary:
 
 Target: a design proposes a new import retry path and task list.
 
-Selected lenses:
+All families checked; deeper investigation:
 
 - `boundary_contracts` because the retry policy is shared with the CLI.
 - `failure_recovery` because partial import can leave persisted state.
@@ -132,7 +135,7 @@ owner, risk, and a validation follow-up.
 
 Target: an implementation-design pack required by the workflow trigger rule.
 
-Selected lenses:
+All families checked; deeper investigation:
 
 - `topology_readiness` because implementation agents need subsystem/module
   boundaries, file/class mappings, and coding constraints.
@@ -153,6 +156,6 @@ module and that simplification is explicit.
   files, tests, implementation steps, and dependency constraints.
 - Treating a remembered slogan list as the design-principles baseline, or
   reporting every baseline item without an applicability and materiality check.
-- Running every lens and burying the real blocker.
+- Omitting dimensions, or printing every detail so the real blocker is buried.
 - Rewriting the design during a review-only pass.
 - Losing accepted deferrals during synthesis.

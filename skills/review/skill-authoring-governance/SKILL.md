@@ -22,6 +22,30 @@ procedure or reference for future agents, not a narrative about one session.
 - The manifest route matches the skill's real audience, clients, source path,
   runtime name, triggers, negative triggers, and requirements.
 
+## Structure And References
+
+- A required pointer names the exact resource and the condition or phase that
+  makes it necessary. A universally required long rubric may stay separate when
+  the entry procedure explicitly requires reading it before the decision.
+- Keep common operating steps and short rules needed by every branch in the
+  body. Put lengthy reference detail or branch-specific material in a resource
+  with a clear loading condition. A short self-contained skill needs no extra
+  resource.
+- Keep a rule beside the exception or failure boundary that changes it. Give
+  each operational rule one authoritative home; required manifest metadata
+  remains routing metadata, not a second procedure.
+- A step that gates later work states observable completion evidence, such as a
+  checked source, command result, produced record, or justified N/A. Its done
+  condition must stay within the task's authorized actions and phase.
+- Keep changing configuration values at their source of truth. Stable, verified
+  commands and templates needed to execute the skill may remain inline;
+  document non-obvious conventions and caveats rather than maintaining a second
+  copy of environment state.
+- Do not remove an instruction merely because the model is assumed to follow it
+  already. A behavioral no-op claim needs observed evidence or must remain an
+  unverified hypothesis. Ordinary deduplication and wording edits do not require
+  a live experiment; authority and safety boundaries remain explicit.
+
 ## Checklist
 
 - Folder name and frontmatter `name` use hyphen-case.
