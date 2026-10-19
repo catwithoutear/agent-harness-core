@@ -15,6 +15,10 @@ project-agnostic and reusable across target repositories.
 - For non-trivial work, use the evidence-gated workflow: observe, gather
   source-verified context, plan, review the plan when risk warrants it,
   implement a bounded slice, review, verify, then hand off.
+- Do repository work on a task branch in `.worktree/`, never on `main`. Follow
+  [`rules/worktree-branch-policy.md`](rules/worktree-branch-policy.md) for branch
+  naming, worktree layout, integration, and the verification required before
+  merge.
 
 ## Boundaries
 

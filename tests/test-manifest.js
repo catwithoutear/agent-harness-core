@@ -17,6 +17,24 @@ export async function run(test) {
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
     assert.equal(result.summary.templates, 9);
+    assert.equal(result.summary.rules, 2);
+  });
+
+  await test("rule assets reject a non-boolean selfOnly", () => {
+    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const manifest = {
+      ...source,
+      assets: {
+        ...source.assets,
+        rules: source.assets.rules.map((rule) => ({ ...rule, selfOnly: "yes" }))
+      }
+    };
+    const result = validateManifest(manifest, { packageRoot });
+    assert.equal(result.ok, false);
+    assert(
+      result.errors.some((error) => /selfOnly must be a boolean/.test(error)),
+      JSON.stringify(result.errors)
+    );
   });
 
   await test("DSH integration validates optional package entry, bundle and path ownership", () => {
