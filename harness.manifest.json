@@ -572,6 +572,43 @@
         ]
       },
       {
+        "id": "novelty-assessment",
+        "category": "workflow",
+        "audience": "user",
+        "source": "skills/workflow/novelty-assessment",
+        "runtimeName": "novelty-assessment",
+        "description": "Use when judging whether a research idea or paper carries a defensible contribution against prior work: novelty challenges, reviewer claims of overlap, related-work framing, and defending or abandoning an innovation claim.",
+        "triggers": [
+          "is my idea novel",
+          "novelty assessment",
+          "closest related work",
+          "prior work overlap",
+          "reviewer says we overlap",
+          "is this worth pursuing",
+          "创新点",
+          "有没有 novelty",
+          "撞车",
+          "论证创新性",
+          "值不值得做"
+        ],
+        "negativeTriggers": [
+          "literature summary without a contribution judgment",
+          "implementation question with no research claim",
+          "wording-only polish of a related work section"
+        ],
+        "requires": [
+          "the candidate idea and its claimed contribution",
+          "access to the closest related work, by search or supplied papers"
+        ],
+        "priority": 80,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp"
+        ]
+      },
+      {
         "id": "change-workspace-operator",
         "category": "change",
         "audience": "model",

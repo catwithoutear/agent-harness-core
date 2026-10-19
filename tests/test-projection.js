@@ -451,7 +451,7 @@ export async function run(test) {
       );
       assert.equal(defaultRun.status, 0, defaultRun.stderr);
       const defaultPayload = JSON.parse(defaultRun.stdout);
-      assert.equal(defaultPayload.summary.skills, 30);
+      assert.equal(defaultPayload.summary.skills, 31);
       assert(defaultPayload.records.some((record) => record.asset_id === "harness-deploy"));
       assert(defaultPayload.records.some((record) => record.asset_id === "show-me"));
       assert(!defaultPayload.records.some((record) => record.asset_id === "archify"));

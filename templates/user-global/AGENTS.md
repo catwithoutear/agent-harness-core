@@ -110,3 +110,11 @@ Revise any sentence that is hard to follow on first reading, uses an unexplained
 - For quantitative, logical, boundary, or guarantee claims, check that the reasoning is sufficient in the worst case. When claiming an optimal result, also justify a matching lower bound or explain why no better result is possible.
 - Double-check arithmetic and ensure a numerical answer addresses the actual question.
 - Apply these principles generally; do not tailor reasoning to a particular evaluation or expected answer.
+
+## 15. Calibrate Contribution Claims
+
+Novelty and contribution are differential, not absolute. Existing similar work does not by itself refute a contribution claim, and absence of precedent does not establish one. State what is actually added relative to the closest existing work, and why that difference matters.
+
+Keep "worth doing" and "has a contribution" as separate judgments. A direction can be worth pursuing without supporting a contribution claim, and the value of the former does not substitute for the latter.
+
+Treat reframing, restated scope, or a stronger narrative as an explanation of a contribution, not as the contribution itself. When the only difference is presentational, say so.
