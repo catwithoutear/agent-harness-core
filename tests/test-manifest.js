@@ -13,7 +13,7 @@ export async function run(test) {
     assert.equal(result.ok, true);
     assert.equal(result.summary.clients, 5);
     assert.equal(result.summary.commands, 6);
-    assert.equal(result.summary.skills, 54);
+    assert.equal(result.summary.skills, 55);
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
     assert.equal(result.summary.templates, 9);
@@ -189,12 +189,13 @@ export async function run(test) {
       fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
     );
     const thirdParty = manifest.assets.skills.filter((skill) => skill.category === "third-party");
-    assert.equal(thirdParty.length, 23);
+    assert.equal(thirdParty.length, 24);
     for (const skill of thirdParty) {
       assert.equal(skill.enabledByDefault, false, `${skill.id} should be opt-in`);
       assert.match(skill.source, /^skills\/third-party\//);
     }
     assert(thirdParty.some((skill) => skill.id === "glab"));
+    assert(thirdParty.some((skill) => skill.id === "glab-mr-description"));
     assert(thirdParty.some((skill) => skill.id === "redmine"));
     assert(thirdParty.some((skill) => skill.id === "mermaid-diagrams"));
     assert(thirdParty.some((skill) => skill.id === "environment-profile-vault"));

@@ -881,7 +881,7 @@ export async function run(test) {
       );
       assert.equal(categoryRun.status, 0, categoryRun.stderr);
       const categoryPayload = JSON.parse(categoryRun.stdout);
-      assert.equal(categoryPayload.summary.skills, 23);
+      assert.equal(categoryPayload.summary.skills, 24);
       assert(categoryPayload.records.every((record) => record.source.includes("skills/third-party")));
       assert(categoryPayload.records.some((record) => record.asset_id === "environment-profile-vault"));
       assert(categoryPayload.records.some((record) => record.asset_id === "pve-vm-operations"));
@@ -897,7 +897,7 @@ export async function run(test) {
           "--content",
           "skills",
           "--skills",
-          "environment-profile-vault,glab,redmine"
+          "environment-profile-vault,glab,glab-mr-description,redmine"
         ])
       );
       assert.equal(selectedRun.status, 0, selectedRun.stderr);
@@ -905,6 +905,7 @@ export async function run(test) {
       assert.deepEqual(selectedPayload.records.map((record) => record.asset_id).sort(), [
         "environment-profile-vault",
         "glab",
+        "glab-mr-description",
         "redmine"
       ]);
 
@@ -921,7 +922,7 @@ export async function run(test) {
           "--content",
           "skills",
           "--skills",
-          "environment-profile-vault,pve-vm-operations",
+          "environment-profile-vault,pve-vm-operations,glab-mr-description",
           "--json"
         ])
       );
@@ -944,6 +945,10 @@ export async function run(test) {
         [".opencode", "skills"],
         [".omp", "skills"]
       ]) {
+        assert.equal(
+          fs.readFileSync(path.join(target, ...clientSkillRoot, "glab-mr-description", "SKILL.md"), "utf8"),
+          fs.readFileSync(path.join(packageRoot, "skills", "third-party", "glab-mr-description", "SKILL.md"), "utf8")
+        );
         const projectedPveSkill = path.join(
           target,
           ...clientSkillRoot,

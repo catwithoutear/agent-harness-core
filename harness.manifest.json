@@ -1821,6 +1821,42 @@
         ]
       },
       {
+        "id": "glab-mr-description",
+        "category": "third-party",
+        "audience": "model",
+        "source": "skills/third-party/glab-mr-description",
+        "runtimeName": "glab-mr-description",
+        "description": "Use when drafting, simplifying, or updating a GitLab MR description from its changes, actual test evidence, shared-library impact, and stacked MR relationships.",
+        "triggers": [
+          "draft GitLab MR description",
+          "update MR description",
+          "simplify MR description",
+          "MR 描述",
+          "公共层影响",
+          "层级关系"
+        ],
+        "negativeTriggers": [
+          "MR review without description changes",
+          "inline comments or discussions",
+          "GitHub PR description",
+          "rebase or publish stacked branches"
+        ],
+        "requires": [
+          "MR identity or intended source and target branch range",
+          "current diff and available test evidence",
+          "glab skill and authentication for live GitLab access"
+        ],
+        "priority": 30,
+        "enabledByDefault": false,
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
         "id": "glab-mr-discuss",
         "category": "third-party",
         "audience": "model",
