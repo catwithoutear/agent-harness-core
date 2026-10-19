@@ -265,7 +265,8 @@ The coordinator persists one immutable dispatch contract before dispatch:
 The reviewer receives the dispatch digest, exact rules, scope, dimensions, and
 target identity. The deep verifier Phase A receives only the machine-built
 neutral packet described below, never the expected-lane dispatch. After both
-lanes seal, Phase B may compare the dispatch and sealed reviewer evidence. Discovery may add a target-derived relation, but it may
+lanes seal, Phase B may compare the dispatch and sealed reviewer evidence.
+Discovery may add a target-derived relation, but it may
 not remove an assigned relation and every expansion must reference an assigned
 rule source and dimension. A relation is identified by
 `UnitKey + DimensionId + RuleRef`; a summary, narrative, or row count cannot

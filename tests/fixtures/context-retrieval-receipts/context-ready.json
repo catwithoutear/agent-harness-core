@@ -1,0 +1,41 @@
+{
+  "schema": "codebase-build.context-retrieval-receipt",
+  "version": 1,
+  "receipt_type": "retrieval",
+  "claim_id": "fixture-context-ready",
+  "lane": "governance",
+  "query": "projection ownership",
+  "created_at": "2026-09-03T00:00:00.000Z",
+  "route": {
+    "scheme": "http",
+    "host": "127.0.0.1:1933",
+    "path": "/mcp"
+  },
+  "worktree": {
+    "project_root": "/tmp/project",
+    "head": "0123456789abcdef0123456789abcdef01234567",
+    "dirty_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "ok": true,
+  "state": "CONTEXT_READY",
+  "execution": "EXECUTED",
+  "transport": "mcp",
+  "query_outcome": "HIT_READ",
+  "provider": {
+    "name": "fixture-provider",
+    "version": "1.0.0"
+  },
+  "search": {
+    "tool": "find",
+    "candidate_uris": [
+      "viking://resources/project/first.md"
+    ]
+  },
+  "read": {
+    "uri": "viking://resources/project/first.md",
+    "bytes": 21,
+    "content_digest": "sha256:6a689d949a2e66bd8f9418be38cf7eb089ef28010f7f558f6895ce948e832152"
+  },
+  "error": null,
+  "digest": "sha256:90d3241cba5e9e4da294b84e5348c22cdf72f9dea11eed4e7c784248921df375"
+}

@@ -113,7 +113,8 @@ prose:
 | Raw Mermaid source, theme, or batch rendering | `mermaid-diagrams` (opt-in) |
 | No renderer available | self-contained inline SVG or simple HTML per report contract |
 
-Keep every diagram source-grounded: show-me's view choice and archify's
+Check availability before routing to an optional skill. Keep every diagram
+source-grounded: show-me's view choice and archify's
 rendering never substitute for design or code evidence.
 
 Do not include raw diagram source or renderer notes by default. Add them only

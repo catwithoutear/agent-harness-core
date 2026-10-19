@@ -1,0 +1,29 @@
+{
+  "schema": "codebase-build.context-retrieval-receipt",
+  "version": 1,
+  "receipt_type": "retrieval",
+  "claim_id": "fixture-planned",
+  "lane": "architecture",
+  "query": "planned query",
+  "created_at": "2026-09-03T00:00:00.000Z",
+  "route": {
+    "scheme": "http",
+    "host": "127.0.0.1:1933",
+    "path": "/mcp"
+  },
+  "worktree": {
+    "project_root": "/tmp/project",
+    "head": "0123456789abcdef0123456789abcdef01234567",
+    "dirty_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "ok": true,
+  "state": "PLANNED",
+  "execution": "PLANNED",
+  "transport": "unavailable",
+  "query_outcome": "PLANNED",
+  "provider": null,
+  "search": null,
+  "read": null,
+  "error": null,
+  "digest": "sha256:f76f62a4aafcb0021c86f20d2177a3c780432ff5906d65cc9ee6322505d3c949"
+}

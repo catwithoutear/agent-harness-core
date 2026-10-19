@@ -101,9 +101,8 @@ Input: `$ARGUMENTS`
     notes as open work.
 22. A handoff or context-compaction checkpoint must preserve the objective,
     current evidence, remaining gaps, and exact next action, then continuation
-    resumes from that action. Pause dependent work with `NEEDS_USER_DECISION` when
-    an
-    owner-controlled decision cannot be resolved from accepted requirements and
+    resumes from that action. Pause dependent work with `NEEDS_USER_DECISION`
+    when an owner-controlled decision cannot be resolved from accepted requirements and
     current evidence. State the decision and ask the smallest necessary
     question. An external blocker persisting after reasonable safe attempts may
     require a partial handoff with the missing capability and exact next action;

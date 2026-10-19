@@ -55,6 +55,42 @@ Resolve missing or contradictory task identity before routing work. Do not infer
 the active change from dirty files alone. If the repository separates canonical
 state from an implementation worktree, keep those roots distinct.
 
+## Context Retrieval Receipt Gate
+
+When context retrieval is attempted or planned, require the provider-neutral
+`codebase-build.context-retrieval-receipt` v1 in the context packet and validate
+its canonical digest with
+the deployed, client-neutral shared skill script
+`.agents/skills/memory-context-contract/scripts/context-retrieval-receipt.mjs`.
+For project or user scope, use the packet-provided absolute shared-skill path
+or resolve the corresponding path from `HOME` as directed by the packet. Do
+not use a source-tree path or a client-specific path such as `.zcode/skills`.
+Treat an invalid or missing receipt as missing evidence; do not route work from
+an unverified retrieval claim.
+
+These fields are conditionally required when retrieval is attempted or planned:
+
+- `context_retrieval_receipt_ref`: the validated receipt reference and `digest`;
+- `context_retrieval_gate`: the validator's `READY`, `READY_WITH_NOTES`, or
+  `NOT_READY` result;
+- `context_gap`: the explicit boolean/context-gap note returned by validation.
+
+When retrieval is not in scope, omit these fields rather than inventing an
+empty receipt. Every subsequent dispatch packet and coordinator output must
+propagate the three fields unchanged. A `PLANNED` receipt is `NOT_READY`, has a
+non-zero result, and cannot be dispatched as if context had been read.
+
+Consume the validated state mapping without inventing a new workflow lane:
+
+- `CONTEXT_READY` is `READY` and means 已读取.
+- `NO_RELEVANT_HIT` is `READY_WITH_NOTES` and means 仅尝试.
+- `DEGRADED` and `QUERY_FAILED` are `READY_WITH_NOTES` and carry a context gap.
+- `PLANNED` is `NOT_READY` and must return a non-zero result.
+
+The validator does not select or invoke a provider, write a spool, run hooks, or
+classify an automatic lane. A planned retrieval is never evidence that context
+was read.
+
 ## Source And Evidence Order
 
 Use this precedence:

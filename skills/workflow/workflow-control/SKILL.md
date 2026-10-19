@@ -225,7 +225,8 @@ role:
 
 Write non-trivial findings into the owning `.changes` artifact only when task
 record writes are authorized. For read-only work, return evidence in the
-response unless the user requests a file deliverable. These skills produce evidence for `change-planner`, `review-packet-gate`, and handoff; they
+response unless the user requests a file deliverable. These skills produce
+evidence for `change-planner`, `review-packet-gate`, and handoff; they
 do not replace task slicing, review, or implementation.
 
 ## Minimal Implementation Gate
