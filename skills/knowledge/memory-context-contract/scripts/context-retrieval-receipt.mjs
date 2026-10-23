@@ -16,6 +16,7 @@ export const CONTEXT_RECEIPT_STATES = Object.freeze([
   "PLANNED"
 ]);
 export const CONTEXT_RECEIPT_DIGEST_RE = /^sha256:[0-9a-f]{64}$/u;
+export const CONTEXT_RECEIPT_URI_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/\S+$/u;
 export const CONTEXT_RECEIPT_FIELDS = Object.freeze([
   "schema",
   "version",
@@ -251,8 +252,8 @@ function assertSearch(search) {
   if (search === null) return;
   assertExactObject(search, ["tool", "candidate_uris"], "search");
   if (search.tool !== "find") fail("INVALID_RECEIPT", "search.tool must be find");
-  if (!Array.isArray(search.candidate_uris) || search.candidate_uris.some((uri) => typeof uri !== "string" || uri.length === 0 || !uri.startsWith("viking://"))) {
-    fail("INVALID_RECEIPT", "search.candidate_uris must be an array of viking:// URIs");
+  if (!Array.isArray(search.candidate_uris) || search.candidate_uris.some((uri) => typeof uri !== "string" || !CONTEXT_RECEIPT_URI_RE.test(uri))) {
+    fail("INVALID_RECEIPT", "search.candidate_uris must be an array of provider URIs");
   }
   if (new Set(search.candidate_uris).size !== search.candidate_uris.length) {
     fail("INVALID_RECEIPT", "search.candidate_uris must not contain duplicates");
@@ -263,7 +264,7 @@ function assertRead(read) {
   if (read === null) return;
   assertExactObject(read, ["uri", "bytes", "content_digest"], "read");
   assertNonEmptyString(read.uri, "read.uri");
-  if (!read.uri.startsWith("viking://")) fail("INVALID_RECEIPT", "read.uri must use viking://");
+  if (!CONTEXT_RECEIPT_URI_RE.test(read.uri)) fail("INVALID_RECEIPT", "read.uri must be a provider URI");
   if (!Number.isInteger(read.bytes) || read.bytes < 0) fail("INVALID_RECEIPT", "read.bytes must be a non-negative integer");
   if (typeof read.content_digest !== "string" || !CONTEXT_RECEIPT_DIGEST_RE.test(read.content_digest)) {
     fail("INVALID_RECEIPT", "read.content_digest must be a sha256 digest");

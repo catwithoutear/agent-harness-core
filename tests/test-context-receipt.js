@@ -72,7 +72,7 @@ function loadFixture(state) {
   return JSON.parse(fs.readFileSync(fixturePath, "utf8"));
 }
 
-function fakeMcp({ searchText = "viking://resources/project/first.md", readText = "verified source body" } = {}) {
+function fakeMcp({ searchText = "memory://resources/project/first.md", readText = "verified source body" } = {}) {
   return async () => ({
     provider: { name: "fake-provider", version: "1.0.0" },
     async callTool(name) {
@@ -269,7 +269,7 @@ export async function run(test) {
         claimId: "claim-explicit-producer-ready",
         lane: "governance",
         query: "projection ownership",
-        readUri: "viking://resources/project/first.md",
+        readUri: "memory://resources/project/first.md",
         worktreeAnchor: anchor,
         mcpFactory: fakeMcp()
       });
