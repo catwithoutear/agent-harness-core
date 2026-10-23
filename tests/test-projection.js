@@ -18,6 +18,27 @@ import { loadManifest } from "../lib/manifest/validate.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+function withBackupHome(fn) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "harness-backup-home-"));
+  const previous = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    return fn(home);
+  } finally {
+    if (previous === undefined) delete process.env.HOME;
+    else process.env.HOME = previous;
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+}
+
+function readOnlySnapshot(home) {
+  const root = path.join(home, "backup", "agent-harness-core");
+  const snapshots = fs.readdirSync(root).filter((entry) => entry.startsWith("snapshot-"));
+  assert.equal(snapshots.length, 1, `expected one durable snapshot, found ${snapshots.length}`);
+  const directory = path.join(root, snapshots[0]);
+  return { directory, manifest: JSON.parse(fs.readFileSync(path.join(directory, "manifest.json"), "utf8")) };
+}
+
 export async function run(test) {
   await test("shared physical targets coalesce compatible consumers deterministically", () => {
     const bindings = [
@@ -1636,42 +1657,46 @@ export async function run(test) {
 
   await test("generic conflict backup retains a durable user backup", () => {
     withTempTarget((target) => {
-      const rulePath = path.join(target, ".rules", "loop-contract.md");
-      fs.mkdirSync(path.dirname(rulePath), { recursive: true });
-      fs.writeFileSync(rulePath, "user rule\n", "utf8");
-      const result = capture(() =>
-        runHarnessProject([
-          "--target", target, "--mode", "copy", "--conflict", "backup", "--clients", "codex", "--content", "rules", "--json"
-        ])
-      );
-      assert.equal(result.status, 0, result.stdout + result.stderr);
-      const source = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
-      assert.equal(fs.readFileSync(rulePath, "utf8"), source);
-      const backups = fs.readdirSync(path.dirname(rulePath))
-        .filter((entry) => entry.startsWith("loop-contract.md.bak."));
-      assert.equal(backups.length, 1);
-      assert.equal(fs.readFileSync(path.join(path.dirname(rulePath), backups[0]), "utf8"), "user rule\n");
-      assert.equal(transactionArtifacts(target).length, 0);
+      withBackupHome((backupHome) => {
+        const rulePath = path.join(target, ".rules", "loop-contract.md");
+        fs.mkdirSync(path.dirname(rulePath), { recursive: true });
+        fs.writeFileSync(rulePath, "user rule\n", "utf8");
+        const result = capture(() =>
+          runHarnessProject([
+            "--target", target, "--mode", "copy", "--conflict", "backup", "--clients", "codex", "--content", "rules", "--json"
+          ])
+        );
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        const source = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
+        assert.equal(fs.readFileSync(rulePath, "utf8"), source);
+        const saved = readOnlySnapshot(backupHome);
+        assert.equal(saved.manifest.original, rulePath);
+        assert.equal(fs.readFileSync(saved.manifest.saved, "utf8"), "user rule\n");
+        assert.equal(fs.readdirSync(path.dirname(rulePath)).filter((entry) => entry.includes(".bak.")).length, 0);
+        assert.equal(transactionArtifacts(target).length, 0);
+      });
     });
   });
 
   await test("ZCode adapter conflict backup retains a durable user backup", () => {
     withTempTarget((target) => {
-      const adapterPath = path.join(target, ".zcode", "harness", "hooks", "session-bootstrap.mjs");
-      fs.mkdirSync(path.dirname(adapterPath), { recursive: true });
-      fs.writeFileSync(adapterPath, "user adapter\n", "utf8");
-      const result = capture(() =>
-        runHarnessProject([
-          "--target", target, "--conflict", "backup", "--clients", "zcode", "--content", "hooks", "--json"
-        ])
-      );
-      assert.equal(result.status, 0, result.stdout + result.stderr);
-      assert.notEqual(fs.readFileSync(adapterPath, "utf8"), "user adapter\n");
-      const backups = fs.readdirSync(path.dirname(adapterPath))
-        .filter((entry) => entry.startsWith("session-bootstrap.mjs.bak."));
-      assert.equal(backups.length, 1);
-      assert.equal(fs.readFileSync(path.join(path.dirname(adapterPath), backups[0]), "utf8"), "user adapter\n");
-      assert.equal(transactionArtifacts(target).length, 0);
+      withBackupHome((backupHome) => {
+        const adapterPath = path.join(target, ".zcode", "harness", "hooks", "session-bootstrap.mjs");
+        fs.mkdirSync(path.dirname(adapterPath), { recursive: true });
+        fs.writeFileSync(adapterPath, "user adapter\n", "utf8");
+        const result = capture(() =>
+          runHarnessProject([
+            "--target", target, "--conflict", "backup", "--clients", "zcode", "--content", "hooks", "--json"
+          ])
+        );
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.notEqual(fs.readFileSync(adapterPath, "utf8"), "user adapter\n");
+        const saved = readOnlySnapshot(backupHome);
+        assert.equal(saved.manifest.original, adapterPath);
+        assert.equal(fs.readFileSync(saved.manifest.saved, "utf8"), "user adapter\n");
+        assert.equal(fs.readdirSync(path.dirname(adapterPath)).filter((entry) => entry.includes(".bak.")).length, 0);
+        assert.equal(transactionArtifacts(target).length, 0);
+      });
     });
   });
 
