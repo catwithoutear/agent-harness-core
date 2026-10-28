@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -216,6 +217,22 @@ export async function run(test) {
     ]) {
       assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `review packet gate missing ${required}`);
     }
+    const protocolStart = text.indexOf("## Review-Run Protocol");
+    assert(protocolStart >= 0, "review packet gate missing the Review-Run Protocol section");
+    assert.match(
+      text.slice(protocolStart),
+      /references\/review-run-routing\.md/,
+      "review packet gate Review-Run Protocol must point at references/review-run-routing.md"
+    );
+    const routing = fs.readFileSync(
+      path.join(packageRoot, "skills", "review", "review-packet-gate", "references", "review-run-routing.md"),
+      "utf8"
+    );
+    assert.match(
+      routing,
+      /authoritative\s+lifecycle is `review-packet-gate:Review-Run Protocol`/,
+      "routing reference must state which lifecycle is authoritative"
+    );
     assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PacketDigest/);
   });
 
@@ -315,19 +332,25 @@ export async function run(test) {
 
   await test("workflow assets route one review-run protocol and separate gates", () => {
     const workflow = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
+    const routing = fs.readFileSync(
+      path.join(packageRoot, "skills", "review", "review-packet-gate", "references", "review-run-routing.md"),
+      "utf8"
+    );
     const review = fs.readFileSync(path.join(packageRoot, "commands", "harness", "review.md"), "utf8");
     const command = fs.readFileSync(path.join(packageRoot, "commands", "harness", "workflow.md"), "utf8");
-    for (const text of [workflow, review, command]) {
+    assert.match(workflow, /review-packet-gate\/references\/review-run-routing\.md/);
+    assert.doesNotMatch(workflow, /target-view-sealed/);
+    for (const text of [routing, review, command]) {
       for (const required of ["protocol=review-run", "quick", "standard", "deep", "coverage_gate", "review_gate", "independent_review_gate", "style_gate", "implementation_verification_gate", "overall_gate"]) {
         assert.match(text, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       }
     }
     assert.match(review, /review-verifier/);
-    for (const text of [workflow, review, command]) {
+    for (const text of [routing, review, command]) {
       assert.match(text, /Phase A/);
       assert.match(text, /machine-built|machine transitions|machine barriers|separate machine/);
     }
-    for (const text of [workflow, review, command]) {
+    for (const text of [workflow, routing, review, command]) {
       assert.doesNotMatch(text, /review-run-v2|\bV1\b|\bV2\b|Expected Coverage Packet|PACKET_SEAL/);
     }
   });
@@ -491,7 +514,6 @@ export async function run(test) {
     const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
 
     for (const [name, text] of [
-      ["workflow-control", workflowControl],
       ["change-planner", planner],
       ["change-workspace-operator", workspace],
       ["workflow command", workflowCommand],
@@ -506,6 +528,7 @@ export async function run(test) {
       assert.match(text, /return to\s+solution\s+design/i, `${name} does not return changed solutions to design`);
     }
 
+    assert.match(workflowControl, /rules\/loop-contract\.md/);
     assert.match(workflowControl, /## Required Materials[\s\S]*## Review Coverage/);
     assert.doesNotMatch(workflowControl, /Fast path:|Compact path:|Design path:/);
     assert.match(workflowControl, /does not\s+change behavior, interfaces, lifecycle, dependencies, migration, or failure\s+contracts/);
@@ -722,13 +745,16 @@ export async function run(test) {
 
     for (const required of [
       "references/minimal-implementation.md",
-      "before selecting the implementation approach",
       "minimal-implementation disposition",
       "Reuse `diagnose`",
       "`verification-first`"
     ]) {
       assert.match(workflowControl, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
+    const loopRule = fs
+      .readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8")
+      .replace(/\s+/g, " ");
+    assert.match(loopRule, /before selecting the implementation approach/);
 
     const ladder = [
       "No implementation",
@@ -1029,8 +1055,9 @@ export async function run(test) {
     assert.match(codeSimplifier, /behavior-preserving simplification changes/);
 
     const workflowControl = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
+    const loopContract = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
     assert.match(workflowControl, /simplify pass/);
-    assert.match(workflowControl, /non-trivial code edits/);
+    assert.match(loopContract, /non-trivial code edits/);
 
     const technicalDoc = fs.readFileSync(path.join(packageRoot, "skills", "knowledge", "technical-doc-refinement", "SKILL.md"), "utf8");
     assert.match(technicalDoc, /anti-AI writing pass/);
@@ -1292,5 +1319,170 @@ export async function run(test) {
     const manifestJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
     const memoryAsset = manifestJson.assets.templates.find((asset) => asset.id === "memory-index");
     assert.equal(memoryAsset, undefined);
+  });
+
+  await test("loop contract is single-sourced and preserves the reconciled behaviors", () => {
+    const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8");
+    const loopRuleText = loopRule.replace(/\s+/g, " ");
+    const numbered = [...loopRule.matchAll(/^(\d+)\. /gm)].map((match) => Number(match[1]));
+    assert.deepEqual(
+      numbered,
+      Array.from({ length: 13 }, (_, index) => index + 1),
+      "rules/loop-contract.md must keep exactly 13 numbered loop steps"
+    );
+
+    // Positive parity: the canonical rule must still carry every agreed loop
+    // step and the return-to-design behavior.
+    const expectedLoopSignatures = [
+      ["observe the current state", /observe the current state/i],
+      ["build a context packet from verified sources", /context packet from verified sources/i],
+      [
+        "apply the Minimal Implementation Gate before choosing an implementation approach",
+        /minimal implementation gate[\s\S]*?before selecting the implementation approach/i
+      ],
+      [
+        "keep material requirements with the work, not a selected mode",
+        /required materials[\s\S]*?material requirements follow the work, not a selected mode/i
+      ],
+      [
+        "challenge the proposal before writing and reviewing the solution design",
+        /draft and challenge the proposal[\s\S]*?write and review the solution design/i
+      ],
+      [
+        "assess the implementation-design trigger after solution-design review",
+        /after solution-design review, assess whether `implementation-design` is required/i
+      ],
+      [
+        "create and review the implementation-design pack before task slicing",
+        /create and review the implementation-design pack[\s\S]*?before task slicing/i
+      ],
+      [
+        "derive bounded tasks with validation and rollback and review the task set",
+        /bounded tasks with validation and rollback[\s\S]*?review the task set/i
+      ],
+      ["implement only the current slice", /implement only the current slice/i],
+      [
+        "run a behavior-preserving simplify pass for non-trivial code edits",
+        /behavior-preserving simplify pass for non-trivial code edits/i
+      ],
+      [
+        "review against the packet and plan with Review Coverage",
+        /review against the packet and plan using `workflow-control:review coverage`/i
+      ],
+      ["verify with commands or source evidence", /verify with commands or source evidence/i],
+      [
+        "persist the useful result in the owning artifact or hand off",
+        /persist the useful result in the owning artifact or hand off the remaining work/i
+      ],
+      [
+        "return to solution design when a downstream discovery changes the accepted solution",
+        /return to solution design/i
+      ],
+      [
+        "do not repair a changed design inside a downstream artifact",
+        /do not repair a changed design inside a downstream artifact\./i
+      ]
+    ];
+    for (const [behavior, pattern] of expectedLoopSignatures) {
+      assert.match(loopRuleText, pattern, `loop contract lost the behavior: ${behavior}`);
+    }
+
+    const workflow = fs.readFileSync(
+      path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"),
+      "utf8"
+    );
+    assert.match(workflow, /rules\/loop-contract\.md/);
+
+    // Negative duplicate guard. A second document that repeats this many loop
+    // signatures is a duplicate contract copy, not a reference. Untracked
+    // sources are included so a copy is caught before it is staged; generated
+    // projections and regulated change records stay out.
+    const excludedPrefixes = [
+      ".changes/",
+      ".rules/",
+      ".agents/",
+      ".codex/",
+      ".harness/",
+      ".claude/",
+      ".opencode/",
+      ".omp/",
+      ".zcode/",
+      ".worktree/",
+      "node_modules/"
+    ];
+    const sources = spawnSync(
+      "git",
+      ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+      { cwd: packageRoot, encoding: "utf8" }
+    );
+    assert.equal(sources.status, 0, `git ls-files failed: ${sources.stderr}`);
+    const signaturePatterns = expectedLoopSignatures.map(([, pattern]) => pattern);
+    const duplicates = [];
+    for (const relative of sources.stdout.split("\0")) {
+      if (!relative.endsWith(".md") || relative === "rules/loop-contract.md") {
+        continue;
+      }
+      if (excludedPrefixes.some((prefix) => relative.startsWith(prefix))) {
+        continue;
+      }
+      const text = fs.readFileSync(path.join(packageRoot, relative), "utf8").replace(/\s+/g, " ");
+      const matches = signaturePatterns.filter((pattern) => pattern.test(text));
+      if (matches.length >= 4) {
+        duplicates.push(`${relative} (${matches.length} loop-step signatures)`);
+      }
+    }
+    assert.deepEqual(
+      duplicates,
+      [],
+      `the loop step list must exist only in rules/loop-contract.md; found a second copy in:\n${duplicates.join("\n")}`
+    );
+  });
+
+  await test("branch and worktree policy is single-sourced from its rule", () => {
+    const hook = fs.readFileSync(path.join(packageRoot, ".githooks", "pre-commit"), "utf8");
+    assert.match(
+      hook,
+      /rules\/worktree-branch-policy\.md/,
+      ".githooks/pre-commit must point at rules/worktree-branch-policy.md"
+    );
+    assert.doesNotMatch(
+      hook,
+      /\.rules\//,
+      ".githooks/pre-commit must point at the source rule, not a projected runtime path"
+    );
+
+    // Distinctive policy content: branch-type table, worktree path pattern,
+    // integration commands. A README that repeats this content is a second
+    // policy copy; it must point at the rule instead.
+    const restatementSignatures = [
+      /feat\/<topic>/,
+      /fix\/<topic>/,
+      /\.worktree\/<type>\/<topic>/,
+      /Never edit it directly/,
+      /git worktree add \.worktree/,
+      /core\.hooksPath/,
+      /git branch -d <type>\/<topic>/
+    ];
+    for (const readmeName of ["README.md", "README_CN.md"]) {
+      const readme = fs.readFileSync(path.join(packageRoot, readmeName), "utf8");
+      assert.match(
+        readme,
+        /rules\/worktree-branch-policy\.md/,
+        `${readmeName} must point at rules/worktree-branch-policy.md`
+      );
+      const development = readme.split(/^## Development$/m)[1]?.split(/^## /m)[0];
+      assert(development, `${readmeName} missing the Development section`);
+      assert.match(
+        development,
+        /rules\/worktree-branch-policy\.md/,
+        `${readmeName} Development must carry the branch and worktree policy pointer`
+      );
+      const repeated = restatementSignatures.filter((pattern) => pattern.test(readme)).map(String);
+      assert.deepEqual(
+        repeated,
+        [],
+        `${readmeName} restates the branch and worktree policy instead of pointing at rules/worktree-branch-policy.md: ${repeated.join(", ")}`
+      );
+    }
   });
 }

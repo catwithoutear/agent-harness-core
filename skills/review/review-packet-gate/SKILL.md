@@ -218,6 +218,10 @@ assurance labels, Markdown shape, provider, or a reviewer assertion. Requests
 that do not satisfy this contract fail closed; they are not reinterpreted as a
 legacy review.
 
+Routing and selection detail lives in
+`references/review-run-routing.md`; this section remains the protocol definition
+and gate owner.
+
 ### Execution Selection
 
 The request's `execution_profile` selects how the existing protocol executes:

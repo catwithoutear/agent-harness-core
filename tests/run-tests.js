@@ -51,6 +51,11 @@ if (all || requested.has("--skills")) {
   await module.run(run);
 }
 
+if (all || requested.has("--core-skill-prompt-surface")) {
+  const module = await import("./test-core-skill-prompt-surface.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--context-receipt")) {
   const module = await import("./test-context-receipt.js");
   await module.run(run);

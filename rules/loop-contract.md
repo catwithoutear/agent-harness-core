@@ -8,21 +8,31 @@ Use a small evidence loop for non-trivial agent work:
 
 1. Observe the current state.
 2. Build a context packet from verified sources.
-3. Apply `workflow-control:Required Materials` within the common loop.
-4. When solution decisions are unresolved, challenge the proposal, then review
-   the solution design.
-5. After solution-design review, assess whether `implementation-design` is
-   required; review the pack before task slicing when it is.
-6. Derive bounded tasks from accepted upstream artifacts and review the task set.
-7. Implement the current slice.
-8. Review against the packet and plan using `workflow-control:Review Coverage`:
-   complete task scope, all current code/design/project dimensions, checked N/A
-   and explicit evidence gaps; role allocation cannot reduce coverage.
-9. Verify with commands or source evidence.
-10. Persist the useful result or hand off the remaining work.
+3. When custom code is proposed, apply `workflow-control:Minimal Implementation
+   Gate` after understanding the behavior and before selecting the
+   implementation approach.
+4. Apply `workflow-control:Required Materials` within the common loop; material
+   requirements follow the work, not a selected mode.
+5. When solution decisions are unresolved, draft and challenge the proposal,
+   then write and review the solution design.
+6. After solution-design review, assess whether `implementation-design` is
+   required.
+7. When the trigger applies, create and review the implementation-design pack
+   before task slicing.
+8. Derive bounded tasks with validation and rollback from accepted upstream
+   artifacts, and review the task set before implementation.
+9. Implement only the current slice.
+10. Run a behavior-preserving simplify pass for non-trivial code edits.
+11. Review against the packet and plan using `workflow-control:Review Coverage`:
+    complete task scope, all current code/design/project dimensions, checked N/A
+    and explicit evidence gaps; role allocation cannot reduce coverage.
+12. Verify with commands or source evidence.
+13. Persist the useful result in the owning artifact or hand off the remaining
+    work.
 
 If a downstream discovery changes the accepted solution, return to solution
-design and revisit dependent implementation design and tasks.
+design and revisit dependent implementation design and tasks. Do not repair a
+changed design inside a downstream artifact.
 
 ## Continuous Convergence
 

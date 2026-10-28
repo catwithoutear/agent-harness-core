@@ -28,7 +28,7 @@ printf '%s\n' \
   "refusing to commit on '$branch': it is the integration branch." \
   "" \
   "Develop on a <type>/<topic> branch in .worktree/, then integrate through a" \
-  "merge request. See the branch and worktree policy under .rules/." \
+  "merge request. See rules/worktree-branch-policy.md." \
   "" \
   "Bypass a single commit with --no-verify only when repairing history" \
   "deliberately." >&2
