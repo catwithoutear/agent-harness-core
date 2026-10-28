@@ -312,9 +312,33 @@ node bin/harness.js manifest --json
 ```bash
 npm test
 node bin/harness.js manifest --json
-node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --verify --json
+PROJECTION_TARGET="$(mktemp -d)"
+node bin/harness-project.js --target "$PROJECTION_TARGET" --clients codex --content rules,templates,skills,subagents,hooks --conflict overwrite --json
+node bin/harness-project.js --target "$PROJECTION_TARGET" --clients codex --content rules,templates,skills,subagents,hooks --verify --json
+rm -rf "$PROJECTION_TARGET"
+STATE_ROOT="$(git rev-parse --path-format=absolute --git-common-dir)/.."
+node bin/harness-change-validate.js --state-root "$STATE_ROOT" --change <change-id> --schema "$PWD/schemas/change-workspace.schema.json"
 git diff --check
 ```
+
+干净检出没有可验证的投影，必须先物化一个目标。交接前用显式 canonical
+state root 和 change id 校验你将要提交的变更：
+`$(git rev-parse --path-format=absolute --git-common-dir)/..` 无论在主检出还是
+linked worktree 中都能解析到共享检出。`--all-active` 只适用于干净检出/CI：它会
+扫描 state root 下所有 active workspace，在 linked worktree 中 state root 存在歧义，
+而且会把无关的本地 workspace（可能已经是失败状态）一起纳入。
+
+### 持续集成
+
+`.github/workflows/verify.yml` 会在每个 PR 上运行这些验证 job，并在干净检出上使用
+`--all-active`；上面的本地序列还会运行 `git diff --check`，并显式校验本次变更。
+必需检查就是 workflow 的 job 名（`test`、`manifest`、`projection`、
+`change-schema`）。用 `node bin/harness-branch-protection.js`
+（dry run）、`--apply`（owner 操作）或 `--check`（漂移检查）保护集成分支。
+`--apply` 需要已通过认证且具有 admin 权限的 `gh`；默认使用 classic protection，
+`--mode ruleset` 改为管理 ruleset。classic 的 `--apply` 会替换完整的 protection
+设置对象，因此先审阅 dry-run 计划。CI 不能保护自己的定义：修改 `.github/`、
+`tests/`、`schemas/` 或 `bin/` 仍然需要 owner 复核。
 
 ## Ownership Rules
 

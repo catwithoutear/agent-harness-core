@@ -1,0 +1,67 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run tests
+        run: npm test
+
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate manifest
+        run: node bin/harness.js manifest --json
+
+  projection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Materialize projection
+        run: >-
+          node bin/harness-project.js
+          --target "$RUNNER_TEMP/harness-projection"
+          --clients codex
+          --content rules,templates,skills,subagents,hooks
+          --conflict overwrite
+          --json
+      - name: Verify materialized projection
+        run: >-
+          node bin/harness-project.js
+          --target "$RUNNER_TEMP/harness-projection"
+          --clients codex
+          --content rules,templates,skills,subagents,hooks
+          --verify
+          --json
+
+  change-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate changes with the package schema
+        run: >-
+          node bin/harness-change-validate.js
+          --all-active
+          --schema "$GITHUB_WORKSPACE/schemas/change-workspace.schema.json"

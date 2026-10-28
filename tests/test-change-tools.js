@@ -819,6 +819,51 @@ export async function run(test) {
     });
   });
 
+  await test("absolute --schema ignores a repository schema overlay", () => {
+    const packageSchema = path.join(packageRoot, "schemas", "change-workspace.schema.json");
+
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      writeRepoSchema(repo, (schema) => {
+        schema.change_id.pattern = "^local-[a-z0-9-]+$";
+      });
+      const local = capture(() => runChangeValidate(["--repo-root", repo, "--change", "feature-one"]));
+      assert.equal(local.status, 1, local.stdout + local.stderr);
+      assert.match(local.stdout, /invalid change id/u);
+
+      const absolute = capture(() => runChangeValidate([
+        "--repo-root",
+        repo,
+        "--change",
+        "feature-one",
+        "--schema",
+        packageSchema
+      ]));
+      assert.equal(absolute.status, 0, absolute.stdout + absolute.stderr);
+      assert.match(absolute.stdout, /mode=legacy_proposal errors=0/u);
+    });
+
+    withTempRepo((repo) => {
+      writeLegacyProposal(repo, "feature-one");
+      fs.mkdirSync(path.join(repo, ".rules"), { recursive: true });
+      fs.writeFileSync(path.join(repo, ".rules", "change-doc-schema.json"), "{ not valid json");
+      assert.throws(
+        () => runChangeValidate(["--repo-root", repo, "--change", "feature-one"]),
+        SyntaxError,
+        "the invalid repository overlay must be read without --schema"
+      );
+      const absolute = capture(() => runChangeValidate([
+        "--repo-root",
+        repo,
+        "--change",
+        "feature-one",
+        "--schema",
+        packageSchema
+      ]));
+      assert.equal(absolute.status, 0, absolute.stdout + absolute.stderr);
+    });
+  });
+
   await test("doc tool creates terminology artifact", () => {
     withTempRepo((repo) => {
       writeStructuredProposal(repo, "structured-one");

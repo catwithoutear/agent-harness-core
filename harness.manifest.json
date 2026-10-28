@@ -300,7 +300,8 @@
     "changeDoc": "harness-change-doc",
     "changeValidate": "harness-change-validate",
     "aggregate": "harness",
-    "nativeRoles": "harness-native-roles"
+    "nativeRoles": "harness-native-roles",
+    "branchProtection": "harness-branch-protection"
   },
   "assets": {
     "rules": [

@@ -89,6 +89,17 @@ Run these checks before handoff after changing source assets:
 ```bash
 npm test
 node bin/harness.js manifest --json
-node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --verify --json
+PROJECTION_TARGET="$(mktemp -d)"
+node bin/harness-project.js --target "$PROJECTION_TARGET" --clients codex --content rules,templates,skills,subagents,hooks --conflict overwrite --json
+node bin/harness-project.js --target "$PROJECTION_TARGET" --clients codex --content rules,templates,skills,subagents,hooks --verify --json
+rm -rf "$PROJECTION_TARGET"
+STATE_ROOT="$(git rev-parse --path-format=absolute --git-common-dir)/.."
+node bin/harness-change-validate.js --state-root "$STATE_ROOT" --change <change-id> --schema "$PWD/schemas/change-workspace.schema.json"
 git diff --check
 ```
+
+A clean checkout has no projection to verify, so materialize one first. Local
+validation names the canonical state root and the change being handed off;
+`--all-active` is a clean-checkout/CI check only. See
+[`rules/worktree-branch-policy.md`](rules/worktree-branch-policy.md) for the
+matching sequence and the branch protection runbook.

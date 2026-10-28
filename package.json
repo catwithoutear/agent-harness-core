@@ -9,7 +9,8 @@
     "harness-project": "./bin/harness-project.js",
     "harness-change-doc": "./bin/harness-change-doc.js",
     "harness-change-validate": "./bin/harness-change-validate.js",
-    "harness-native-roles": "./bin/harness-native-roles.js"
+    "harness-native-roles": "./bin/harness-native-roles.js",
+    "harness-branch-protection": "./bin/harness-branch-protection.js"
   },
   "scripts": {
     "test": "node tests/run-tests.js"
