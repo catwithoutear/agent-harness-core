@@ -2162,6 +2162,98 @@ export async function run(test) {
     });
   });
 
+  await test("add-decision writes a structurally valid skeleton beside the documented decision template", () => {
+    // The registered template documents the comparison fields; add-decision
+    // does not render it. Keep the two claims separate so no test name implies
+    // template rendering.
+    const templatePath = path.join(packageRoot, "templates", "changes", "decisions", "decision-record.md");
+    assert.equal(fs.existsSync(templatePath), true, "decision-record template asset is missing");
+    const template = fs.readFileSync(templatePath, "utf8");
+    assert.match(template, /^artifact: decision-record$/m);
+    for (const heading of ["## Context", "## Decision", "## Alternatives Considered", "## Consequences"]) {
+      assert.match(template, new RegExp(`^${heading}$`, "m"), `decision template missing ${heading}`);
+    }
+    for (const required of [
+      "Criteria",
+      "Evidence",
+      "Rejected criterion",
+      "Rejected reason",
+      "Assumptions",
+      "Revisit trigger"
+    ]) {
+      assert.match(template, new RegExp(required), `decision template missing ${required}`);
+    }
+    assert.match(template, /`add-decision` creates only the section skeleton/);
+    assert.match(template, /fill the comparison fields\s+below before the solution-design review/);
+
+    const rule = fs
+      .readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8")
+      .replace(/\s+/g, " ");
+    assert.match(rule, /`add-decision` writes only the section skeleton/);
+    assert.match(rule, /fill every comparison field above before the solution-design review/);
+    assert.match(rule, /`\.changes\/templates\/decisions\/decision-record\.md`/);
+    assert.match(rule, /`templates\/changes\/decisions\/decision-record\.md`/);
+
+    for (const client of ["js", "py"]) {
+      withTempRepo((repo) => {
+        const changeId = `decision-${client}`;
+        const doc =
+          client === "js"
+            ? (args) => capture(() => runChangeDoc(args))
+            : (args) => runPythonChangeDoc(args);
+        const init = doc(["--state-root", repo, "init", changeId, "--json"]);
+        assert.equal(init.status, 0, init.stdout + init.stderr);
+        const add = doc(["--state-root", repo, "add-decision", changeId, "--slug", "timeout-policy"]);
+        assert.equal(add.status, 0, add.stdout + add.stderr);
+
+        const recordPath = path.join(
+          repo,
+          ".changes",
+          changeId,
+          "decisions",
+          "DR-001-timeout-policy.md"
+        );
+        const record = fs.readFileSync(recordPath, "utf8");
+        assert.match(record, /^artifact: decision-record$/m);
+        assert.match(record, /^status: draft$/m);
+        assert.match(record, /^tags: \[decision\]$/m);
+        assert.match(record, /^# DR: timeout-policy$/m);
+        for (const heading of ["## Context", "## Decision", "## Alternatives Considered", "## Consequences"]) {
+          assert.match(record, new RegExp(`^${heading}$`, "m"), `${client} record missing ${heading}`);
+        }
+        // A skeleton, not a rendered template: the comparison fields stay for
+        // the author to fill in.
+        assert.doesNotMatch(
+          record,
+          /^(?:- )?(?:Criteria|Evidence|Rejected criterion|Rejected reason|Assumptions|Revisit trigger):/m,
+          `${client} add-decision unexpectedly rendered the template's comparison fields`
+        );
+        const index = fs.readFileSync(
+          path.join(repo, ".changes", changeId, "decisions", "README.md"),
+          "utf8"
+        );
+        assert.match(index, /\| `DR-001-timeout-policy\.md` \| decision-record \| draft \| 001 \|/);
+
+        const validate = capture(() =>
+          runChangeValidate(["--state-root", repo, "--change", changeId])
+        );
+        assert.equal(validate.status, 0, validate.stdout + validate.stderr);
+        assert.match(validate.stdout, /errors=0/);
+      });
+    }
+
+    for (const client of ["js", "py"]) {
+      const policy =
+        client === "js"
+          ? JSON.parse(capture(() => runChangeDoc(["--repo-root", packageRoot, "policy", "--json"])).stdout)
+          : JSON.parse(runPythonChangeDoc(["--repo-root", packageRoot, "policy", "--json"]).stdout);
+      assert.equal(
+        policy.artifacts["decision-record"].template,
+        "templates/changes/decisions/decision-record.md"
+      );
+    }
+  });
+
   await test("validator treats v2 legacy review and timeline files as migration input", () => {
     withTempRepo((repo) => {
       writeStructuredProposal(repo, "structured-one");

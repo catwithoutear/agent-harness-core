@@ -279,9 +279,10 @@ Use one workflow loop with material requirements determined by the work:
 - For bounded implementation with a settled solution and no implementation-design
   trigger, record goal, affected source, no-design/no-pack reason, validation,
   and rollback. Review that plan when its risk warrants review.
-- For unresolved solution decisions, challenge the proposal, review solution
+- For unresolved solution decisions, record the comparison required by
+  `rules/loop-contract.md:Solution Decision Record`, then review solution
   design, assess the implementation-design trigger, review a required pack,
-  then create and review task slices before implementation.
+  and create and review task slices before implementation.
 
 Every general/final review covers the complete task scope and every current
 code/design dimension family plus the project baseline. Material requirements,

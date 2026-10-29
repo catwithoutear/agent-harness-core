@@ -175,6 +175,86 @@ export async function run(test) {
     }
   });
 
+  await test("solution decisions record a comparison before design review", () => {
+    const rule = fs
+      .readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8")
+      .replace(/\s+/g, " ");
+    const workflow = fs
+      .readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8")
+      .replace(/\s+/g, " ");
+    const planner = fs
+      .readFileSync(path.join(packageRoot, "skills", "change", "change-planner", "SKILL.md"), "utf8")
+      .replace(/\s+/g, " ");
+    const designReview = fs
+      .readFileSync(
+        path.join(packageRoot, "skills", "review", "multi-lens-design-review", "SKILL.md"),
+        "utf8"
+      )
+      .replace(/\s+/g, " ");
+
+    // The comparison contract is normative only in the loop rule.
+    for (const required of [
+      "## Solution Decision Record",
+      "after the proposal is challenged",
+      "record the comparison before the solution-design review",
+      "at least two options, or one option with a written justification",
+      "criteria drawn from the accepted requirements or design constraints",
+      "the evidence for each option",
+      "for each rejected option, the criterion and the reason it was rejected",
+      "the assumptions the choice depends on",
+      "the trigger that reopens the decision",
+      "Low-risk work with a settled direction may record a one-line justification",
+      "`add-decision` writes only the section skeleton",
+      "fill every comparison field above",
+      "`.changes/templates/decisions/decision-record.md`",
+      "templates/changes/decisions/decision-record.md",
+      "This is a review judgment",
+      "no validator infers that a choice was meaningful"
+    ]) {
+      assert(rule.includes(required), `loop contract missing solution decision rule: ${required}`);
+    }
+
+    // Execution skills point at the owning rule instead of restating it.
+    const pointer = "rules/loop-contract.md:Solution Decision Record";
+    assert(workflow.includes(pointer), "workflow-control must point at the solution decision rule");
+    assert(planner.includes(pointer), "change-planner must point at the solution decision rule");
+    for (const [name, text] of [["workflow-control", workflow], ["change-planner", planner]]) {
+      assert.doesNotMatch(text, /at least two options/i, `${name} restates the comparison rule`);
+      assert.doesNotMatch(text, /one-line justification/i, `${name} restates the compact exception`);
+    }
+
+    // The design review judges the record; it does not define the rule.
+    for (const required of [
+      "## Solution Decision Check",
+      "no recorded comparison",
+      "criteria or per-option evidence are missing",
+      "rejected option names no criterion or no reason",
+      "assumptions are missing",
+      "no revisit trigger",
+      "single-option justification",
+      pointer,
+      "review judgment, not a validator field check"
+    ]) {
+      assert(designReview.includes(required), `design review missing decision check: ${required}`);
+    }
+    // Paraphrases of the rule's trigger and single-option exception stay in
+    // the rule; the review only points at them.
+    for (const paraphrased of [
+      /at least two options/i,
+      /one-line justification/i,
+      /single option is acceptable/i,
+      /low-risk work with a settled direction/i,
+      /meaningful design choice (?:remains?|is left|left) open/i,
+      /after the proposal (?:is|was|has been) challenged/i
+    ]) {
+      assert.doesNotMatch(
+        designReview,
+        paraphrased,
+        `design review restates the solution decision rule instead of pointing at it: ${paraphrased}`
+      );
+    }
+  });
+
   await test("ask harness resolves source and deployed runtime evidence", () => {
     const text = fs.readFileSync(path.join(packageRoot, "skills", "entry", "ask-harness", "SKILL.md"), "utf8");
     const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
@@ -706,7 +786,12 @@ export async function run(test) {
     );
     assert.match(
       workflowSection,
-      /For unresolved solution decisions.*review solution design.*assess the implementation-design trigger.*review a required pack.*create and review task slices/
+      /For unresolved solution decisions.*record the comparison required by .*Solution Decision Record.*review solution design.*assess the implementation-design trigger.*review a required pack.*create and review task slices/
+    );
+    assert.doesNotMatch(
+      workflowSection,
+      /challenge the proposal/i,
+      "README.md must point at the solution decision rule instead of repeating the old proposal-to-design flow"
     );
     for (const required of [
       "使用一个工作循环",
@@ -728,7 +813,12 @@ export async function run(test) {
     );
     assert.match(
       workflowSectionCn,
-      /方案决策尚未明确.*审阅 solution design.*判断 implementation-design 触发条件.*需要 pack 时先审阅.*创建和审阅 task slices/
+      /方案决策尚未明确.*Solution Decision Record.*审阅 solution design.*判断 implementation-design 触发条件.*需要 pack 时先审阅.*创建和审阅 task slices/
+    );
+    assert.doesNotMatch(
+      workflowSectionCn,
+      /挑战 proposal/,
+      "README_CN.md must point at the solution decision rule instead of repeating the old proposal-to-design flow"
     );
 
     for (const text of [normalizedTemplate, workflowSection, workflowSectionCn]) {
@@ -1588,6 +1678,117 @@ export async function run(test) {
       duplicates,
       [],
       `the one-outcome rule must stay in rules/loop-contract.md; found a restatement in:\n${duplicates.join("\n")}`
+    );
+  });
+
+  await test("solution decision rule is single-sourced from the loop contract", () => {
+    const loopRule = fs
+      .readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8")
+      .replace(/\s+/g, " ");
+
+    // The canonical rule must keep each agreed behavior, including the
+    // per-rejected-option criterion and reason.
+    const signatures = [
+      ["open-choice trigger", /meaningful design choice (?:remains?|is left|left) open/i],
+      ["proposal-challenged trigger", /after the proposal (?:is|was|has been) challenged/i],
+      [
+        "two options or written justification",
+        /at least two options, or one option with a written justification/i
+      ],
+      [
+        "criteria from accepted requirements",
+        /criteria drawn from the accepted requirements or design constraints/i
+      ],
+      ["per-option evidence", /the evidence for each option/i],
+      [
+        "rejected criterion and reason",
+        /for each rejected option, the criterion and the reason it was rejected/i
+      ],
+      [
+        "assumptions and reopen trigger",
+        /the assumptions the choice depends on[\s\S]{0,80}?trigger that reopens the decision/i
+      ],
+      [
+        "low-risk compact exception",
+        /low-risk work with a settled direction may record a one-line justification/i
+      ],
+      ["review judgment", /no validator infers that a choice was meaningful/i]
+    ];
+    for (const [behavior, pattern] of signatures) {
+      assert.match(
+        loopRule,
+        pattern,
+        `rules/loop-contract.md lost the solution decision behavior: ${behavior}`
+      );
+    }
+
+    // A restatement copies several signatures at once, while a document that
+    // points at the rule must not copy any. Keep this fixture honest so the
+    // negative guard below cannot silently degrade into a no-op.
+    const restatement = [
+      "When a meaningful design choice remains open after the proposal is challenged, record the comparison.",
+      "At least two options, or one option with a written justification;",
+      "Use the criteria drawn from the accepted requirements or design constraints and the evidence for each option.",
+      "For each rejected option, record the criterion and the reason it was rejected.",
+      "Record the assumptions the choice depends on, and the trigger that reopens the decision.",
+      "Low-risk work with a settled direction may record a one-line justification; no validator infers that a choice was meaningful."
+    ].join(" ");
+    const fixtureMatches = signatures.filter(([, pattern]) => pattern.test(restatement));
+    assert(
+      fixtureMatches.length >= 6,
+      `solution decision restatement fixture matches only ${fixtureMatches.length} signatures`
+    );
+
+    // Negative duplicate guard. A document that points at the rule must not
+    // repeat any of its behaviors; an unrelated document repeating two or more
+    // is copying the contract. Untracked sources are included so a copy is
+    // caught before staging; generated projections and regulated change records
+    // stay out.
+    const pointer = "rules/loop-contract.md:Solution Decision Record";
+    const excludedPrefixes = [
+      ".changes/",
+      ".rules/",
+      ".agents/",
+      ".codex/",
+      ".harness/",
+      ".claude/",
+      ".opencode/",
+      ".omp/",
+      ".zcode/",
+      ".worktree/",
+      "node_modules/"
+    ];
+    const sources = spawnSync(
+      "git",
+      ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+      { cwd: packageRoot, encoding: "utf8" }
+    );
+    assert.equal(sources.status, 0, `git ls-files failed: ${sources.stderr}`);
+    const duplicates = [];
+    for (const relative of sources.stdout.split("\0")) {
+      if (!relative.endsWith(".md") || relative === "rules/loop-contract.md") {
+        continue;
+      }
+      if (excludedPrefixes.some((prefix) => relative.startsWith(prefix))) {
+        continue;
+      }
+      const text = fs.readFileSync(path.join(packageRoot, relative), "utf8").replace(/\s+/g, " ");
+      const matches = signatures
+        .filter(([, pattern]) => pattern.test(text))
+        .map(([behavior]) => behavior);
+      const pointsAtRule = text.includes(pointer);
+      if (matches.length >= 2 || (pointsAtRule && matches.length >= 1)) {
+        duplicates.push(
+          `${relative} (${matches.length} solution-decision signatures${
+            pointsAtRule ? ", points at the rule" : ""
+          }: ${matches.join(", ")})`
+        );
+      }
+    }
+    assert.deepEqual(
+      duplicates,
+      [],
+      `the solution decision rule must stay in rules/loop-contract.md; found a restatement in:\n${duplicates.join("\n")}`
     );
   });
 

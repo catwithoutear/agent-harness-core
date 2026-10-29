@@ -217,7 +217,7 @@ writing any global file.
 
 - 措辞、格式或类似的局部修改，不改变行为、接口、生命周期、依赖、迁移或失败契约时，读取当前源码，完成小范围修改并验证。
 - 方案已明确且不触发 implementation-design 的有限实现，记录目标、源码范围、不需要 design/pack 的原因、验证及回滚；风险需要时审阅这份计划。
-- 方案决策尚未明确时，挑战 proposal、审阅 solution design、判断 implementation-design 触发条件；需要 pack 时先审阅，再创建和审阅 task slices。
+- 方案决策尚未明确时，先按 `rules/loop-contract.md:Solution Decision Record` 记录 comparison，再审阅 solution design、判断 implementation-design 触发条件；需要 pack 时先审阅，再创建和审阅 task slices。
 
 每次一般或最终审阅必须覆盖完整任务范围及全部代码/设计维度与项目基线。材料条件、风险和角色分工只影响调查深度及独立性，不减少范围或维度。不适用须经过检查并有证据；缺失证据保留为缺口。共同义务由 `workflow-control` 拥有，代码和设计清单分别由原 multi-lens 技能拥有。
 

@@ -16,7 +16,7 @@ export async function run(test) {
     assert.equal(result.summary.skills, 54);
     assert.equal(result.summary.agents, 11);
     assert.equal(result.summary.hooks, 6);
-    assert.equal(result.summary.templates, 10);
+    assert.equal(result.summary.templates, 11);
     assert.equal(result.summary.rules, 2);
   });
 
