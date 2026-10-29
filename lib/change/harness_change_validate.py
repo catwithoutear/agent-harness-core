@@ -66,6 +66,14 @@ def relation_policy_for(schema: dict):
     return schema.get("relations") or package_schema().get("relations")
 
 
+def acceptance_policy_for(schema: dict):
+    package_policy = package_schema()["delta_spec"].get("acceptance")
+    overlay_policy = (schema.get("delta_spec") or {}).get("acceptance")
+    if not overlay_policy:
+        return package_policy
+    return {**(package_policy or {}), **overlay_policy}
+
+
 def change_id_pattern(schema: dict) -> str:
     return (schema.get("change_id") or {}).get("pattern") or package_schema()["change_id"]["pattern"]
 
@@ -263,7 +271,14 @@ def validate_tasks(change_dir: Path, schema: dict, errors: list):
         errors.append(f"{tasks}: no checkbox items found")
 
 
-def validate_delta_spec_file(path: Path, schema: dict, errors: list, require_contract_headings=False):
+def validate_delta_spec_file(
+    path: Path,
+    schema: dict,
+    errors: list,
+    warns: list,
+    require_contract_headings=False,
+    acceptance_context=None,
+):
     lines = read_text(path).splitlines()
 
     allowed_sections = set(schema["delta_spec"]["allowed_sections"])
@@ -294,8 +309,153 @@ def validate_delta_spec_file(path: Path, schema: dict, errors: list, require_con
     if current_requirement is not None and scenario_count == 0:
         errors.append(f"{path}: requirement without scenario: {current_requirement}")
 
+    if acceptance_context and acceptance_context.get("acceptance_policy"):
+        validate_acceptance_fields(path, schema, errors, warns, acceptance_context)
 
-def validate_specs(change_dir: Path, schema: dict, errors: list, warns: list, mode: str):
+
+def validate_acceptance_fields(path: Path, schema: dict, errors: list, warns: list, context: dict):
+    acceptance_policy = context["acceptance_policy"]
+    metadata = parse_front_matter(path) or {}
+    if metadata.get("acceptance") != acceptance_policy["marker"]:
+        warns.append(
+            f"{path}: acceptance fields are not enforced; add front matter acceptance: {acceptance_policy['marker']}"
+        )
+        return
+
+    id_pattern = re.compile(acceptance_policy["id_pattern"])
+    evidence_base = acceptance_policy.get("evidence_base", "repository_root")
+    if evidence_base != "repository_root":
+        errors.append(
+            f"{path}: unsupported acceptance evidence_base {evidence_base}; supported: repository_root"
+        )
+        return
+    # Removed behavior has no current evidence obligation; enforce acceptance
+    # fields only under the sections that define or change accepted behavior.
+    acceptance_sections = {"## ADDED Requirements", "## MODIFIED Requirements"}
+    requirement_re = re.compile(schema["delta_spec"]["requirement_heading_pattern"])
+    scenario_re = re.compile(schema["delta_spec"]["scenario_heading_pattern"])
+    evidence_prefix = str(acceptance_policy.get("evidence_prefix", "- Evidence:")).strip()
+    lines = read_text(path).splitlines()
+    acceptance_ids = context["acceptance_ids"]
+    repo_root = context.get("repo_root")
+
+    current_requirement = None
+    current_requirement_line = 0
+    current_requirement_acceptance_count = 0
+    current_section = ""
+    current_scenario = None
+
+    def finish_scenario():
+        nonlocal current_scenario
+        if (
+            current_scenario
+            and acceptance_policy.get("require_evidence", True)
+            and current_scenario["evidence_count"] == 0
+        ):
+            errors.append(
+                f"{path}:{current_scenario['line']}: acceptance scenario "
+                f"{current_scenario['id']} has no {evidence_prefix} reference"
+            )
+        current_scenario = None
+
+    def finish_requirement():
+        nonlocal current_requirement, current_requirement_acceptance_count
+        if current_requirement is not None and current_requirement_acceptance_count == 0:
+            errors.append(
+                f"{path}:{current_requirement_line}: requirement has no acceptance scenario: {current_requirement}"
+            )
+        current_requirement = None
+        current_requirement_acceptance_count = 0
+
+    for index, line in enumerate(lines):
+        line_number = index + 1
+        if line.startswith("#"):
+            finish_scenario()
+
+        if line.startswith("## "):
+            finish_requirement()
+            current_section = line.strip()
+            continue
+
+        if requirement_re.match(line):
+            finish_requirement()
+            current_requirement = line if current_section in acceptance_sections else None
+            current_requirement_line = line_number
+            current_requirement_acceptance_count = 0
+            continue
+
+        if scenario_re.match(line):
+            if current_requirement is None:
+                continue
+            heading = line.split(":", 1)[1].strip() if ":" in line else line
+            token = heading.split()[0] if heading.split() else ""
+            if not token.startswith("ACC-"):
+                errors.append(
+                    f"{path}:{line_number}: scenario heading requires an acceptance id "
+                    f"matching {acceptance_policy['id_pattern']}: {heading}"
+                )
+                continue
+            if not id_pattern.fullmatch(token):
+                errors.append(
+                    f"{path}:{line_number}: invalid acceptance id {token}; "
+                    f"expected {acceptance_policy['id_pattern']}"
+                )
+            else:
+                current_requirement_acceptance_count += 1
+                previous = acceptance_ids.get(token)
+                if previous:
+                    errors.append(
+                        f"{path}:{line_number}: duplicate acceptance id {token}; "
+                        f"first declared at {previous['file']}:{previous['line']}"
+                    )
+                else:
+                    acceptance_ids[token] = {"file": str(path), "line": line_number}
+                current_scenario = {"id": token, "line": line_number, "evidence_count": 0}
+            continue
+
+        if current_scenario and line.lstrip().startswith(evidence_prefix):
+            value = line.strip()[len(evidence_prefix) :].strip()
+            current_scenario["evidence_count"] += 1
+            if not value:
+                errors.append(f"{path}:{line_number}: empty evidence reference")
+                continue
+            validate_evidence_reference(path, line_number, value, repo_root, errors)
+
+    finish_scenario()
+    finish_requirement()
+
+
+def validate_evidence_reference(path: Path, line_number: int, value: str, repo_root, errors: list):
+    raw_path = value.split("::", 1)[0].strip()
+    if not raw_path:
+        errors.append(f"{path}:{line_number}: empty evidence path")
+        return
+    if (
+        raw_path.startswith("/")
+        or raw_path.startswith("\\")
+        or re.match(r"^[A-Za-z]:[\\/]", raw_path)
+        or Path(raw_path).is_absolute()
+    ):
+        errors.append(f"{path}:{line_number}: evidence path must be repository-relative: {raw_path}")
+        return
+    if ".." in re.split(r"[\\/]+", raw_path):
+        errors.append(f"{path}:{line_number}: evidence path must not escape the repository root: {raw_path}")
+        return
+    if repo_root is None:
+        errors.append(f"{path}:{line_number}: cannot resolve evidence path without a repository root: {raw_path}")
+        return
+    root = Path(repo_root).resolve()
+    resolved = (root / raw_path).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        errors.append(f"{path}:{line_number}: evidence path must not escape the repository root: {raw_path}")
+        return
+    if not resolved.exists():
+        errors.append(f"{path}:{line_number}: evidence path does not exist (from repository root): {raw_path}")
+
+
+def validate_specs(change_dir: Path, schema: dict, errors: list, warns: list, mode: str, repo_root=None):
     spec_root = change_dir / "specs"
     if not spec_root.exists():
         warns.append(f"{change_dir}: no specs/ directory")
@@ -310,12 +470,18 @@ def validate_specs(change_dir: Path, schema: dict, errors: list, warns: list, mo
         module_name_warning_re = re.compile(schema["delta_spec"]["module_name_warning_pattern"])
 
     matched = []
-    for path in spec_root.rglob("*.md"):
+    for path in sorted(spec_root.rglob("*.md")):
         if path.name in ignored_files:
             continue
         rel_path = path.relative_to(change_dir).as_posix()
         if matches_any(rel_path, [schema["delta_spec"]["file_glob"]]):
             matched.append(path)
+
+    acceptance_context = {
+        "acceptance_policy": acceptance_policy_for(schema),
+        "acceptance_ids": {},
+        "repo_root": repo_root,
+    }
 
     for path in matched:
         if mode == "structured_proposal" and module_name_warning_re is not None:
@@ -325,7 +491,9 @@ def validate_specs(change_dir: Path, schema: dict, errors: list, warns: list, mo
             path,
             schema,
             errors,
+            warns,
             require_contract_headings=(mode == "structured_proposal"),
+            acceptance_context=acceptance_context,
         )
 
 
@@ -1420,7 +1588,7 @@ def validate_change(
         validate_tasks(change_dir, schema, errors)
         if mode == "structured_proposal":
             validate_structured_files(change_dir, schema, errors, warns)
-        validate_specs(change_dir, schema, errors, warns, mode)
+        validate_specs(change_dir, schema, errors, warns, mode, repo_root)
         validate_design(change_dir, schema, warns)
         if not v2:
             validate_review_log(change_dir, schema, errors)

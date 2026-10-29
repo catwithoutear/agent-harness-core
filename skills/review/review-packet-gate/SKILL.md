@@ -131,6 +131,10 @@ For implementation review, distinguish:
 - accepted residual risks: gaps explicitly carried forward with owner, reason,
   and follow-up path.
 
+Acceptance declaration checks for `acceptance: v1` delta specs are owned by
+`change-planner:Acceptance Evidence`; read that contract there. Whether the
+declared evidence proves the accepted behavior remains this review's judgment.
+
 ## Decision
 
 Use the shared gate vocabulary:

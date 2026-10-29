@@ -143,7 +143,7 @@ export async function run(test) {
         capture(() => runChangeValidate(["--change", "structured-one"]))
       );
       assert.equal(validate.status, 0, validate.stdout + validate.stderr);
-      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=1/);
     });
   });
 
@@ -664,7 +664,7 @@ export async function run(test) {
         HARNESS_CHANGE_STATE_ROOT: repo
       });
       assert.equal(validate.status, 0, validate.stdout + validate.stderr);
-      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=1/);
     });
   });
 
@@ -810,8 +810,8 @@ export async function run(test) {
       writeLegacyProposal(repo, "feature-one");
       const result = capture(() => runChangeValidate(["--repo-root", repo, "--change", "feature-one"]));
       assert.equal(result.status, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /mode=legacy_proposal errors=0 warnings=1/);
-      assert.match(result.stdout, /validated_changes=1 errors=0 warnings=1/);
+      assert.match(result.stdout, /mode=legacy_proposal errors=0 warnings=2/);
+      assert.match(result.stdout, /validated_changes=1 errors=0 warnings=2/);
     });
   });
 
@@ -1395,6 +1395,387 @@ export async function run(test) {
     }
   });
 
+  await test("marked delta specs with acceptance ids and existing evidence pass", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-ok");
+        removeDefaultSpec(repo, "acceptance-ok");
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-ok", "capability.md");
+        const result = client(["--state-root", repo, "--change", "acceptance-ok"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      });
+    }
+  });
+
+  await test("marked specs require an acceptance scenario with a valid id", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-missing-id");
+        removeDefaultSpec(repo, "acceptance-missing-id");
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-missing-id", "capability.md", {
+          requirements: [
+            {
+              title: "Guarded behavior",
+              scenarios: [{ id: "Plain", heading: "No acceptance id", evidence: ["tests/evidence.js"] }]
+            }
+          ]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-missing-id"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /requirement has no acceptance scenario: ### Requirement: Guarded behavior/);
+      });
+
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-bad-id");
+        removeDefaultSpec(repo, "acceptance-bad-id");
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-bad-id", "capability.md", {
+          requirements: [
+            {
+              title: "Bad id behavior",
+              scenarios: [{ id: "ACC-1", heading: "Short id", evidence: ["tests/evidence.js"] }]
+            }
+          ]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-bad-id"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /invalid acceptance id ACC-1/);
+      });
+    }
+  });
+
+  await test("marked specs reject duplicate acceptance ids across the change", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-duplicate");
+        removeDefaultSpec(repo, "acceptance-duplicate");
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-duplicate", "first.md");
+        writeAcceptanceSpec(repo, "acceptance-duplicate", "second.md");
+        const result = client(["--state-root", repo, "--change", "acceptance-duplicate"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /duplicate acceptance id ACC-001; first declared at .*first\.md:\d+/);
+      });
+    }
+  });
+
+  await test("marked specs require evidence and repository-relative existing paths", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-no-evidence");
+        removeDefaultSpec(repo, "acceptance-no-evidence");
+        writeAcceptanceSpec(repo, "acceptance-no-evidence", "capability.md", {
+          requirements: [{ title: "No evidence", scenarios: [{ id: "ACC-001", evidence: [] }] }]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-no-evidence"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /acceptance scenario ACC-001 has no - Evidence: reference/);
+      });
+
+      for (const [changeId, evidence, pattern] of [
+        ["acceptance-missing-path", "tests/missing-evidence.js::case", /evidence path does not exist \(from repository root\): tests\/missing-evidence\.js/],
+        ["acceptance-absolute-path", "/tmp/evidence.js::case", /evidence path must be repository-relative: \/tmp\/evidence\.js/],
+        ["acceptance-escaping-path", "../outside-evidence.js::case", /evidence path must not escape the repository root: \.\.\/outside-evidence\.js/]
+      ]) {
+        withTempRepo((repo) => {
+          writeStructuredProposal(repo, changeId);
+          removeDefaultSpec(repo, changeId);
+          writeEvidenceFile(repo);
+          writeAcceptanceSpec(repo, changeId, "capability.md", {
+            requirements: [
+              { title: "Evidence behavior", scenarios: [{ id: "ACC-001", evidence: [evidence] }] }
+            ]
+          });
+          const result = client(["--state-root", repo, "--change", changeId]);
+          assert.equal(result.status, 1, result.stdout + result.stderr);
+          assert.match(result.stdout, pattern);
+        });
+      }
+    }
+  });
+
+  await test("every scenario heading in a marked spec requires an acceptance id", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-mixed-scenario");
+        removeDefaultSpec(repo, "acceptance-mixed-scenario");
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-mixed-scenario", "capability.md", {
+          requirements: [
+            {
+              title: "Mixed scenario behavior",
+              scenarios: [
+                { id: "ACC-001", heading: "Accepted", evidence: ["tests/evidence.js"] },
+                { id: "Plain", heading: "No acceptance id", evidence: ["tests/evidence.js"] }
+              ]
+            }
+          ]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-mixed-scenario"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(
+          result.stdout,
+          /capability\.md:\d+: scenario heading requires an acceptance id matching \^ACC-\[0-9\]\{3\}\$: Plain No acceptance id/
+        );
+      });
+    }
+  });
+
+  await test("acceptance ids require a full-pattern match under partial overlays", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-partial-id-pattern");
+        removeDefaultSpec(repo, "acceptance-partial-id-pattern");
+        writeRepoSchema(repo, (schema) => {
+          schema.delta_spec.acceptance.id_pattern = "^ACC-[0-9]{3}";
+        });
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-partial-id-pattern", "capability.md", {
+          requirements: [
+            {
+              title: "Partial pattern behavior",
+              scenarios: [
+                { id: "ACC-001X", heading: "Suffix after the id", evidence: ["tests/evidence.js::case"] }
+              ]
+            }
+          ]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-partial-id-pattern"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /invalid acceptance id ACC-001X; expected \^ACC-\[0-9\]\{3\}/);
+      });
+    }
+  });
+
+  await test("removed requirements do not require acceptance ids or evidence", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-removed");
+        removeDefaultSpec(repo, "acceptance-removed");
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-removed", "capability.md", {
+          removedRequirements: [
+            {
+              title: "Removed legacy behavior",
+              scenarios: [{ id: "Legacy", heading: "Removed without current evidence", evidence: [] }]
+            }
+          ]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-removed"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /errors=0 warnings=0/);
+      });
+    }
+  });
+
+
+  await test("marked specs validate every evidence line on a scenario", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-multi-evidence");
+        removeDefaultSpec(repo, "acceptance-multi-evidence");
+        writeEvidenceFile(repo);
+        writeEvidenceFile(repo, "tests/evidence-two.js");
+        const spec = (evidence) =>
+          writeAcceptanceSpec(repo, "acceptance-multi-evidence", "capability.md", {
+            requirements: [
+              { title: "Multi evidence behavior", scenarios: [{ id: "ACC-001", evidence }] }
+            ]
+          });
+
+        spec(["tests/evidence.js::case-a", "tests/evidence-two.js::case-b"]);
+        let result = client(["--state-root", repo, "--change", "acceptance-multi-evidence"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /errors=0 warnings=0/);
+
+        spec(["tests/evidence.js::case-a", "tests/missing-evidence.js::case-b"]);
+        result = client(["--state-root", repo, "--change", "acceptance-multi-evidence"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(
+          result.stdout,
+          /evidence path does not exist \(from repository root\): tests\/missing-evidence\.js/
+        );
+      });
+    }
+  });
+
+  await test("overlay without acceptance policy still enforces marked specs", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-overlay-fallback");
+        removeDefaultSpec(repo, "acceptance-overlay-fallback");
+        writeRepoSchema(repo, (schema) => {
+          delete schema.delta_spec.acceptance;
+        });
+        writeEvidenceFile(repo);
+
+        writeAcceptanceSpec(repo, "acceptance-overlay-fallback", "capability.md");
+        let result = client(["--state-root", repo, "--change", "acceptance-overlay-fallback"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /errors=0 warnings=0/);
+
+        writeAcceptanceSpec(repo, "acceptance-overlay-fallback", "capability.md", {
+          requirements: [
+            {
+              title: "Overlay behavior",
+              scenarios: [{ id: "Plain", heading: "No acceptance id", evidence: ["tests/evidence.js"] }]
+            }
+          ]
+        });
+        result = client(["--state-root", repo, "--change", "acceptance-overlay-fallback"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /scenario heading requires an acceptance id matching/);
+      });
+    }
+  });
+
+  await test("evidence symlinks cannot escape the repository root", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "harness-evidence-outside-"));
+      try {
+        fs.mkdirSync(path.join(outsideRoot, "tests"), { recursive: true });
+        fs.writeFileSync(path.join(outsideRoot, "tests", "evidence.js"), "// outside repo\n");
+        withTempRepo((repo) => {
+          writeStructuredProposal(repo, "acceptance-symlink-escape");
+          removeDefaultSpec(repo, "acceptance-symlink-escape");
+          fs.symlinkSync(path.join(outsideRoot, "tests"), path.join(repo, "linked-evidence"), "dir");
+          writeAcceptanceSpec(repo, "acceptance-symlink-escape", "capability.md", {
+            requirements: [
+              {
+                title: "Symlink behavior",
+                scenarios: [{ id: "ACC-001", evidence: ["linked-evidence/evidence.js::case"] }]
+              }
+            ]
+          });
+          const result = client(["--state-root", repo, "--change", "acceptance-symlink-escape"]);
+          assert.equal(result.status, 1, result.stdout + result.stderr);
+          assert.match(
+            result.stdout,
+            /evidence path must not escape the repository root: linked-evidence\/evidence\.js/
+          );
+        });
+      } finally {
+        fs.rmSync(outsideRoot, { recursive: true, force: true });
+      }
+
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-symlink-inside");
+        removeDefaultSpec(repo, "acceptance-symlink-inside");
+        fs.mkdirSync(path.join(repo, "real-evidence"), { recursive: true });
+        fs.writeFileSync(path.join(repo, "real-evidence", "evidence.js"), "// inside repo\n");
+        fs.symlinkSync(path.join(repo, "real-evidence"), path.join(repo, "linked-inside"), "dir");
+        writeAcceptanceSpec(repo, "acceptance-symlink-inside", "capability.md", {
+          requirements: [
+            {
+              title: "Internal symlink behavior",
+              scenarios: [{ id: "ACC-001", evidence: ["linked-inside/evidence.js::case"] }]
+            }
+          ]
+        });
+        const result = client(["--state-root", repo, "--change", "acceptance-symlink-inside"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /errors=0 warnings=0/);
+      });
+    }
+  });
+
+  await test("acceptance evidence_base rejects unsupported bases", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-evidence-base");
+        removeDefaultSpec(repo, "acceptance-evidence-base");
+        writeRepoSchema(repo, (schema) => {
+          schema.delta_spec.acceptance.evidence_base = "state_root";
+        });
+        writeEvidenceFile(repo);
+        writeAcceptanceSpec(repo, "acceptance-evidence-base", "capability.md");
+        const result = client(["--state-root", repo, "--change", "acceptance-evidence-base"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(
+          result.stdout,
+          /unsupported acceptance evidence_base state_root; supported: repository_root/
+        );
+      });
+    }
+  });
+
+  await test("unmarked delta specs warn while the workspace stays valid", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-unmarked");
+        const result = client(["--state-root", repo, "--change", "acceptance-unmarked"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /acceptance fields are not enforced; add front matter acceptance: v1/);
+        assert.match(result.stdout, /errors=0 warnings=1/);
+      });
+
+      withTempRepo((repo) => {
+        writeLegacyProposal(repo, "acceptance-legacy");
+        const result = client(["--state-root", repo, "--change", "acceptance-legacy"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /acceptance fields are not enforced; add front matter acceptance: v1/);
+      });
+    }
+  });
+
+  await test("delta-spec capability template is skipped by acceptance validation", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        writeStructuredProposal(repo, "acceptance-template-skip");
+        removeDefaultSpec(repo, "acceptance-template-skip");
+        fs.copyFileSync(
+          path.join(packageRoot, "templates", "changes", "specs", "capability-template.md"),
+          path.join(repo, ".changes", "acceptance-template-skip", "specs", "capability-template.md")
+        );
+        const result = client(["--state-root", repo, "--change", "acceptance-template-skip"]);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /errors=0 warnings=0/);
+      });
+    }
+  });
+
   await test("add-review inserts only into the exact Child Index table and stays idempotent", () => {
     for (const client of [
       (args) => capture(() => runChangeDoc(args)),
@@ -1565,7 +1946,7 @@ export async function run(test) {
 
       const validate = capture(() => runChangeValidate(["--repo-root", repo, "--change", "structured-one"]));
       assert.equal(validate.status, 0, validate.stdout + validate.stderr);
-      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=1/);
     });
   });
 
@@ -1588,7 +1969,7 @@ export async function run(test) {
       assert.equal(addPack.status, 0, addPack.stdout + addPack.stderr);
       const complete = capture(() => runChangeValidate(["--repo-root", repo, "--change", "structured-one"]));
       assert.equal(complete.status, 0, complete.stdout + complete.stderr);
-      assert.match(complete.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      assert.match(complete.stdout, /mode=structured_proposal errors=0 warnings=1/);
     });
   });
 
@@ -1616,7 +1997,7 @@ export async function run(test) {
         "--strict-layout"
       ]));
       assert.equal(strict.status, 0, strict.stdout + strict.stderr);
-      assert.match(strict.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      assert.match(strict.stdout, /mode=structured_proposal errors=0 warnings=1/);
 
       const status = capture(() => runChangeValidate([
         "--repo-root",
@@ -1665,7 +2046,7 @@ export async function run(test) {
 
       const validate = capture(() => runChangeValidate(["--repo-root", repo, "--change", "feature-one"]));
       assert.equal(validate.status, 0, validate.stdout + validate.stderr);
-      assert.match(validate.stdout, /mode=legacy_proposal errors=0 warnings=1/);
+      assert.match(validate.stdout, /mode=legacy_proposal errors=0 warnings=2/);
     });
   });
 
@@ -1699,7 +2080,7 @@ export async function run(test) {
 
       const validate = capture(() => runChangeValidate(["--repo-root", repo, "--change", "structured-one"]));
       assert.equal(validate.status, 0, validate.stdout + validate.stderr);
-      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=0/);
+      assert.match(validate.stdout, /mode=structured_proposal errors=0 warnings=1/);
     });
   });
 
@@ -1795,7 +2176,7 @@ export async function run(test) {
       const result = capture(() => runChangeValidate(["--repo-root", repo, "--change", "structured-one"]));
 
       assert.equal(result.status, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /mode=structured_proposal errors=0 warnings=2/);
+      assert.match(result.stdout, /mode=structured_proposal errors=0 warnings=3/);
       assert.match(result.stdout, /review-log\.md: legacy top-level artifact/);
       assert.match(result.stdout, /timeline\.md: legacy top-level artifact/);
       assert.doesNotMatch(result.stdout, /unexpected change workspace file/);
@@ -1809,7 +2190,7 @@ export async function run(test) {
       ]));
 
       assert.equal(strict.status, 1, strict.stdout + strict.stderr);
-      assert.match(strict.stdout, /mode=structured_proposal errors=2 warnings=0/);
+      assert.match(strict.stdout, /mode=structured_proposal errors=2 warnings=1/);
       assert.match(strict.stdout, /legacy top-level artifact/);
     });
   });
@@ -2452,6 +2833,91 @@ function writeStructuredProposal(repo, changeId) {
         ""
       ].join("\n")
   );
+}
+
+function removeDefaultSpec(repo, changeId) {
+  const specPath = path.join(repo, ".changes", changeId, "specs", "feature.md");
+  if (fs.existsSync(specPath)) {
+    fs.unlinkSync(specPath);
+  }
+}
+
+function writeEvidenceFile(repo, relPath = "tests/evidence.js") {
+  const filePath = path.join(repo, relPath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, "// acceptance evidence fixture\n");
+}
+
+function acceptanceSpecBody({
+  marker = "v1",
+  requirements = [
+    {
+      title: "Accepted behavior",
+      scenarios: [{ id: "ACC-001", heading: "Works", evidence: ["tests/evidence.js::case"] }]
+    }
+  ],
+  removedRequirements = []
+} = {}) {
+  const lines = [
+    "---",
+    "artifact: delta-spec",
+    "status: draft",
+    "tags: [requirements]",
+    'description: "Acceptance validation fixture."'
+  ];
+  if (marker) {
+    lines.push(`acceptance: ${marker}`);
+  }
+  lines.push(
+    "---",
+    "",
+    "# Capability",
+    "",
+    "## Purpose",
+    "",
+    "Acceptance validation fixture.",
+    "",
+    "## Traceability",
+    "",
+    "| Requirement | Design owner | Verification |",
+    "|---|---|---|",
+    "| ACC-001 | spec | tests/evidence.js |",
+    "",
+    "## ADDED Requirements",
+    ""
+  );
+  for (const requirement of requirements) {
+    lines.push(`### Requirement: ${requirement.title}`, "", "A capability SHALL behave.", "");
+    for (const scenario of requirement.scenarios ?? []) {
+      lines.push(`#### Scenario: ${scenario.id} ${scenario.heading ?? "Condition"}`, "");
+      lines.push("- Given a setup", "- When it runs", "- Then it works");
+      for (const evidence of scenario.evidence ?? []) {
+        lines.push(`- Evidence: ${evidence}`);
+      }
+      lines.push("");
+    }
+  }
+  if (removedRequirements.length > 0) {
+    lines.push("## REMOVED Requirements", "");
+    for (const requirement of removedRequirements) {
+      lines.push(`### Requirement: ${requirement.title}`, "", "A capability is removed.", "");
+      for (const scenario of requirement.scenarios ?? []) {
+        lines.push(`#### Scenario: ${scenario.id} ${scenario.heading ?? "Condition"}`, "");
+        lines.push("- Given a setup", "- When it runs", "- Then it is removed");
+        for (const evidence of scenario.evidence ?? []) {
+          lines.push(`- Evidence: ${evidence}`);
+        }
+        lines.push("");
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
+function writeAcceptanceSpec(repo, changeId, fileName = "capability.md", options = {}) {
+  const specPath = path.join(repo, ".changes", changeId, "specs", fileName);
+  fs.mkdirSync(path.dirname(specPath), { recursive: true });
+  fs.writeFileSync(specPath, acceptanceSpecBody(options));
 }
 
 function writeRepoSchema(repo, mutate) {

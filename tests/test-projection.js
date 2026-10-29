@@ -1144,8 +1144,9 @@ export async function run(test) {
       assert.equal(dryRun.status, 0, dryRun.stderr);
       const dryRunPayload = JSON.parse(dryRun.stdout);
       const targets = dryRunPayload.records.map((record) => record.target);
-      assert.equal(dryRunPayload.summary.templates, 9);
+      assert.equal(dryRunPayload.summary.templates, 10);
       assert(targets.some((entry) => entry.endsWith(".changes/templates/README.md")));
+      assert(targets.some((entry) => entry.endsWith(".changes/templates/specs/capability-template.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/README.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/07-constraints.md")));
       assert(!targets.some((entry) => entry.endsWith(".memory/INDEX.md")));
@@ -1179,6 +1180,19 @@ export async function run(test) {
       const changeTemplate = fs.readFileSync(path.join(target, ".changes", "templates", "README.md"), "utf8");
       assert.match(changeTemplate, /^## Change Relations$/m);
       assert.match(changeTemplate, /^\| change \| type \| reason \|$/m);
+      const capabilityTemplatePath = path.join(
+        target,
+        ".changes",
+        "templates",
+        "specs",
+        "capability-template.md"
+      );
+      assert.equal(fs.existsSync(capabilityTemplatePath), true);
+      const capabilityTemplate = fs.readFileSync(capabilityTemplatePath, "utf8");
+      assert.match(capabilityTemplate, /^acceptance: v1$/m);
+      assert.match(capabilityTemplate, /^## Traceability$/m);
+      assert.match(capabilityTemplate, /^#### Scenario: ACC-001 /m);
+      assert.match(capabilityTemplate, /^- Evidence: /m);
       const templatePath = path.join(target, ".changes", "templates", "implementation-design", "README.md");
       assert.equal(fs.existsSync(templatePath), true);
       const templateText = fs.readFileSync(templatePath, "utf8");

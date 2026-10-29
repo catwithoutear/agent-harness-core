@@ -13,13 +13,17 @@ import { measureCoreSkillPromptSurface } from "../lib/core-skill-prompt-surface.
 // (+900), change-workspace-operator (+154), and multi-lens-design-review (+833).
 // Those edits add intake before solution design, declared relations for coupled
 // or stacked work, and a pointer to the one-outcome rule rather than a second
-// copy of it. A core skill's prompt surface may grow only when the same change
-// updates the matching baseline and records why. Never round a measurement down
-// to fit a baseline.
+// copy of it. This branch adds 1492 characters for the acceptance-evidence
+// guidance in change-planner (+1260) and review-packet-gate (+232): the planner
+// owns the capability-template shape and the exact declaration checks, and the
+// review text points at that owner for the check list while keeping the
+// review-side judgment of whether the evidence proves the behavior. A core
+// skill's prompt surface may grow only when the same change updates the matching
+// baseline and records why. Never round a measurement down to fit a baseline.
 const BASELINES = Object.freeze({
   alwaysOnCoreSkillDescriptionChars: 5306,
-  defaultLoadedCoreSkillChars: 218325,
-  coreSkillPackageChars: 643896
+  defaultLoadedCoreSkillChars: 219817,
+  coreSkillPackageChars: 645388
 });
 
 const LOAD_CLASSES = Object.freeze({
