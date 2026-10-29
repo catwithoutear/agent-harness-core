@@ -46,6 +46,7 @@ state root and use the regulated commands below.
 | Add terminology | `harness-change-doc --state-root <state-root> add-terminology <change-id> --tags terminology --description "..."` |
 | Add implementation design pack | `harness-change-doc --state-root <state-root> add-implementation-design <change-id> --description "..."` |
 | Add review round | `harness-change-doc --state-root <state-root> add-review <change-id> --target <name> --round <n> --description "..."` |
+| Declare a change relation | `harness-change-doc --state-root <state-root> relation <change-id> --target <change-id> --type depends-on --reason "..."` |
 | Add decision record | `harness-change-doc --state-root <state-root> add-decision <change-id> --slug <topic>` |
 | Add timeline event | `harness-change-doc --state-root <state-root> add-timeline <change-id> --slug <event>` |
 | Add task slice | `harness-change-doc --state-root <state-root> add-task-slice <change-id> --slug <slice>` |

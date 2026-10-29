@@ -13,6 +13,16 @@ description: "Change workspace index."
 - Source:
 - Confirmed decisions:
 
+## Change Relations
+
+| change | type | reason |
+|---|---|---|
+
+Record dependencies, conflicts, and ordering constraints with other changes.
+Write rows with `harness-change-doc relation`; allowed types and validation are
+defined in `schemas/change-workspace.schema.json`. Leave the table empty for a
+standalone change.
+
 ## Current Phase
 
 - Phase:

@@ -61,6 +61,23 @@
       "## Detailed Design Index"
     ]
   },
+  "relations": {
+    "heading": "Change Relations",
+    "columns": [
+      "change",
+      "type",
+      "reason"
+    ],
+    "allowed_types": [
+      "depends-on",
+      "relates-to",
+      "supersedes",
+      "blocks"
+    ],
+    "cycle_edge_types": [
+      "depends-on"
+    ]
+  },
   "structured_proposal": {
     "required_files": [
       "README.md",

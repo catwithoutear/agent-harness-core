@@ -53,6 +53,16 @@ not require printing every principle; it does require checking every family.
 8. Do not declare a design ready while blocking ambiguity, contradiction, or
    missing implementation contract remains.
 
+## Intake Check
+
+Before reviewing solution design, check requirement intake in the upstream
+requirements artifact: the original request, why the work is needed now, the
+affected user or workflow, and at least one success signal observable outside
+the change. Report missing motivation or success signals as a finding before
+accepting the solution design. Require inferred motivation to be labeled as
+inferred and carried into open questions instead of presented as a stated
+requirement. This is a review judgment, not a validator field check.
+
 ## Design Lenses
 
 Authoritative design-review dimension families; check each:
@@ -80,7 +90,9 @@ Authoritative design-review dimension families; check each:
 - `implementation_readiness`: file/module anchors, sequencing, handoff clarity,
   task slicing, and missing developer guidance.
 - `artifact_chain`: consistency between upstream goals, design decisions,
-  implementation tasks, review notes, and timeline/status evidence.
+  implementation tasks, review notes, and timeline/status evidence; declared
+  `## Change Relations` rows must match the coupling visible in the artifacts,
+  and the one-reviewable-outcome boundary follows `rules/loop-contract.md`.
 
 Check all families before readiness. Preserve source-backed N/A and gaps in
 existing review evidence; risk and agent allocation change investigation depth,
@@ -149,6 +161,8 @@ module and that simplification is explicit.
 
 ## Common Mistakes
 
+- Accepting a solution design whose requirements never state why the work is
+  needed or what observable success looks like.
 - Freezing a design because it is well written but not implementable.
 - Treating missing code anchors as a prose-quality issue rather than a
   readiness issue.

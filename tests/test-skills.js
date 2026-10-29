@@ -145,6 +145,36 @@ export async function run(test) {
     assert.match(implementationDesign, /report only material findings and reasoned `N\/A` results/);
   });
 
+  await test("design review reports missing requirement intake before solution design", () => {
+    const skill = fs.readFileSync(
+      path.join(packageRoot, "skills", "review", "multi-lens-design-review", "SKILL.md"),
+      "utf8"
+    ).replace(/\s+/g, " ");
+    for (const required of [
+      "## Intake Check",
+      "Before reviewing solution design",
+      "original request",
+      "why the work is needed now",
+      "observable outside the change",
+      "missing motivation or success signals",
+      "labeled as inferred",
+      "review judgment, not a validator field check"
+    ]) {
+      assert.match(
+        skill,
+        new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+        `design review missing intake check phrase: ${required}`
+      );
+    }
+    const requirementsTemplate = fs.readFileSync(
+      path.join(packageRoot, "templates", "changes", "requirements.md"),
+      "utf8"
+    );
+    for (const heading of ["## Motivation", "## Problem", "## Success Signals", "## Open Questions"]) {
+      assert.match(requirementsTemplate, new RegExp(`^${heading}$`, "m"), `requirements template missing ${heading}`);
+    }
+  });
+
   await test("ask harness resolves source and deployed runtime evidence", () => {
     const text = fs.readFileSync(path.join(packageRoot, "skills", "entry", "ask-harness", "SKILL.md"), "utf8");
     const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
@@ -1435,6 +1465,79 @@ export async function run(test) {
       duplicates,
       [],
       `the loop step list must exist only in rules/loop-contract.md; found a second copy in:\n${duplicates.join("\n")}`
+    );
+  });
+
+  await test("one-outcome rule is single-sourced from the loop contract", () => {
+    const loopRule = fs.readFileSync(path.join(packageRoot, "rules", "loop-contract.md"), "utf8").replace(/\s+/g, " ");
+
+    // The canonical rule must keep each agreed behavior.
+    const signatures = [
+      ["one reviewable outcome", /one reviewable outcome/i],
+      ["split independent outcomes", /split\s+(independent|unrelated)\s+outcomes?/i],
+      ["different risk tiers", /different risk tiers?/i],
+      ["hide a second outcome", /hide a second outcome/i],
+      ["depends-on delivered as a stack", /depends-on[\s\S]{0,120}?\bas a stack\b/i]
+    ];
+    for (const [behavior, pattern] of signatures) {
+      assert.match(loopRule, pattern, `rules/loop-contract.md lost the one-outcome behavior: ${behavior}`);
+    }
+
+    // A restatement copies several signatures at once; a pointer only names the
+    // owning rule. Keep this fixture honest so the negative guard below cannot
+    // silently degrade into a no-op.
+    const restatement = [
+      "A change workspace contains one reviewable outcome.",
+      "Split independent outcomes, or outcomes with different risk tiers, into separate changes.",
+      "Do not hide a second outcome behind a later task slice.",
+      "When a change can only land after another change, declare a depends-on relation and deliver the work as a stack."
+    ].join(" ");
+    const fixtureMatches = signatures.filter(([, pattern]) => pattern.test(restatement));
+    assert(
+      fixtureMatches.length >= 4,
+      `one-outcome restatement fixture matches only ${fixtureMatches.length} signatures`
+    );
+
+    // Negative duplicate guard. Untracked sources are included so a copy is
+    // caught before staging; generated projections and regulated change
+    // records stay out.
+    const excludedPrefixes = [
+      ".changes/",
+      ".rules/",
+      ".agents/",
+      ".codex/",
+      ".harness/",
+      ".claude/",
+      ".opencode/",
+      ".omp/",
+      ".zcode/",
+      ".worktree/",
+      "node_modules/"
+    ];
+    const sources = spawnSync(
+      "git",
+      ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+      { cwd: packageRoot, encoding: "utf8" }
+    );
+    assert.equal(sources.status, 0, `git ls-files failed: ${sources.stderr}`);
+    const duplicates = [];
+    for (const relative of sources.stdout.split("\0")) {
+      if (!relative.endsWith(".md") || relative === "rules/loop-contract.md") {
+        continue;
+      }
+      if (excludedPrefixes.some((prefix) => relative.startsWith(prefix))) {
+        continue;
+      }
+      const text = fs.readFileSync(path.join(packageRoot, relative), "utf8").replace(/\s+/g, " ");
+      const matches = signatures.filter(([, pattern]) => pattern.test(text)).map(([behavior]) => behavior);
+      if (matches.length >= 3) {
+        duplicates.push(`${relative} (${matches.length} one-outcome signatures: ${matches.join(", ")})`);
+      }
+    }
+    assert.deepEqual(
+      duplicates,
+      [],
+      `the one-outcome rule must stay in rules/loop-contract.md; found a restatement in:\n${duplicates.join("\n")}`
     );
   });
 

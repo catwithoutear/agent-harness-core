@@ -99,6 +99,26 @@ mode. These conditions never reduce review scope or dimension coverage:
   solution-design review, then review the required pack and complete task set
   before implementation.
 
+## Requirement Intake And Change Relations
+
+Requirement intake precedes solution design. Fill the active change's
+`requirements.md` with the original request and why it is being acted on now,
+the problem and current workaround, at least one success signal observable
+outside the change, non-goals, and open questions. Mark inferred content as
+inferred and carry it to `## Open Questions`; do not present a guess as a stated
+requirement. Low-risk work may use a compact form: why, one success signal, and
+the validation that shows it, omitting empty sections instead of inventing
+content. Intake completeness is a review judgment, not a validator field check.
+
+Declare change coupling in the index `## Change Relations` table before task-set
+review closes. `depends-on` is required for stacked delivery and implies
+ordering; `supersedes` and `blocks` must name the change they constrain. Write
+rows with `harness-change-doc relation`; allowed types and validation are
+defined in `schemas/change-workspace.schema.json`. A standalone change leaves
+the table empty. When coupling raises a split-or-relate question, apply
+`rules/loop-contract.md:One Reviewable Outcome Per Change` instead of restating
+the boundary here.
+
 ## Review Coverage
 
 Every general/final review covers the complete current task scope and checks
