@@ -50,6 +50,13 @@
     "requirement_heading_pattern": "^### Requirement:",
     "scenario_heading_pattern": "^#### Scenario:",
     "require_scenario_per_requirement": true,
+    "acceptance": {
+      "marker": "v1",
+      "id_pattern": "^ACC-[0-9]{3}$",
+      "evidence_prefix": "- Evidence:",
+      "evidence_base": "repository_root",
+      "require_evidence": true
+    },
     "required_headings": [
       "## Purpose",
       "## Traceability"

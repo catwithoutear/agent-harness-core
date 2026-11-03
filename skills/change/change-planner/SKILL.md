@@ -175,6 +175,32 @@ first, record `depends-on` with `harness-change-doc relation`, keep the task
 order dependency-ordered, and leave git stack operations to
 `stacked-branch-workflow`.
 
+## Acceptance Evidence
+
+Own the acceptance block for each delta spec this change adds or modifies; write
+it at design time, not after implementation. The shape is
+`templates/changes/specs/capability-template.md`: front matter `acceptance: v1`,
+the `ACC-<nnn>` id embedded in the Traceability requirement cell, and at least one
+`#### Scenario: ACC-<nnn> <condition>` per accepted requirement with a
+repository-relative `- Evidence: path[::case]` reference; a scenario may declare
+several evidence lines.
+
+Under the marker, the validator checks declarations only:
+
+- every scenario heading carries an id matching
+  `delta_spec.acceptance.id_pattern`, and every requirement has at least one
+  accepted scenario;
+- ids are unique across the change's delta specs;
+- each accepted scenario has at least one `- Evidence:` reference;
+- evidence paths are repository-relative, reject absolute paths, `..` segments,
+  and symlinks that escape the repository root, and must exist from the
+  repository root.
+
+That does not prove the evidence demonstrates the behavior; relevance stays a
+review judgment. A spec without the marker only warns, so legacy workspaces stay
+valid. Documentation-only changes below the risk threshold may omit the block
+and record that reason.
+
 ## Slice Rules
 
 - Slice by behavior and verification boundary, not by directory ownership alone.

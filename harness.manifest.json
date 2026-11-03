@@ -2470,6 +2470,20 @@
         ]
       },
       {
+        "id": "change-capability-spec",
+        "kind": "change",
+        "source": "templates/changes/specs/capability-template.md",
+        "target": ".changes/templates/specs/capability-template.md",
+        "description": "Capability delta specification with acceptance ids and declared evidence.",
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
         "id": "implementation-design-readme",
         "kind": "change",
         "source": "templates/changes/implementation-design/README.md",

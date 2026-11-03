@@ -529,6 +529,56 @@ export async function run(test) {
     assert(byId["change-planner"].negativeTriggers.includes("unresolved design"));
   });
 
+  await test("acceptance evidence has one guidance owner and a consistent template", () => {
+    const planner = fs
+      .readFileSync(path.join(packageRoot, "skills", "change", "change-planner", "SKILL.md"), "utf8")
+      .replace(/\s+/g, " ");
+    const review = fs
+      .readFileSync(path.join(packageRoot, "skills", "review", "review-packet-gate", "SKILL.md"), "utf8")
+      .replace(/\s+/g, " ");
+    const template = fs.readFileSync(
+      path.join(packageRoot, "templates", "changes", "specs", "capability-template.md"),
+      "utf8"
+    );
+
+    assert.match(template, /^acceptance: v1$/m);
+    assert.match(template, /^\| Requirement \| Design owner \| Verification \|$/m);
+    assert(template.includes("`<ACC-id> <accepted behavior>`"), "capability template must embed the ACC id");
+    assert.match(template, /^#### Scenario: ACC-001 /m);
+    assert.match(template, /^- Evidence: /m);
+
+    for (const required of [
+      "templates/changes/specs/capability-template.md",
+      "embedded in the Traceability requirement cell",
+      "delta_spec.acceptance.id_pattern",
+      "every scenario heading",
+      "at least one `#### Scenario: ACC-<nnn> <condition>`",
+      "every requirement has at least one accepted scenario",
+      "unique across the change's delta specs",
+      "at least one `- Evidence:` reference",
+      "repository-relative",
+      "absolute paths",
+      "`..` segments",
+      "symlinks that escape the repository root",
+      "must exist from the repository root",
+      "does not prove the evidence demonstrates the behavior"
+    ]) {
+      assert(planner.includes(required), `change-planner missing acceptance detail: ${required}`);
+    }
+
+    assert.match(review, /change-planner:Acceptance Evidence/, "review must point at the acceptance owner");
+    assert.doesNotMatch(
+      review,
+      /validator checks its acceptance ids and evidence paths mechanically/,
+      "review-packet-gate must not restate the acceptance check list"
+    );
+    assert.doesNotMatch(
+      planner,
+      /and one `#### Scenario/,
+      "planner must not imply exactly one acceptance scenario per requirement"
+    );
+  });
+
   await test("workflow guidance preserves canonical design stage order", () => {
     const workflowControl = fs.readFileSync(path.join(packageRoot, "skills", "workflow", "workflow-control", "SKILL.md"), "utf8");
     const planner = fs.readFileSync(path.join(packageRoot, "skills", "change", "change-planner", "SKILL.md"), "utf8");
