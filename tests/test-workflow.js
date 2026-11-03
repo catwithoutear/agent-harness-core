@@ -129,6 +129,10 @@ export async function run(test) {
       ruleset.rules.map((rule) => rule.type),
       ["deletion", "non_fast_forward", "pull_request", "required_status_checks"]
     );
+    // GitHub rejects an explicit parameters object for this rule, so the payload
+    // must stay bare; the defaults are what the baseline wants.
+    const pullRequestRule = ruleset.rules.find((rule) => rule.type === "pull_request");
+    assert.deepEqual(pullRequestRule, { type: "pull_request" });
     const checksRule = ruleset.rules.find((rule) => rule.type === "required_status_checks");
     assert.equal(checksRule.parameters.strict_required_status_checks_policy, true);
     assert.deepEqual(
