@@ -356,6 +356,19 @@ def next_number(directory_path: Path, pattern: str) -> int:
     return max_seen + 1
 
 
+def timeline_name(directory_path: Path, event_date: str, slug: str) -> str:
+    number = next_number(directory_path, r"^[0-9]{4}-[0-9]{2}-[0-9]{2}-(\d+)")
+    return f"{event_date}-{number:03d}-{kebab_slug(slug)}.md"
+
+
+def maker_name(prefix: str, number, slug: str) -> str:
+    # Kept out of an f-string so the module stays valid on Python 3.11, which
+    # cannot put a backslash inside an f-string expression (PEP 701 is 3.12+).
+    if number is None:
+        return f"{prefix}-{slug}.md"
+    return f"{prefix}-{number:03d}-{slug}.md"
+
+
 def kebab_slug(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
     return slug or "item"
@@ -797,7 +810,9 @@ def command_add_decision(args) -> int:
         args,
         directory="decisions",
         artifact="decision-record",
-        filename_builder=lambda directory_path: f"DR-{next_number(directory_path, r'DR-(\d+)'):03d}-{kebab_slug(args.slug)}.md",
+        filename_builder=lambda directory_path: maker_name(
+            "DR", next_number(directory_path, r"DR-(\d+)"), kebab_slug(args.slug)
+        ),
         order_builder=lambda path: path.stem.split("-", 2)[1],
         title=f"DR: {args.slug}",
         sections=["## Context", "## Decision", "## Alternatives Considered", "## Consequences"],
@@ -810,7 +825,7 @@ def command_add_timeline(args) -> int:
         args,
         directory="timeline",
         artifact="timeline-event",
-        filename_builder=lambda directory_path: f"{event_date}-{next_number(directory_path, r'^[0-9]{4}-[0-9]{2}-[0-9]{2}-(\d+)'):03d}-{kebab_slug(args.slug)}.md",
+        filename_builder=lambda directory_path: timeline_name(directory_path, event_date, args.slug),
         order_builder=lambda path: "-".join(path.name.split("-", 4)[:4]),
         title=args.slug,
         sections=["## Event", "## Decision", "## Evidence", "## Residual Risk"],
@@ -822,7 +837,9 @@ def command_add_task_slice(args) -> int:
         args,
         directory="tasks",
         artifact="task-slice",
-        filename_builder=lambda directory_path: f"slice-{next_number(directory_path, r'slice-(\d+)'):03d}-{kebab_slug(args.slug)}.md",
+        filename_builder=lambda directory_path: maker_name(
+            "slice", next_number(directory_path, r"slice-(\d+)"), kebab_slug(args.slug)
+        ),
         order_builder=lambda path: path.stem.split("-", 2)[1],
         title=f"Slice: {args.slug}",
         sections=[
