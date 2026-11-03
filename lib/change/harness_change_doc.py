@@ -1396,19 +1396,24 @@ LEDGER_COLUMNS = [
 
 
 def ensure_ledger_section(text: str) -> str:
-    front = re.match(r"^---\n(.*?)\n---", text, re.S)
-    if front and not re.search(r"^derived_work:", front.group(1), re.M):
-        text = text.replace(
-            front.group(0),
-            front.group(0)[:-4] + "derived_work: v1\n---",
-            1,
-        )
+    newline = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(newline)
+    if lines and lines[0].strip() == "---":
+        try:
+            close = next(i for i in range(1, len(lines)) if lines[i].strip() == "---")
+        except StopIteration:
+            close = None
+        if close is not None and not any(
+            line.lower().startswith("derived_work:") for line in lines[1:close]
+        ):
+            lines.insert(close, "derived_work: v1")
+            text = newline.join(lines)
     if not any(line.strip() == "## Derived Work" for line in text.splitlines()):
-        text = text.rstrip() + "\n\n## Derived Work\n\n" + "\n".join(LEDGER_TEMPLATE) + "\n"
+        text = text.rstrip() + newline * 2 + "## Derived Work" + newline * 2 + newline.join(LEDGER_TEMPLATE) + newline
     elif "| work | outcome |" not in text:
         text = re.sub(
             r"^## Derived Work\s*$",
-            "## Derived Work\n\n" + "\n".join(LEDGER_TEMPLATE) + "\n",
+            "## Derived Work" + newline * 2 + newline.join(LEDGER_TEMPLATE) + newline,
             text,
             count=1,
             flags=re.M,
@@ -1433,6 +1438,8 @@ def command_work(args) -> int:
         return 2
     target = change_dir(root, args.task)
     file_path = target / "requirements.md"
+    if not file_path.exists() and (target / "plan.md").exists():
+        file_path = target / "plan.md"
     if not file_path.exists():
         print(f"ERROR: objective requirements not found: {file_path}", file=sys.stderr)
         return 1
@@ -1449,9 +1456,13 @@ def command_work(args) -> int:
     existing = {row.get("work", ""): row for row in rows}
     work_id = args.id
     if args.action == "add" and not work_id:
-        work_id = f"W-{len(rows) + 1:02d}"
+        numbers = [int(match.group(1)) for match in (re.fullmatch(r"W-(\d+)", key) for key in existing) if match]
+        work_id = f"W-{max(numbers, default=0) + 1:02d}"
     if not work_id:
         print("ERROR: work update requires --id", file=sys.stderr)
+        return 2
+    if work_id in existing and args.action == "add":
+        print(f"ERROR: work id already exists: {work_id}; use update", file=sys.stderr)
         return 2
     if args.action == "update" and rows and work_id not in existing:
         print(f"ERROR: unknown work id: {work_id}", file=sys.stderr)
@@ -1459,15 +1470,18 @@ def command_work(args) -> int:
 
     current = existing.get(work_id, {})
     import datetime as _dt
+    def cleaned(value):
+        return value.strip() if isinstance(value, str) else value
+
     merged = {
         "work": work_id,
-        "outcome": args.outcome or current.get("outcome"),
-        "owner": args.owner or current.get("owner"),
+        "outcome": cleaned(args.outcome) or current.get("outcome"),
+        "owner": cleaned(args.owner) or current.get("owner"),
         "status": args.status or current.get("status") or "open",
-        "next action": args.next_action or current.get("next action"),
-        "depends on": args.depends_on or current.get("depends on"),
-        "evidence": args.evidence or current.get("evidence"),
-        "change": args.change or current.get("change"),
+        "next action": cleaned(args.next_action) or current.get("next action"),
+        "depends on": cleaned(args.depends_on) or current.get("depends on"),
+        "evidence": cleaned(args.evidence) or current.get("evidence"),
+        "change": cleaned(args.change) or current.get("change"),
         "updated": args.updated or _dt.date.today().isoformat(),
     }
     for key in ("outcome", "owner"):

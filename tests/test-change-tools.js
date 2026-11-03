@@ -2563,164 +2563,223 @@ export async function run(test) {
       assert.equal(pyResult.status, 2, pyResult.stdout + pyResult.stderr);
     });
   });
-  await test("objective ledger rows are written, listed, and updated by both implementations", () => {
+  await test("objective ledger js and python insert the marker and agree byte for byte", () => {
     withTempRepo((repo) => {
       initChangeWorkspaces(repo, ["objective-demo"]);
+      // Python first on purpose: the earlier ordering let JS create the marker and
+      // hid a Python bug that corrupted the front matter.
+      const pyAdd = runPythonChangeDoc([
+        "--state-root", repo, "work", "add", "objective-demo",
+        "--outcome", "Review the stacked branches",
+        "--owner", "human:owner",
+        "--status", "waiting-human",
+        "--next-action", "push the branches"
+      ]);
+      assert.equal(pyAdd.status, 0, pyAdd.stdout + pyAdd.stderr);
+      const file = path.join(repo, ".changes", "objective-demo", "requirements.md");
+      const afterPython = readTest(file);
+      assert.match(afterPython, /^derived_work: v1$/m, "python must add the marker as its own front-matter line");
+
       const jsAdd = capture(() =>
         runChangeDoc([
           "--state-root", repo, "work", "add", "objective-demo",
-          "--outcome", "Review the stacked branches",
-          "--owner", "human:owner",
-          "--status", "waiting-human",
-          "--next-action", "push the branches"
+          "--outcome", "Land the second slice",
+          "--owner", "agent:coordinator",
+          "--status", "open",
+          "--next-action", "  write the slice  ",
+          "--depends-on", "W-01"
         ])
       );
       assert.equal(jsAdd.status, 0, jsAdd.stdout + jsAdd.stderr);
-      assert.match(jsAdd.stdout, /created\tW-01/);
+      assert.match(jsAdd.stdout, /created\tW-02/);
+      const afterJs = readTest(file);
+      assert.match(afterJs, /\| write the slice \|/, "cells must be trimmed in both implementations");
 
-      const pyAdd = runPythonChangeDoc([
-        "--state-root", repo, "work", "add", "objective-demo",
-        "--outcome", "Land the second slice",
-        "--owner", "agent:coordinator",
-        "--status", "open",
-        "--next-action", "write the slice",
-        "--depends-on", "W-01"
-      ]);
-      assert.equal(pyAdd.status, 0, pyAdd.stdout + pyAdd.stderr);
-      assert.match(pyAdd.stdout, /created\tW-02/);
+      // A ledger written by one implementation must be validated by the other.
+      fs.writeFileSync(file, afterJs.replace("| agent:coordinator | open |", "| - | open |"));
+      const js = outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo"]))).join("\n");
+      const py = outputLines(runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo"])).join("\n");
+      assert.match(js, /W-02 requires an owner/);
+      assert.match(py, /W-02 requires an owner/);
 
-      const requirements = readTest(path.join(repo, ".changes", "objective-demo", "requirements.md"));
-      assert.match(requirements, /^derived_work: v1$/m, "work add must opt the artifact into the ledger policy");
-      assert.match(requirements, /^## Derived Work$/m);
-
-      const jsList = capture(() => runChangeDoc(["--state-root", repo, "work", "list", "objective-demo"]));
-      assert.equal(jsList.status, 0, jsList.stderr);
-      assert.match(jsList.stdout, /W-01\twaiting-human\thuman:owner/);
-      const pyList = runPythonChangeDoc(["--state-root", repo, "work", "list", "objective-demo"]);
-      assert.equal(pyList.stdout.trim(), jsList.stdout.trim(), "both implementations must list the same ledger");
-
+      // The same update through both tools must produce the same bytes.
+      fs.writeFileSync(file, afterJs);
       const pyUpdate = runPythonChangeDoc([
         "--state-root", repo, "work", "update", "objective-demo",
         "--id", "W-02", "--status", "done", "--evidence", "tests/test-change-tools.js"
       ]);
       assert.equal(pyUpdate.status, 0, pyUpdate.stdout + pyUpdate.stderr);
-      assert.match(pyUpdate.stdout, /updated\tW-02/);
+      const afterPyUpdate = readTest(file);
       const jsUpdate = capture(() =>
         runChangeDoc([
           "--state-root", repo, "work", "update", "objective-demo",
-          "--id", "W-01", "--status", "done", "--change", "objective-demo"
+          "--id", "W-02", "--status", "done", "--evidence", "tests/test-change-tools.js"
         ])
       );
       assert.equal(jsUpdate.status, 0, jsUpdate.stdout + jsUpdate.stderr);
-      const after = capture(() => runChangeDoc(["--state-root", repo, "work", "list", "objective-demo"]));
-      assert.match(after.stdout, /W-01\tdone/);
-      assert.match(after.stdout, /W-02\tdone/);
-
-      const validation = capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo"]));
-      assert.doesNotMatch(outputLines(validation).join("\n"), /derived work|requires an owner/);
+      assert.equal(readTest(file), afterPyUpdate, "both tools must render the same file");
     });
   });
 
-  await test("objective ledger rejects bad rows and done without evidence in both validators", () => {
+  await test("objective ledger allocates past the highest id and refuses to add over an existing id", () => {
     withTempRepo((repo) => {
       initChangeWorkspaces(repo, ["objective-demo"]);
       const file = path.join(repo, ".changes", "objective-demo", "requirements.md");
-      fs.writeFileSync(
-        file,
-        [
-          objectiveFrontMatter("requirements"),
-          "# Requirements",
-          "",
-          "## Derived Work",
-          "",
-          "| work | outcome | owner | status | next action | depends on | evidence | change | updated |",
-          "|---|---|---|---|---|---|---|---|---|",
-          "| W-01 | Ship the slice | - | open | write it | W-09 | - | - | 2026-01-01 |",
-          "| W-02 | Close the item | agent:coordinator | done | - | - | - | - | - |",
-          "| W-03 | Unknown status | agent:coordinator | finished | - | - | - | - | - |",
-          "| W-04 | Duplicate id | agent:coordinator | open | write it | - | - | - | 2026-01-01 |",
-          "| W-04 | Duplicate id again | agent:coordinator | open | write it | - | - | - | 2026-01-01 |",
-          ""
-        ].join("\n")
-      );
-      const js = capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo"]));
-      const py = runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo"]);
-      const jsErrors = outputLines(js).filter((line) => line.includes("W-0"));
-      const pyErrors = outputLines(py).filter((line) => line.includes("W-0"));
-      assert.equal(jsErrors.length, pyErrors.length, `JS and Python disagree:\n${jsErrors.join("\n")}\n---\n${pyErrors.join("\n")}`);
-      for (const expected of [
-        /W-01 requires an owner/,
-        /W-01 depends on unknown work id: W-09/,
-        /W-02 is done but names neither evidence nor a change/,
-        /W-03 has unknown status: finished/,
-        /duplicate work id: W-04/
+      fs.writeFileSync(file, objectiveLedger(["W-01", "W-03"]));
+      for (const [name, add] of [
+        ["js", (args) => capture(() => runChangeDoc(args))],
+        ["python", (args) => runPythonChangeDoc(args)]
       ]) {
-        assert.ok(jsErrors.some((line) => expected.test(line)), `missing JS error ${expected}: ${jsErrors.join(" | ")}`);
-        assert.ok(pyErrors.some((line) => expected.test(line)), `missing Python error ${expected}`);
+        fs.writeFileSync(file, objectiveLedger(["W-01", "W-03"]));
+        const added = add([
+          "--state-root", repo, "work", "add", "objective-demo",
+          "--outcome", `auto ${name}`, "--owner", "agent:coordinator",
+          "--status", "open", "--next-action", "go"
+        ]);
+        assert.equal(added.status, 0, added.stdout + added.stderr);
+        assert.match(added.stdout, /created\tW-04/, `${name} must allocate past the highest id, not the row count`);
+        const duplicated = add([
+          "--state-root", repo, "work", "add", "objective-demo",
+          "--outcome", "dup", "--owner", "agent:coordinator",
+          "--status", "open", "--next-action", "go", "--id", "W-01"
+        ]);
+        assert.equal(duplicated.status, 2, `${name} must refuse to add over an existing id`);
+        assert.match(outputLines(duplicated).join("\n"), /already exists/);
+      }
+      const rows = readTest(file).split("\n").filter((line) => line.startsWith("| W-"));
+      const ids = rows.map((line) => line.split("|")[1].trim());
+      assert.equal(new Set(ids).size, ids.length, `ids must stay unique: ${ids.join(", ")}`);
+    });
+  });
+
+  await test("objective ledger rejects extra columns, bad markers, and invalid rows in both validators", () => {
+    withTempRepo((repo) => {
+      initChangeWorkspaces(repo, ["objective-demo"]);
+      const file = path.join(repo, ".changes", "objective-demo", "requirements.md");
+      const cases = [
+        { label: "extra cell", body: objectiveLedger(["W-01"], { extraCell: true }), expected: [/policy columns/] },
+        {
+          label: "unsupported marker",
+          body: objectiveLedger(["W-01"]).replace("derived_work: v1", "derived_work: v2"),
+          expected: [/unsupported derived_work marker/]
+        },
+        {
+          label: "invalid rows",
+          body: objectiveLedger(["W-01"], {
+            row: "| W-01 | Ship the slice | - | open | write it | W-09 | - | - | 2026-01-01 |",
+            extraRows: [
+              "| W-02 | Close the item | agent:coordinator | done | - | - | - | - | - |",
+              "| W-03 | Unknown status | agent:coordinator | finished | - | - | - | - | - |",
+              "| W-04 | Duplicate id | agent:coordinator | open | write it | - | - | - | 2026-01-01 |",
+              "| W-04 | Duplicate again | agent:coordinator | open | write it | - | - | - | 2026-01-01 |"
+            ]
+          }),
+          expected: [
+            /W-01 requires an owner/,
+            /W-01 depends on unknown work id: W-09/,
+            /W-02 is done but names neither evidence nor a change/,
+            /W-03 has unknown status: finished/,
+            /duplicate work id: W-04/
+          ]
+        }
+      ];
+      for (const testCase of cases) {
+        fs.writeFileSync(file, testCase.body);
+        const js = outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo"]))).join("\n");
+        const py = outputLines(runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo"])).join("\n");
+        for (const pattern of testCase.expected) {
+          assert.match(js, pattern, `JS missed ${pattern} for ${testCase.label}`);
+          assert.match(py, pattern, `Python missed ${pattern} for ${testCase.label}`);
+        }
       }
     });
   });
 
-  await test("objective ledger warns about stale items and ignores an unmarked table", () => {
+  await test("objective ledger inherits the package policy when the overlay omits it", () => {
+    withTempRepo((repo) => {
+      initChangeWorkspaces(repo, ["objective-demo"]);
+      writeRepoSchema(repo, (schema) => {
+        delete schema.derived_work;
+      });
+      const file = path.join(repo, ".changes", "objective-demo", "requirements.md");
+      fs.writeFileSync(
+        file,
+        objectiveLedger(["bad-id"], { row: "| bad-id | Ship it | - | nope | - | - | - | - | 2026-13-45 |" })
+      );
+      const js = outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo"]))).join("\n");
+      const py = outputLines(runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo"])).join("\n");
+      for (const pattern of [/invalid work id: bad-id/, /unknown status: nope/, /requires an owner/]) {
+        assert.match(js, pattern, `JS ignored the inherited policy for ${pattern}`);
+        assert.match(py, pattern, `Python ignored the inherited policy for ${pattern}`);
+      }
+    });
+  });
+
+  await test("objective ledger warns about stale items and leaves an unmarked table inert", () => {
     withTempRepo((repo) => {
       initChangeWorkspaces(repo, ["objective-demo"]);
       const file = path.join(repo, ".changes", "objective-demo", "requirements.md");
       fs.writeFileSync(
         file,
-        [
-          objectiveFrontMatter("requirements"),
-          "# Requirements",
-          "",
-          "## Derived Work",
-          "",
-          "| work | outcome | owner | status | next action | depends on | evidence | change | updated |",
-          "|---|---|---|---|---|---|---|---|---|",
-          "| W-01 | Ship the slice | agent:coordinator | blocked | wait for review | - | - | - | 2026-01-01 |",
-          ""
-        ].join("\n")
+        objectiveLedger(["W-01"], {
+          row: "| W-01 | Ship the slice | agent:coordinator | blocked | wait for review | - | - | - | 2026-01-01 |"
+        })
       );
-      const js = capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo", "--strict-layout"]));
-      const py = runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo", "--strict-layout"]);
-      assert.match(outputLines(js).join("\n"), /W-01 has been blocked for \d+ days/);
-      assert.match(outputLines(py).join("\n"), /W-01 has been blocked for \d+ days/);
+      const js = outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo", "--strict-layout"]))).join("\n");
+      const py = outputLines(runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo", "--strict-layout"])).join("\n");
+      assert.match(js, /W-01 has been blocked for \d+ days/);
+      assert.match(py, /W-01 has been blocked for \d+ days/);
 
-      // Without the marker the table is inert, so old workspaces stay valid.
       const unmarked = readTest(file).replace(/^derived_work: v1\n/m, "");
       fs.writeFileSync(file, unmarked.replace("| W-01 | Ship the slice |", "| not-an-id | Ship the slice |"));
-      const inert = capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo", "--strict-layout"]));
-      assert.doesNotMatch(outputLines(inert).join("\n"), /invalid work id/);
+      const inert = outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo", "--strict-layout"]))).join("\n");
+      assert.doesNotMatch(inert, /invalid work id/, "an absent marker must leave a legacy table inert");
     });
   });
 
-  await test("a spawned-from promotion must be named in the objective ledger", () => {
+  await test("promotion is validated in both directions", () => {
     withTempRepo((repo) => {
       initChangeWorkspaces(repo, ["objective-demo", "child-change"]);
       const objectiveFile = path.join(repo, ".changes", "objective-demo", "requirements.md");
       fs.writeFileSync(
         objectiveFile,
-        [
-          objectiveFrontMatter("requirements"),
-          "# Requirements",
-          "",
-          "## Derived Work",
-          "",
-          "| work | outcome | owner | status | next action | depends on | evidence | change | updated |",
-          "|---|---|---|---|---|---|---|---|---|",
-          "| W-01 | Ship the child change | agent:coordinator | open | write the slice | - | - | child-change | 2026-01-01 |",
-          ""
-        ].join("\n")
+        objectiveLedger(["W-01"], {
+          row: "| W-01 | Ship the child change | agent:coordinator | open | write the slice | - | - | child-change | 2026-11-01 |"
+        })
       );
+      const objectiveErrors = () => ({
+        js: outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "objective-demo"]))).join("\n"),
+        py: outputLines(runPythonChangeValidate(["--state-root", repo, "--change", "objective-demo"])).join("\n")
+      });
+
+      const before = objectiveErrors();
+      assert.match(before.js, /names child-change but that change does not declare spawned-from objective-demo/);
+      assert.match(before.py, /names child-change but that change does not declare spawned-from objective-demo/);
+
       const relation = writeRelation(repo, "child-change", "objective-demo", "spawned-from", "Implements W-01.");
       assert.equal(relation.status, 0, relation.stdout + relation.stderr);
-      const linked = capture(() => runChangeValidate(["--state-root", repo, "--change", "child-change", "--strict-layout"]));
-      assert.doesNotMatch(outputLines(linked).join("\n"), /spawned-from/);
+      const linked = objectiveErrors();
+      assert.doesNotMatch(linked.js, /spawned-from/);
+      assert.doesNotMatch(linked.py, /spawned-from/);
 
-      // Remove the naming cell and the promotion must be reported.
       fs.writeFileSync(objectiveFile, readTest(objectiveFile).replace("| - | child-change |", "| - | - |"));
-      const broken = capture(() => runChangeValidate(["--state-root", repo, "--change", "child-change", "--strict-layout"]));
-      assert.match(outputLines(broken).join("\n"), /spawned-from objective-demo requires a derived work row naming child-change/);
+      const childJs = outputLines(capture(() => runChangeValidate(["--state-root", repo, "--change", "child-change"]))).join("\n");
+      const childPy = outputLines(runPythonChangeValidate(["--state-root", repo, "--change", "child-change"])).join("\n");
+      assert.match(childJs, /spawned-from objective-demo requires a derived work row naming child-change/);
+      assert.match(childPy, /spawned-from objective-demo requires a derived work row naming child-change/);
+
+      fs.writeFileSync(
+        objectiveFile,
+        objectiveLedger(["W-01"], {
+          row: "| W-01 | Ship the child change | agent:coordinator | open | write the slice | - | - | ghost-change | 2026-11-01 |"
+        })
+      );
+      const dangling = objectiveErrors();
+      assert.match(dangling.js, /names a change that does not exist: ghost-change/);
+      assert.match(dangling.py, /names a change that does not exist: ghost-change/);
     });
   });
+
 
 }
 
@@ -2838,6 +2897,33 @@ function removeRelationSection(repo, changeId) {
   assert(sectionEnd < lines.length, `${readme}: Current Phase heading missing`);
   lines.splice(headingIndex, sectionEnd - headingIndex);
   fs.writeFileSync(readme, lines.join("\n"));
+}
+
+function objectiveLedger(workIds, options = {}) {
+  const rows = workIds.map((workId, index) => {
+    if (index === 0 && options.row) return options.row;
+    return `| ${workId} | Outcome ${index + 1} | agent:coordinator | open | write it | - | - | - | 2026-11-01 |`;
+  });
+  if (options.extraRows) rows.push(...options.extraRows);
+  if (options.extraCell) rows[0] = `${rows[0]} EXTRA |`;
+  return [
+    "---",
+    "artifact: requirements",
+    "status: draft",
+    "tags: [requirements]",
+    'description: "Objective requirements."',
+    "derived_work: v1",
+    "---",
+    "",
+    "# Requirements",
+    "",
+    "## Derived Work",
+    "",
+    "| work | outcome | owner | status | next action | depends on | evidence | change | updated |",
+    "|---|---|---|---|---|---|---|---|---|",
+    ...rows,
+    ""
+  ].join("\n");
 }
 
 function outputLines(result) {
