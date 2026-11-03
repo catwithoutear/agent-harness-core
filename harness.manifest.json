@@ -2484,6 +2484,20 @@
         ]
       },
       {
+        "id": "objective-requirements",
+        "kind": "change",
+        "source": "templates/changes/objective-requirements.md",
+        "target": ".changes/templates/objective-requirements.md",
+        "description": "Requirements artifact with a derived work ledger for long-running objectives.",
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
         "id": "change-decision-record",
         "kind": "change",
         "source": "templates/changes/decisions/decision-record.md",

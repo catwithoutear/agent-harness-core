@@ -37,13 +37,18 @@ import { measureCoreSkillPromptSurface } from "../lib/core-skill-prompt-surface.
 // discoverable at all; no contract body appears on a default-loaded path. The
 // package class carries the contract text, which is reference-only and read only
 // when a task matches a role. The always-on description class is unchanged.
+// The objective work ledger adds 1073 characters to both classes: a workflow
+// overview of the ledger (statuses, required cells, the done rule, the tool, and
+// the promotion direction check) and the planner pointer that makes promotion
+// actionable. Both are pointers to the schema and the validator, not copies of
+// their rules.
 // A core skill's prompt surface may grow only when the same change updates the
 // matching baseline and records why. Never round a measurement down to fit a
 // baseline.
 const BASELINES = Object.freeze({
   alwaysOnCoreSkillDescriptionChars: 5306,
-  defaultLoadedCoreSkillChars: 222803,
-  coreSkillPackageChars: 716964
+  defaultLoadedCoreSkillChars: 223876,
+  coreSkillPackageChars: 718037
 });
 
 const LOAD_CLASSES = Object.freeze({

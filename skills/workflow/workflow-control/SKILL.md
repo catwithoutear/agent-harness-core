@@ -144,6 +144,20 @@ the table empty. When coupling raises a split-or-relate question, apply
 `rules/loop-contract.md:One Reviewable Outcome Per Change` instead of restating
 the boundary here.
 
+## Objective Work Ledger
+
+A long-running objective keeps derived work in its `requirements.md` under
+`## Derived Work`, opted in with `derived_work: v1` in that file's front matter.
+Rows are `| work | outcome | owner | status | next action | depends on |
+evidence | change | updated |`; ids are objective-scoped (`W-01`). Statuses are
+`open`, `blocked`, `waiting-human`, `done`, `dropped`. An active item needs an
+owner, a next action, and an `updated` date; `done` needs evidence or a change.
+Write rows with `harness-change-doc work add|update|list <objective>` and let the
+validator report malformed, stale, or evidence-free rows. When an item becomes a
+change, declare `spawned-from <objective>` on that change and name the change in
+the item; the validator checks both directions. The template is
+`templates/changes/objective-requirements.md`.
+
 ## Review Coverage
 
 Every general/final review covers the complete current task scope and checks

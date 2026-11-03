@@ -4,6 +4,7 @@ import sys
 sys.dont_write_bytecode = True
 
 import argparse
+import datetime
 import fnmatch
 import hashlib
 import json
@@ -1409,6 +1410,274 @@ def validate_layout(change_dir: Path, schema: dict, mode: str, errors: list, war
     validate_layout_limits(change_dir, schema, mode, errors, warns, strict_layout)
 
 
+REQUIRED_DERIVED_WORK_KEYS = ("heading", "id_pattern", "columns", "allowed_statuses", "active_statuses")
+
+
+def derived_work_policy_for(schema: dict):
+    """Merge the repository overlay over the package policy, like acceptance."""
+    base = package_schema().get("derived_work")
+    override = (schema or {}).get("derived_work")
+    if not base and not override:
+        return None
+    merged = dict(base or {})
+    merged.update(override or {})
+    for key in REQUIRED_DERIVED_WORK_KEYS:
+        if key not in merged:
+            raise ValueError(f"derived_work policy is missing required key: {key}")
+    return merged
+
+
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def derived_work_marker(text: str, policy: dict):
+    """Return (present, enabled, value). A present key with an unsupported value
+    must fail loudly so a typo cannot silently disable the ledger rules."""
+    front = re.match(r"^---\n([\s\S]*?)\n---", normalize_newlines(text))
+    if not front:
+        return False, False, None
+    for line in front.group(1).split("\n"):
+        key_value = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$", line)
+        if not key_value:
+            continue
+        if key_value.group(1).lower() != "derived_work":
+            continue
+        value = key_value.group(2).strip()
+        return True, value == policy["marker"], value
+    return False, False, None
+
+
+def derived_work_enabled(text: str, policy: dict) -> bool:
+    return derived_work_marker(text, policy)[1]
+
+
+def normalize_header(cell: str) -> str:
+    return re.sub(r"\s+", " ", cell.strip()).lower()
+
+
+def ledger_artifact_for(change_dir: Path, policy: dict):
+    for candidate in (policy.get("artifact", "requirements.md"), policy.get("plan_artifact", "plan.md")):
+        file_path = change_dir / candidate
+        if file_path.exists():
+            return file_path
+    return None
+
+
+def parse_derived_work_rows(text: str, policy: dict):
+    table_lines = markdown_table_lines_after_heading(normalize_newlines(text), policy["heading"])
+    if len(table_lines) < 2:
+        return None
+    headers = [normalize_header(cell) for cell in split_table_row(table_lines[0])]
+    expected = [normalize_header(column) for column in policy["columns"]]
+    if headers != expected:
+        return headers, None
+    rows = []
+    for line in table_lines[2:]:
+        cells = split_table_row(line)
+        if len(cells) != len(headers):
+            return headers, None
+        rows.append(dict(zip(headers, cells)))
+    return headers, rows
+
+
+def parse_iso_date(value: str):
+    match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", (value or "").strip())
+    if not match:
+        return None
+    year, month, day = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    if year < 1000 or month < 1 or month > 12 or day < 1 or day > 31:
+        return None
+    try:
+        return datetime.date(year, month, day)
+    except ValueError:
+        return None
+
+
+def parse_dependencies(cell: str) -> list:
+    value = (cell or "").strip()
+    if not value or value == "-":
+        return []
+    return [entry.strip() for entry in value.split(",") if entry.strip()]
+
+
+def validate_derived_work(change_dir: Path, schema: dict, errors: list, warns: list, today=None):
+    try:
+        policy = derived_work_policy_for(schema)
+    except ValueError as error:
+        errors.append(f"{change_dir}: {error}")
+        return None
+    if not policy:
+        return None
+    artifact = ledger_artifact_for(change_dir, policy)
+    if artifact is None:
+        return None
+    text = read_text(artifact)
+    present, enabled, value = derived_work_marker(text, policy)
+    if not present:
+        return None
+    if not enabled:
+        errors.append(
+            f'{artifact}: unsupported derived_work marker "{value}"; expected {policy["marker"]} (remove the key to leave a legacy table inert)'
+        )
+        return None
+
+    columns = [normalize_header(column) for column in policy["columns"]]
+    if not any(line.strip() == f"## {policy['heading']}" for line in normalize_newlines(text).splitlines()):
+        errors.append(f"{artifact}: derived_work marker requires a ## {policy['heading']} section")
+        return None
+    parsed = parse_derived_work_rows(text, policy)
+    if parsed is None or parsed[1] is None:
+        errors.append(f"{artifact}: ## {policy['heading']} must contain a table with the policy columns")
+        return None
+    headers, rows = parsed
+    if not rows:
+        errors.append(f"{artifact}: ## {policy['heading']} must contain at least one work item")
+        return None
+
+    id_pattern = re.compile(policy["id_pattern"])
+    today = today or datetime.date.today()
+    seen = set()
+    sparse = []
+    for index, row in enumerate(rows, start=1):
+        label = f"derived work row {index}"
+        work_id = row.get("work", "")
+        status = row.get("status", "")
+        owner = row.get("owner", "")
+        outcome = row.get("outcome", "")
+        next_action = row.get("next action", "")
+        evidence = row.get("evidence", "")
+        change = row.get("change", "")
+        updated = row.get("updated", "")
+        depends_on = row.get("depends on", "")
+
+        if not id_pattern.fullmatch(work_id or ""):
+            errors.append(f"{artifact}: {label} has invalid work id: {work_id or '(empty)'}")
+        elif work_id in seen:
+            errors.append(f"{artifact}: duplicate work id: {work_id}")
+        else:
+            seen.add(work_id)
+
+        if status not in policy["allowed_statuses"]:
+            errors.append(
+                f"{artifact}: {work_id or label} has unknown status: {status or '(empty)'}; allowed: {', '.join(policy['allowed_statuses'])}"
+            )
+        if not outcome or outcome == "-":
+            errors.append(f"{artifact}: {work_id or label} requires an outcome")
+        if not owner or owner == "-":
+            errors.append(f"{artifact}: {work_id or label} requires an owner")
+        if status in policy["active_statuses"]:
+            if not next_action or next_action == "-":
+                errors.append(f"{artifact}: {work_id or label} is {status} and requires a next action")
+            if not parse_iso_date(updated):
+                errors.append(f"{artifact}: {work_id or label} is {status} and requires an Updated date (YYYY-MM-DD)")
+        if status == "done" and policy.get("done_requires_evidence_or_change", True):
+            if not (evidence and evidence != "-") and not (change and change != "-"):
+                errors.append(f"{artifact}: {work_id or label} is done but names neither evidence nor a change")
+        if updated and updated != "-" and not parse_iso_date(updated):
+            errors.append(f"{artifact}: {work_id or label} has an invalid Updated date: {updated}")
+        sparse.append({"id": work_id, "status": status, "change": change, "updated": updated,
+                       "depends_on": depends_on, "label": label})
+
+    for row in sparse:
+        for dependency in parse_dependencies(row["depends_on"]):
+            if dependency == row["id"]:
+                errors.append(f"{artifact}: {row['id'] or row['label']} depends on itself")
+            elif dependency not in seen:
+                errors.append(f"{artifact}: {row['id'] or row['label']} depends on unknown work id: {dependency}")
+
+    window = policy.get("stale_after_days") or 0
+    if window > 0:
+        for row in sparse:
+            if row["status"] not in policy["active_statuses"]:
+                continue
+            date = parse_iso_date(row["updated"])
+            if not date:
+                continue
+            age = (today - date).days
+            if age > window:
+                warns.append(
+                    f"{artifact}: {row['id']} has been {row['status']} for {age} days; confirm the next action is still current"
+                )
+
+    return {"file": artifact, "ids": seen, "rows": sparse}
+
+
+def relation_rows(readme: Path):
+    if not readme.exists():
+        return []
+    table_lines = markdown_table_lines_after_heading(read_text(readme), "Change Relations")
+    if len(table_lines) < 2:
+        return []
+    headers = [normalize_header(cell) for cell in split_table_row(table_lines[0])]
+    if "type" not in headers or "change" not in headers:
+        return []
+    rows = []
+    for line in table_lines[2:]:
+        cells = split_table_row(line)
+        if len(cells) != len(headers):
+            continue
+        row = dict(zip(headers, cells))
+        rows.append({"type": row.get("type", ""), "change": row.get("change", "").replace("`", "")})
+    return rows
+
+
+def validate_promotion(change_dir: Path, schema: dict, repo_root, errors: list):
+    try:
+        policy = derived_work_policy_for(schema)
+    except ValueError:
+        return
+    if not policy or repo_root is None:
+        return
+    readme = change_dir / "README.md"
+    for promotion in relation_rows(readme):
+        if promotion["type"] != "spawned-from":
+            continue
+        target = promotion["change"]
+        if not target or target == ".." or "/" in target or "\\" in target:
+            continue
+        objective_dir = Path(repo_root) / ".changes" / target
+        artifact = ledger_artifact_for(objective_dir, policy)
+        if artifact is None:
+            continue
+        present, enabled, _value = derived_work_marker(read_text(artifact), policy)
+        if not enabled:
+            continue
+        parsed = parse_derived_work_rows(read_text(artifact), policy)
+        if parsed is None or parsed[1] is None:
+            continue
+        named = any((row.get("change", "").replace("`", "") == change_dir.name) for row in parsed[1])
+        if not named:
+            errors.append(
+                f"{readme}: spawned-from {target} requires a derived work row naming {change_dir.name}"
+            )
+
+
+def validate_ledger_promotions(change_dir: Path, schema: dict, repo_root, ledger, errors: list):
+    if not ledger or repo_root is None:
+        return
+    objective_id = change_dir.name
+    for row in ledger["rows"]:
+        change = (row.get("change") or "").replace("`", "").strip()
+        if not change or change == "-":
+            continue
+        if change == ".." or "/" in change or "\\" in change:
+            errors.append(f"{ledger['file']}: {row['id']} names an invalid change: {change}")
+            continue
+        child_dir = Path(repo_root) / ".changes" / change
+        if not child_dir.exists():
+            errors.append(f"{ledger['file']}: {row['id']} names a change that does not exist: {change}")
+            continue
+        declared = any(
+            relation["type"] == "spawned-from" and relation["change"] == objective_id
+            for relation in relation_rows(child_dir / "README.md")
+        )
+        if not declared:
+            errors.append(
+                f"{ledger['file']}: {row['id']} names {change} but that change does not declare spawned-from {objective_id}"
+            )
+
+
 def validate_relations(change_dir: Path, repo_root, schema: dict, errors: list, warns: list):
     relations_policy = relation_policy_for(schema)
     if repo_root is None:
@@ -1601,6 +1870,9 @@ def validate_change(
     validate_review_run_evidence(change_dir, errors)
     validate_legacy_top_level_artifacts(change_dir, errors, warns, strict_layout)
     validate_relations(change_dir, repo_root, schema, errors, warns)
+    ledger = validate_derived_work(change_dir, schema, errors, warns)
+    validate_promotion(change_dir, schema, repo_root, errors)
+    validate_ledger_promotions(change_dir, schema, repo_root, ledger, errors)
     validate_layout(change_dir, schema, mode, errors, warns, strict_layout)
     if worktrees:
         worktree_errors, worktree_warnings = execution_map.validate_execution_map_worktrees(change_dir)
