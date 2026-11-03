@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# These tools ship inside the npm package: never drop __pycache__ next to them.
+import sys
+sys.dont_write_bytecode = True
+
 import argparse
 import json
 import os
