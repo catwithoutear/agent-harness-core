@@ -16,7 +16,7 @@ English: [README.md](README.md)。
 | `harness` | 包辅助命令，包括 `harness manifest`。 |
 | `harness.manifest.json` | 可安装资产、客户端目标和能力的事实源。 |
 | `skills/` | 分类存放的 source skills；运行时 skill 目录会被投影为扁平结构。 |
-| `agents/roles/` | canonical source subagent roles；各客户端文件由这些 source 渲染生成。 |
+| `skills/workflow/workflow-control/references/role-contracts/` | 角色契约的唯一来源；各客户端 agent 文件由这些 source 渲染，并按需加载。 |
 | `rules/` | 稳定的工作流契约。 |
 | `hooks/intents/` | 会被渲染为客户端特定 hook payload 的 hook intent 描述。 |
 | `commands/harness/` | 支持 command projection 的客户端使用的 slash command prompt source。 |
@@ -165,7 +165,7 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
-## 已有 ZCode 与 DSH 角色
+## 现有 ZCode 角色与 DSH 委派
 
 使用 `harness-deploy` 技能选择最小授权部署范围、核对实际加载目录、保留外部备份并检查技能和角色是否重复。技能复用现有 projector 或所属 overlay 的部署工具。
 
@@ -179,17 +179,21 @@ node bin/harness-native-roles.js --client zcode --agents-dir ~/.zcode/agents --v
 
 应用前检查计划、已有正文及 ZCode Desktop 实际 storage 目录。工具保留 canonical name/description 以外的元数据，拒绝过期计划；多文件失败会报告已更新、失败、未处理角色及备份映射。
 
-DSH 使用随 Core 分发的可选宿主插件，通过原生插件管理器安装到明确选定的 profile：
+DSH 通过原生 subagent 委派，不再需要宿主插件：自 2.0.0 起移除 `harness-roles`
+bundle、`subagent_<role>` 工具与 `lib/dsh` 入口，因为把角色契约交给宿主原生委派
+即可，无需注册。
 
-```bash
-dsh plugin --profile <profile-name> add <core-path-or-tarball>
-```
+任务明显匹配某个角色时，打开
+`skills/workflow/workflow-control/references/role-contracts/<role>.md`，把该契约
+传给宿主的 subagent / teammate 设施。契约包含目标、输入、证据义务、权限边界、
+输出契约与完成标准；具体流程由宿主提供。需要静态 agent 文件的客户端
+（Codex、Claude、OpenCode、OMP、ZCode）仍由 `harness-project` 从同一份契约渲染。
 
-bundle 插入一个 `harness-roles` 实例，在激活时读取已安装 Core 的 manifest 及角色文件，让所有 preset 和队友都能调用 `subagent_<role>` 工具。profile 需提供 `tools`、`systemPrompt`、`subagents`，以及支持 persona、工具过滤和深度限制的 provider。默认子智能体 provider 为 `spawn`，`maxDepth: 2`。省略 `agentOptions` 时继承父智能体模型配置，Core 不选择模型。profile 可覆盖 `harness-roles.config`，指定 `agentOptions`、绝对路径 `rolesDir`、provider、深度、额外的 `readOnlyDeny` 或 `policy: false`。只读角色始终禁用 write/edit，但仍可使用 shell，因此这不是沙箱。角色子进程禁用继承的委派、团队控制和角色工具。
+从旧 bundle 迁移：先从 profile 移除 `harness-roles` 条目及其依赖，再升级 Core，
+以免 profile 指向已删除的入口。用 `dsh --profile <profile-name> --dump-config`
+确认不再有角色工具。
 
-迁移时保留选定 profile 和模型设置，移除旧的内嵌 Harness 角色条目及 `@local/dsh-harness-roles` bundle/依赖，再安装 Core bundle，避免两套接入注册同名工具。profile 不再引用外部链接插件后才能删除其目录。`harness-native-roles --client dsh` 已删除。用 `dsh --profile <profile-name> --dump-config` 核对有效配置，再在新会话或明确重载后检查角色工具可见性与派发。源码或打包检查不能证明运行中的 Web 已重载；Core 原生刷新命令不会重启服务。
-
-通用投影的 `--conflict backup` 将快照保存到 `~/backup/agent-harness-core/`，不会在发现根创建备份。
+`--conflict backup` 将快照保存到 `~/backup/agent-harness-core/`，不会在发现根创建备份。
 原生刷新复用同一快照所有者，每份私有快照记录 original→saved。保留映射用于恢复，交付后清理已检查的计划文件。
 部署时明确选择客户端，避免更新已经停止使用的客户端。
 

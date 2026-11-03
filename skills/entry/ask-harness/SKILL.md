@@ -81,11 +81,13 @@ For integration-branch protection, use `commands.branchProtection`
 action that needs an authenticated `gh` with admin rights, and `--check` reports
 drift. For existing ZCode Desktop roles, use `commands.nativeRoles`
 (`harness-native-roles`) for dry-run/verify and reviewed `--from-plan` refresh.
-For DSH roles, use `integrations.dsh`: Core's optional host bundle, installed
-through DSH's native `plugin` manager into the explicitly selected profile.
-It reads canonical roles at activation; do not embed personas in presets or use
-the removed `harness-native-roles --client dsh` route. Use `harness-deploy` for
-migration, backups and verification. Shared `.agents/skills` are projected once
+For DSH, delegate through the host's native subagent facility: open the role
+contract under
+`skills/workflow/workflow-control/references/role-contracts/<role>.md` and pass
+it to the subagent or teammate call. Core ships no DSH host plugin, no
+`subagent_<role>` tools and no `integrations.dsh` entry; do not embed personas
+in presets or resurrect the removed `harness-native-roles --client dsh` route.
+Use `harness-deploy` for migration, backups and verification. Shared `.agents/skills` are projected once
 through Codex when the installed native loader confirms that root. Preserve
 native settings; do not invent generic projector client support or `.dsh/agents`.
 

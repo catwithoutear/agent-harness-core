@@ -80,6 +80,29 @@ blocker persists after reasonable safe attempts, report partial status, the
 missing capability/input, and the next action; do not loop indefinitely or claim
 completion. Continue independent authorized work when possible.
 
+## Role Contracts
+
+Role text is not loaded by default. When a task plainly matches a role, open its
+contract and pass it to the host's native subagent or teammate facility. The
+contract carries objective, inputs, evidence duties, authority boundaries, output
+contract and completion criteria; it grants no extra authority and does not
+override the review or gate rules owned elsewhere. Projection renders the static
+client agent files from these same contracts.
+
+| Role | Load when |
+|---|---|
+| [`harness-orchestrator`](references/role-contracts/harness-orchestrator.md) | multi-phase artifact-driven work |
+| [`repo-mapper`](references/role-contracts/repo-mapper.md) | map ownership, entry points, flows before planning |
+| [`design-alternatives`](references/role-contracts/design-alternatives.md) | three orthogonal design options with tradeoffs |
+| [`solution-designer`](references/role-contracts/solution-designer.md) | repository-grounded design after a direction is chosen |
+| [`planning-reviewer`](references/role-contracts/planning-reviewer.md) | read-only review of planning or design artifacts |
+| [`implementation-planner`](references/role-contracts/implementation-planner.md) | ordered reviewable slices with validation gates |
+| [`code-worker`](references/role-contracts/code-worker.md) | one bounded, approved implementation slice |
+| [`reviewer`](references/role-contracts/reviewer.md) | read-only evidence-first review of a diff or behavior change |
+| [`review-verifier`](references/role-contracts/review-verifier.md) | independent review-coverage inventory |
+| [`council-synthesizer`](references/role-contracts/council-synthesizer.md) | evidence-weighted synthesis of several positions |
+| [`code-simplifier`](references/role-contracts/code-simplifier.md) | behaviour-preserving simplification pass |
+
 ## Required Materials
 
 Use one workflow loop; material requirements follow the work, not a selected

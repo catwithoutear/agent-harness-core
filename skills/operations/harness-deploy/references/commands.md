@@ -42,7 +42,7 @@ that is an actual shipped capability.
 ## Existing Native Roles
 
 ZCode uses `harness-native-roles` outside the generic projector's client list.
-DSH uses the optional Core host bundle described by `integrations.dsh`.
+DSH has no host bundle; see [DSH Delegation](#dsh-delegation) below.
 Confirm the installed loader consumes the shared skill root before projecting
 skills through Codex. Do not invent `--clients zcode`, `--clients dsh`, or a
 `.dsh/agents` directory.
@@ -69,26 +69,29 @@ preserved except canonical name/description and role body. Inspect partial
 a fresh dry-run should show empty `changed_roles`. Loading requires a new
 session; the tool does not restart a client.
 
-## DSH Host Roles
+## DSH Delegation
 
-Resolve the selected existing profile and back up its package manifest, lockfile,
-patch and owned role definitions outside loaded roots. Inspect the Core bundle
-patch and proposed removals before authorized writes. Install through the native
-plugin manager; no parallel installer or profile generator is needed:
+Core ships no DSH host plugin. The `harness-roles` bundle, its `subagent_<role>`
+tools and the package `main`/`dsh` entry points were removed in 2.0.0, because a
+role contract handed to the host's native subagent facility needs no
+registration.
+
+Deploy roles by projecting the client files that client actually reads, then let
+the session open the contract on demand:
 
 ```bash
-dsh plugin --profile <profile-name> add <core-path-or-tarball>
+node bin/harness-project.js --target <client-root> --clients codex --content subagents --json
 ```
 
-The Core package registers one host `harness-roles` instance and reads roles from
-its own manifest at activation. Preserve profile-owned model/provider/budget
-settings as `harness-roles.config.agentOptions`; omission inherits the parent.
-Do not copy canonical personas into presets. Remove only verified owned legacy
-Harness role rows and the old `@local/dsh-harness-roles` bundle/dependency via
-native plugin management. Inspect preset-local rows too: local shadowing can
-hide host tools. Retain any linked local plugin until references are replaced;
-remove it only within the authorized deployment scope. The old
-`harness-native-roles --client dsh` path is unavailable.
+The contracts live under
+`skills/workflow/workflow-control/references/role-contracts/`; the workflow skill
+index is what makes them discoverable, so project the skills together with the
+agent files.
+
+Migrating a profile that installed the old bundle: remove the `harness-roles`
+entry and the Core dependency from the profile first, then upgrade Core, so the
+profile never points at deleted entry points. Do not copy canonical personas into
+presets; the contract is opened from its own file.
 
 Verify the selected profile's effective configuration with
 `dsh --profile <profile-name> --dump-config`; protect output that may contain

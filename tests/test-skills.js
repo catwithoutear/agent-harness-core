@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { parseFrontMatter } from "../lib/change/markdown.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROLE_CONTRACTS_DIR = path.join("skills", "workflow", "workflow-control", "references", "role-contracts");
 
 function collectFiles(dir) {
   const result = [];
@@ -470,7 +471,7 @@ export async function run(test) {
       "skills/workflow/workflow-control/SKILL.md",
       "rules/loop-contract.md",
       "commands/harness/workflow.md",
-      "agents/roles/harness-orchestrator.md"
+      "skills/workflow/workflow-control/references/role-contracts/harness-orchestrator.md"
     ]) {
       const text = fs.readFileSync(path.join(packageRoot, file), "utf8").replace(/\s+/g, " ");
       assert.match(text, /no workflow keyword or fixed phrase is required/i, file);
@@ -1219,7 +1220,7 @@ export async function run(test) {
     assert.match(simplify, /review-only/);
     assert.match(simplify, /externally authored/);
 
-    const codeSimplifier = fs.readFileSync(path.join(packageRoot, "agents", "roles", "code-simplifier.md"), "utf8");
+    const codeSimplifier = fs.readFileSync(path.join(packageRoot, ROLE_CONTRACTS_DIR, "code-simplifier.md"), "utf8");
     assert.match(codeSimplifier, /Round 1/);
     assert.match(codeSimplifier, /Unit Inventory/);
     assert.match(codeSimplifier, /behavior-preserving simplification changes/);
@@ -1276,7 +1277,7 @@ export async function run(test) {
     for (const family of ["design_quality", "over_engineering", "boundary_contracts", "topology_readiness", "control_lifecycle", "failure_recovery", "verification_observability", "implementation_readiness", "artifact_chain"]) {
       assert.match(design, new RegExp("`" + family + "`"));
     }
-    for (const relative of ["commands/harness/review.md", "commands/harness/workflow.md", "rules/loop-contract.md", "agents/roles/reviewer.md", "agents/roles/planning-reviewer.md", "agents/roles/harness-orchestrator.md", "skills/review/review-packet-gate/SKILL.md"]) {
+    for (const relative of ["commands/harness/review.md", "commands/harness/workflow.md", "rules/loop-contract.md", "skills/workflow/workflow-control/references/role-contracts/reviewer.md", "skills/workflow/workflow-control/references/role-contracts/planning-reviewer.md", "skills/workflow/workflow-control/references/role-contracts/harness-orchestrator.md", "skills/review/review-packet-gate/SKILL.md"]) {
       assert.match(read(relative), /Review Coverage/, relative);
     }
     const minimal = read("skills/workflow/workflow-control/references/minimal-implementation.md");
@@ -1313,9 +1314,9 @@ export async function run(test) {
       "skills/workflow/simplify/SKILL.md",
       "skills/workflow/workflow-control/SKILL.md",
       "skills/review/review-packet-gate/SKILL.md",
-      "agents/roles/reviewer.md",
-      "agents/roles/code-simplifier.md",
-      "agents/roles/review-verifier.md"
+      "skills/workflow/workflow-control/references/role-contracts/reviewer.md",
+      "skills/workflow/workflow-control/references/role-contracts/code-simplifier.md",
+      "skills/workflow/workflow-control/references/role-contracts/review-verifier.md"
     ]) {
       const text = read(relative);
       assert(text.includes("Capability Comparison Evidence"), `${relative} does not require the canonical comparison`);
@@ -1338,13 +1339,13 @@ export async function run(test) {
     assert(packet.includes("coordinator-rejected comparison against different behavior does not support `covered`"));
     assert(packet.includes("before `append-attempt` seals the reviewer ledger"));
     assert(packet.includes("do not edit it or append an overlapping successful retry"));
-    const simplifier = read("agents/roles/code-simplifier.md");
+    const simplifier = read("skills/workflow/workflow-control/references/role-contracts/code-simplifier.md");
     assert(simplifier.includes("only when coverage and the required capability comparisons are complete"));
     assert(simplifier.includes("as hypotheses to check, not final dispositions"));
     assert(simplifier.indexOf("Then classify necessity") > simplifier.indexOf("Round 3 - Dimensional Review"));
-    const reviewer = read("agents/roles/reviewer.md");
+    const reviewer = read("skills/workflow/workflow-control/references/role-contracts/reviewer.md");
     assert(reviewer.includes("Direct role dispatch has the same evidence duty"));
-    for (const relative of ["skills/workflow/simplify/SKILL.md", "skills/review/multi-lens-review/SKILL.md", "agents/roles/code-simplifier.md", "agents/roles/reviewer.md"]) {
+    for (const relative of ["skills/workflow/simplify/SKILL.md", "skills/review/multi-lens-review/SKILL.md", "skills/workflow/workflow-control/references/role-contracts/code-simplifier.md", "skills/workflow/workflow-control/references/role-contracts/reviewer.md"]) {
       assert(read(relative).includes("behavior invariants held fixed"), `${relative} omits the comparison's execution constraint`);
     }
     const evaluation = read("skills/workflow/workflow-control/references/minimality-behavior-evaluation.md");
@@ -1397,7 +1398,7 @@ export async function run(test) {
       assert.match(simplify, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
 
-    const codeSimplifier = fs.readFileSync(path.join(packageRoot, "agents", "roles", "code-simplifier.md"), "utf8");
+    const codeSimplifier = fs.readFileSync(path.join(packageRoot, ROLE_CONTRACTS_DIR, "code-simplifier.md"), "utf8");
     for (const required of [
       "Scope Packet",
       "edit_authorized=true",

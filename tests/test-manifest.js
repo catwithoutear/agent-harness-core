@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateCurrentManifest, validateManifest } from "../lib/manifest/validate.js";
@@ -37,19 +38,65 @@ export async function run(test) {
     );
   });
 
-  await test("DSH integration validates optional package entry, bundle and path ownership", () => {
-    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json")));
-    for (const integration of [null, [], { dsh: null },
-      { dsh: { ...source.integrations.dsh, kind: "preset" } },
-      { dsh: { ...source.integrations.dsh, enabledByDefault: true } },
-      { dsh: { ...source.integrations.dsh, entry: "../outside.js" } },
-      { dsh: { ...source.integrations.dsh, entry: "/outside.js" } },
-      { dsh: { ...source.integrations.dsh, entry: "lib/missing.js" } },
-      { dsh: { ...source.integrations.dsh, bundle: "lib/project/native-roles.js" } },
-    ]) {
-      const manifest = { ...source, integrations: integration };
-      const result = validateManifest(manifest, { packageRoot });
-      assert.equal(result.ok, false); assert(result.errors.some((error) => /integrations|DSH/.test(error)), JSON.stringify(result.errors));
+  await test("manifest and package versions agree", () => {
+    // Projection records manifest.version as the package_version of every asset,
+    // so a drift here would label artifacts from the wrong release.
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const pkg = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+    assert.equal(manifest.version, pkg.version, "harness.manifest.json version must match package.json");
+  });
+
+  await test("the DSH host plugin integration is removed", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    assert.equal(manifest.integrations, undefined, "integrations.dsh must not survive the plugin removal");
+    const pkg = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+    assert.equal(pkg.main, undefined, "package main entry pointed at the removed plugin");
+    assert.equal(pkg.dsh, undefined, "package dsh bundle wiring pointed at the removed plugin");
+    assert.equal(fs.existsSync(path.join(packageRoot, "lib", "dsh")), false, "lib/dsh must be deleted");
+  });
+
+  await test("an integrations block is still validated when a package declares one", () => {
+    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    // Validate against a throwaway package root so the test never mutates tracked files.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "manifest-root-"));
+    try {
+      // Mirror the real sources by symlink so asset validation still resolves,
+      // then supply the package.json this case needs without touching the repo.
+      for (const entry of fs.readdirSync(packageRoot)) {
+        if (["package.json", "harness.manifest.json", "node_modules", ".git", "lib", "locale"].includes(entry)) continue;
+        fs.symlinkSync(path.join(packageRoot, entry), path.join(root, entry), "dir");
+      }
+      fs.mkdirSync(path.join(root, "lib"), { recursive: true });
+      fs.mkdirSync(path.join(root, "locale"), { recursive: true });
+      fs.writeFileSync(path.join(root, "lib", "host.js"), "// host entry\n");
+      for (const locale of ["en", "zh"]) fs.writeFileSync(path.join(root, "locale", `${locale}.json`), "{}\n");
+      const pkg = { name: "fixture", version: "1.0.0", files: ["lib/", "locale/"], main: "./lib/host.js", dsh: { bundle: { patch: "./lib/host.js" } } };
+      fs.writeFileSync(path.join(root, "package.json"), `${JSON.stringify(pkg, null, 2)}\n`);
+
+      const plugin = { kind: "host-plugin", entry: "lib/host.js", bundle: "lib/host.js", enabledByDefault: false };
+      const valid = { ...source, integrations: { dsh: plugin } };
+      assert.equal(validateManifest(valid, { packageRoot: root }).ok, true, "a well-formed host plugin must validate");
+
+      for (const broken of [
+        null,
+        [],
+        { dsh: null },
+        { dsh: [] },
+        { dsh: { ...plugin, kind: "preset" } },
+        { dsh: { ...plugin, enabledByDefault: true } },
+        { dsh: { ...plugin, entry: "../outside.js" } },
+        { dsh: { ...plugin, entry: "/outside.js" } },
+        { dsh: { ...plugin, entry: "lib/missing.js" } },
+        { dsh: { ...plugin, bundle: "lib/other.js" } }
+      ]) {
+        const result = validateManifest({ ...source, integrations: broken }, { packageRoot: root });
+        assert.equal(result.ok, false, `expected rejection for ${JSON.stringify(broken)}`);
+      }
+
+      // A package without integrations stays valid, which is the shipped shape.
+      assert.equal(validateManifest(source, { packageRoot: root }).ok, true, "absent integrations must be valid");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
     }
   });
 

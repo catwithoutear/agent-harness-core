@@ -54,7 +54,8 @@ content, resolve that scope conflict before writing.
 If its supported interface requires a wider pass, disclose that limitation;
 do not invent flags or bypass its managed migration.
 
-For supported CLI sequences, state-root behavior and existing ZCode/DSH roles,
+For supported CLI sequences, state-root behavior, existing ZCode roles and DSH
+ delegation,
 read [references/commands.md](references/commands.md) only when needed.
 
 ## Apply And Verify

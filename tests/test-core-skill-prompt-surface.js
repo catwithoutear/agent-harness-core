@@ -28,13 +28,22 @@ import { measureCoreSkillPromptSurface } from "../lib/core-skill-prompt-surface.
 // by a 39-character reduction in multi-lens-design-review that replaces the
 // paraphrased trigger and single-option exception with pointer wording while
 // adding the rejected-option criterion and missing-assumptions findings.
+// This branch moves the eleven role contracts into the workflow-control skill as
+// on-demand references and deletes the DSH role plugin. Measured movement against
+// the stacked baseline (220858 / 646429): default-loaded +1945 and package
+// +70535. Default-loaded carries the compact role index only (table, framing
+// lines, and the pointer exchanged for the old ZCode/DSH paragraph in the
+// harness-deploy and ask-harness skills), which is what makes the contracts
+// discoverable at all; no contract body appears on a default-loaded path. The
+// package class carries the contract text, which is reference-only and read only
+// when a task matches a role. The always-on description class is unchanged.
 // A core skill's prompt surface may grow only when the same change updates the
 // matching baseline and records why. Never round a measurement down to fit a
 // baseline.
 const BASELINES = Object.freeze({
   alwaysOnCoreSkillDescriptionChars: 5306,
-  defaultLoadedCoreSkillChars: 220858,
-  coreSkillPackageChars: 646429
+  defaultLoadedCoreSkillChars: 222803,
+  coreSkillPackageChars: 716964
 });
 
 const LOAD_CLASSES = Object.freeze({

@@ -25,39 +25,6 @@
     },
     "assets": {
       "type": "object"
-    },
-    "integrations": {
-      "type": "object",
-      "required": [
-        "dsh"
-      ],
-      "properties": {
-        "dsh": {
-          "type": "object",
-          "required": [
-            "kind",
-            "entry",
-            "bundle",
-            "enabledByDefault"
-          ],
-          "properties": {
-            "kind": {
-              "const": "host-plugin"
-            },
-            "entry": {
-              "type": "string",
-              "minLength": 1
-            },
-            "bundle": {
-              "type": "string",
-              "minLength": 1
-            },
-            "enabledByDefault": {
-              "const": false
-            }
-          }
-        }
-      }
     }
   }
 }

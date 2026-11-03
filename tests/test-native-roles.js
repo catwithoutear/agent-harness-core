@@ -112,11 +112,11 @@ export async function runTests(test) {
       ["--client", "dsh", "--profile-dir", profile, "--verify"],
     ]) {
       const result = run(args); assert.equal(result.status, 1);
-      assert.match(result.result.errors[0], /host plugin via dsh plugin add/);
+      assert.match(result.result.errors[0], /native subagents and needs no host plugin/);
       assert.equal(fs.readFileSync(target, "utf8"), "user-owned profile\n");
       assert.equal(fs.existsSync(path.join(root, "backup")), false);
     }
-    assert.match(run(["--client", "dsh", "--dry-run"]).result.errors[0], /host plugin/);
+    assert.match(run(["--client", "dsh", "--dry-run"]).result.errors[0], /no host plugin/);
   }));
 }
 export { runTests as run };

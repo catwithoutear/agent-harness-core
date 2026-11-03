@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import process from "node:process";
 
+// The suite spawns the shipped python helpers and third-party scripts. Without
+// this, bytecode lands inside the source tree, inflates the prompt-surface
+// measurement, and leaks into a packed tarball.
+process.env.PYTHONDONTWRITEBYTECODE = "1";
+
 const requested = new Set(process.argv.slice(2));
 const all = requested.size === 0;
 
@@ -41,13 +46,13 @@ if (all || requested.has("--native-roles")) {
   await module.run(run);
 }
 
-if (all || requested.has("--dsh-roles")) {
-  const module = await import("./test-dsh-roles.js");
+if (all || requested.has("--skills")) {
+  const module = await import("./test-skills.js");
   await module.run(run);
 }
 
-if (all || requested.has("--skills")) {
-  const module = await import("./test-skills.js");
+if (all || requested.has("--role-contracts")) {
+  const module = await import("./test-role-contracts.js");
   await module.run(run);
 }
 

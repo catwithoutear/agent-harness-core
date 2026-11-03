@@ -11,6 +11,7 @@ import {
 } from "../skills/knowledge/memory-context-contract/scripts/context-retrieval-receipt.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROLE_CONTRACTS_DIR = path.join("skills", "workflow", "workflow-control", "references", "role-contracts");
 const producerRoot = process.env.CODEBASE_CONTEXT_PRODUCER_ROOT
   ? path.resolve(process.env.CODEBASE_CONTEXT_PRODUCER_ROOT)
   : null;
@@ -219,7 +220,7 @@ export async function run(test) {
       path.join(packageRoot, "skills", "knowledge", "memory-context-contract", "SKILL.md"),
       "utf8"
     );
-    const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "harness-orchestrator.md"), "utf8");
+    const role = fs.readFileSync(path.join(packageRoot, ROLE_CONTRACTS_DIR, "harness-orchestrator.md"), "utf8");
     const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
     const memoryAsset = manifest.assets.skills.find((asset) => asset.id === "memory-context-contract");
     const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
