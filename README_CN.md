@@ -295,6 +295,9 @@ Codex custom prompts 已被 Codex 标记为 deprecated，应视为 personal shor
 
 ## Development
 
+仓库工作使用 linked worktree 中的 task branch；branch 命名、worktree 布局、集成与合并前验证见
+[`rules/worktree-branch-policy.md`](rules/worktree-branch-policy.md)。
+
 运行默认测试：
 
 ```bash
@@ -342,7 +345,4 @@ linked worktree 中都能解析到共享检出。`--all-active` 只适用于干�
 
 ## Ownership Rules
 
-- 保持本包与项目无关。不要向 core assets 添加目标仓库事实、产品专属工作流、私有主机名、issue tracker 假设或构建系统细节。
-- 将稳定契约放在 `rules/`，可执行 policy 放在 `lib/`，操作 prompts 放在 `skills/`，客户端投影放在 `harness-project` 后面。
-- Runtime projections 是生成产物。应修改 source asset 和 manifest entry，然后重新投影。
-- 每次新增、重命名或删除 asset 时，都要让 `harness.manifest.json` 保持同步。
+内容归属、source 边界与 runtime projection 规则见 [`AGENTS.md`](AGENTS.md)。

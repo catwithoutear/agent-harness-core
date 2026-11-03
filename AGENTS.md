@@ -20,6 +20,23 @@ project-agnostic and reusable across target repositories.
   naming, worktree layout, integration, and the verification required before
   merge.
 
+## Content Ownership
+
+Each kind of content has one owner. A contract appears once; other documents
+reference it by path instead of restating it.
+
+| Content | Owner |
+|---|---|
+| Normative contracts | `rules/` |
+| Procedures and execution detail | `skills/` |
+| Executable policy and tooling | `lib/` |
+| Artifact shape | `templates/` |
+| Routing and boundaries | `AGENTS.md` |
+| User-facing usage | `README.md` |
+
+Projected runtime output (`.rules/`, `.agents/`, `.codex/`, `.harness/`, and the
+other client roots) mirrors its source and is never the owner.
+
 ## Boundaries
 
 - Do not add project-specific product facts, build commands, private endpoints,

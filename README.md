@@ -395,6 +395,10 @@ needs config merge semantics before core can project it safely.
 
 ## Development
 
+Repository work happens on a task branch in a linked worktree; follow
+[`rules/worktree-branch-policy.md`](rules/worktree-branch-policy.md) for branch
+naming, worktree layout, integration, and pre-merge verification.
+
 Run the default test suite:
 
 ```bash
@@ -445,12 +449,5 @@ need owner review.
 
 ## Ownership Rules
 
-- Keep this package project-agnostic. Do not add target repository facts,
-  product-specific workflows, private host names, issue tracker assumptions, or
-  build-system details to core assets.
-- Put stable contracts in `rules/`, executable policy in `lib/`, operational
-  prompts in `skills/`, and client projections behind `harness-project`.
-- Runtime projections are generated artifacts. Change the source asset and
-  manifest entry, then re-project.
-- Keep `harness.manifest.json` aligned with every added, renamed, or removed
-  asset.
+See [`AGENTS.md`](AGENTS.md) for the content ownership map, source boundaries,
+and runtime-projection rules.

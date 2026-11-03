@@ -644,9 +644,10 @@ export async function run(test) {
         path.join(target, ".changes", "templates", "implementation-design", "README.md"),
         "utf8"
       );
-      for (const text of [workflowSkill, plannerSkill, loopRule]) {
+      for (const text of [plannerSkill, loopRule]) {
         assert.match(text, /solution-design review[\s\S]*implementation-design[\s\S]*task set/i);
       }
+      assert.match(workflowSkill, /rules\/loop-contract\.md/);
       assert.match(workflowSkill, /## Continuous Convergence/);
       assert.match(loopRule, /## Continuous Convergence/);
       assert.match(refinerSkill, /Stop at solution design, ambiguities, and validation intent/);
@@ -671,10 +672,15 @@ export async function run(test) {
           path.join(root, "design-doc-refiner", "SKILL.md"),
           "utf8"
         );
+        const projectedLoopRule = fs.readFileSync(
+          path.join(target, ".rules", "loop-contract.md"),
+          "utf8"
+        );
         assert.match(
-          projectedWorkflow,
+          projectedLoopRule,
           /solution-design review[\s\S]*implementation-design[\s\S]*task set/i
         );
+        assert.match(projectedWorkflow, /rules\/loop-contract\.md/);
         assert.match(projectedPlanner, /Use `plan-only` for compact work/);
         assert.match(projectedWorkflow, /No workflow keyword or fixed phrase is\s+required/);
         assert.match(projectedWorkflow, /`按照 workflow 收敛` \| Continue authorized work to the overall objective\./);
