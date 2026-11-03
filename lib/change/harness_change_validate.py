@@ -4,6 +4,7 @@ import sys
 sys.dont_write_bytecode = True
 
 import argparse
+import datetime
 import fnmatch
 import hashlib
 import json
@@ -1409,6 +1410,192 @@ def validate_layout(change_dir: Path, schema: dict, mode: str, errors: list, war
     validate_layout_limits(change_dir, schema, mode, errors, warns, strict_layout)
 
 
+def derived_work_policy_for(schema: dict):
+    """Merge the overlay policy over the package policy, like acceptance."""
+    if not schema:
+        return None
+    return schema.get("derived_work")
+
+
+def derived_work_enabled(text: str, policy: dict) -> bool:
+    match = re.match(r"^---\n(.*?)\n---", text, re.S)
+    if not match:
+        return False
+    for line in match.group(1).splitlines():
+        key_value = re.match(r"^derived_work:\s*(\S+)\s*$", line)
+        if key_value:
+            return key_value.group(1) == policy["marker"]
+    return False
+
+
+def normalize_header(cell: str) -> str:
+    return re.sub(r"\s+", " ", cell.strip()).lower()
+
+
+def parse_derived_work_rows(text: str, policy: dict):
+    table_lines = markdown_table_lines_after_heading(text, policy["heading"])
+    if len(table_lines) < 2:
+        return None
+    headers = [normalize_header(cell) for cell in split_table_row(table_lines[0])]
+    rows = []
+    for line in table_lines[2:]:
+        cells = split_table_row(line)
+        if len(cells) != len(headers):
+            return None
+        rows.append(dict(zip(headers, cells)))
+    return headers, rows
+
+
+def parse_iso_date(value: str):
+    match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", (value or "").strip())
+    if not match:
+        return None
+    try:
+        return datetime.date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        return None
+
+
+def parse_dependencies(cell: str) -> list:
+    value = (cell or "").strip()
+    if not value or value == "-":
+        return []
+    return [entry.strip() for entry in value.split(",") if entry.strip()]
+
+
+def validate_derived_work(change_dir: Path, schema: dict, errors: list, warns: list, today=None):
+    policy = derived_work_policy_for(schema)
+    if not policy:
+        return
+    artifact = change_dir / policy.get("artifact", "requirements.md")
+    if not artifact.exists():
+        return
+    text = read_text(artifact)
+    if not derived_work_enabled(text, policy):
+        return
+    columns = [normalize_header(column) for column in policy["columns"]]
+    if not any(line.strip() == f"## {policy['heading']}" for line in text.splitlines()):
+        errors.append(f"{artifact}: derived_work marker requires a ## {policy['heading']} section")
+        return
+    parsed = parse_derived_work_rows(text, policy)
+    if parsed is None:
+        errors.append(f"{artifact}: ## {policy['heading']} must contain a table with the policy columns")
+        return
+    headers, rows = parsed
+    if headers != columns:
+        errors.append(
+            f"{artifact}: derived work columns must be exactly: {', '.join(policy['columns'])}; found: {', '.join(headers)}"
+        )
+        return
+    if not rows:
+        errors.append(f"{artifact}: ## {policy['heading']} must contain at least one work item")
+        return
+
+    id_pattern = re.compile(policy["id_pattern"])
+    today = today or datetime.date.today()
+    seen = set()
+    sparse = []
+    for index, row in enumerate(rows, start=1):
+        label = f"derived work row {index}"
+        work_id = row.get("work", "")
+        status = row.get("status", "")
+        owner = row.get("owner", "")
+        outcome = row.get("outcome", "")
+        next_action = row.get("next action", "")
+        evidence = row.get("evidence", "")
+        change = row.get("change", "")
+        updated = row.get("updated", "")
+        depends_on = row.get("depends on", "")
+
+        if not id_pattern.fullmatch(work_id or ""):
+            errors.append(f"{artifact}: {label} has invalid work id: {work_id or '(empty)'}")
+        elif work_id in seen:
+            errors.append(f"{artifact}: duplicate work id: {work_id}")
+        else:
+            seen.add(work_id)
+
+        if status not in policy["allowed_statuses"]:
+            errors.append(
+                f"{artifact}: {work_id or label} has unknown status: {status or '(empty)'}; allowed: {', '.join(policy['allowed_statuses'])}"
+            )
+        if not outcome or outcome == "-":
+            errors.append(f"{artifact}: {work_id or label} requires an outcome")
+        if not owner or owner == "-":
+            errors.append(f"{artifact}: {work_id or label} requires an owner")
+        if status in policy["active_statuses"]:
+            if not next_action or next_action == "-":
+                errors.append(f"{artifact}: {work_id or label} is {status} and requires a next action")
+            if not parse_iso_date(updated):
+                errors.append(f"{artifact}: {work_id or label} is {status} and requires an Updated date (YYYY-MM-DD)")
+        if status == "done" and policy.get("done_requires_evidence_or_change", True):
+            if not (evidence and evidence != "-") and not (change and change != "-"):
+                errors.append(f"{artifact}: {work_id or label} is done but names neither evidence nor a change")
+        if updated and updated != "-" and not parse_iso_date(updated):
+            errors.append(f"{artifact}: {work_id or label} has an invalid Updated date: {updated}")
+        sparse.append((work_id, status, depends_on, updated, label))
+
+    for work_id, status, depends_on, updated, label in sparse:
+        for dependency in parse_dependencies(depends_on):
+            if dependency == work_id:
+                errors.append(f"{artifact}: {work_id or label} depends on itself")
+            elif dependency not in seen:
+                errors.append(f"{artifact}: {work_id or label} depends on unknown work id: {dependency}")
+
+    window = policy.get("stale_after_days") or 0
+    if window > 0:
+        for work_id, status, _depends_on, updated, _label in sparse:
+            if status not in policy["active_statuses"]:
+                continue
+            date = parse_iso_date(updated)
+            if not date:
+                continue
+            age = (today - date).days
+            if age > window:
+                warns.append(
+                    f"{artifact}: {work_id} has been {status} for {age} days; confirm the next action is still current"
+                )
+
+
+def validate_promotion(change_dir: Path, schema: dict, repo_root, errors: list):
+    policy = derived_work_policy_for(schema)
+    if not policy or repo_root is None:
+        return
+    readme = change_dir / "README.md"
+    if not readme.exists():
+        return
+    relations_policy = relation_policy_for(schema)
+    heading = relations_policy["heading"] if relations_policy else "Change Relations"
+    table_lines = markdown_table_lines_after_heading(read_text(readme), heading)
+    if len(table_lines) < 2:
+        return
+    headers = [normalize_header(cell) for cell in split_table_row(table_lines[0])]
+    if "type" not in headers or "change" not in headers:
+        return
+    for line in table_lines[2:]:
+        cells = split_table_row(line)
+        if len(cells) != len(headers):
+            continue
+        row = dict(zip(headers, cells))
+        if row.get("type") != "spawned-from":
+            continue
+        objective = Path(repo_root) / ".changes" / row.get("change", "")
+        requirements = objective / "requirements.md"
+        if not requirements.exists():
+            continue
+        objective_text = read_text(requirements)
+        if not derived_work_enabled(objective_text, policy):
+            continue
+        parsed = parse_derived_work_rows(objective_text, policy)
+        if parsed is None:
+            continue
+        _headers, rows = parsed
+        promoted = any((row.get("change", "").strip("`") == change_dir.name) for row in rows)
+        if not promoted:
+            errors.append(
+                f"{readme}: spawned-from {row.get('change')} requires a derived work row naming {change_dir.name}"
+            )
+
+
 def validate_relations(change_dir: Path, repo_root, schema: dict, errors: list, warns: list):
     relations_policy = relation_policy_for(schema)
     if repo_root is None:
@@ -1601,6 +1788,8 @@ def validate_change(
     validate_review_run_evidence(change_dir, errors)
     validate_legacy_top_level_artifacts(change_dir, errors, warns, strict_layout)
     validate_relations(change_dir, repo_root, schema, errors, warns)
+    validate_derived_work(change_dir, schema, errors, warns)
+    validate_promotion(change_dir, schema, repo_root, errors)
     validate_layout(change_dir, schema, mode, errors, warns, strict_layout)
     if worktrees:
         worktree_errors, worktree_warnings = execution_map.validate_execution_map_worktrees(change_dir)

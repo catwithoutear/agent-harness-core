@@ -1144,7 +1144,7 @@ export async function run(test) {
       assert.equal(dryRun.status, 0, dryRun.stderr);
       const dryRunPayload = JSON.parse(dryRun.stdout);
       const targets = dryRunPayload.records.map((record) => record.target);
-      assert.equal(dryRunPayload.summary.templates, 11);
+      assert.equal(dryRunPayload.summary.templates, 12);
       assert(targets.some((entry) => entry.endsWith(".changes/templates/README.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/specs/capability-template.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/decisions/decision-record.md")));

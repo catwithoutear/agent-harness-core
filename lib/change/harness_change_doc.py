@@ -1384,6 +1384,122 @@ def command_assign_slice(args) -> int:
     return 0
 
 
+LEDGER_TEMPLATE = [
+    "| work | outcome | owner | status | next action | depends on | evidence | change | updated |",
+    "|---|---|---|---|---|---|---|---|---|",
+]
+
+LEDGER_COLUMNS = [
+    "work", "outcome", "owner", "status", "next action",
+    "depends on", "evidence", "change", "updated",
+]
+
+
+def ensure_ledger_section(text: str) -> str:
+    front = re.match(r"^---\n(.*?)\n---", text, re.S)
+    if front and not re.search(r"^derived_work:", front.group(1), re.M):
+        text = text.replace(
+            front.group(0),
+            front.group(0)[:-4] + "derived_work: v1\n---",
+            1,
+        )
+    if not any(line.strip() == "## Derived Work" for line in text.splitlines()):
+        text = text.rstrip() + "\n\n## Derived Work\n\n" + "\n".join(LEDGER_TEMPLATE) + "\n"
+    elif "| work | outcome |" not in text:
+        text = re.sub(
+            r"^## Derived Work\s*$",
+            "## Derived Work\n\n" + "\n".join(LEDGER_TEMPLATE) + "\n",
+            text,
+            count=1,
+            flags=re.M,
+        )
+    return text
+
+
+def ledger_cell(value: str) -> str:
+    value = (value or "-").strip()
+    if re.search(r"[|\r\n]", value):
+        raise ValueError(f"ledger cells must be single line and must not contain '|': {value}")
+    return value
+
+
+def read_ledger_rows(path: Path):
+    return markdown_table_after_heading(read_text(path), "Derived Work")
+
+
+def command_work(args) -> int:
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
+    target = change_dir(root, args.task)
+    file_path = target / "requirements.md"
+    if not file_path.exists():
+        print(f"ERROR: objective requirements not found: {file_path}", file=sys.stderr)
+        return 1
+
+    rows = read_ledger_rows(file_path)
+    if args.action == "list":
+        if args.json:
+            print(json.dumps({"file": str(file_path), "rows": rows}, indent=2, ensure_ascii=False))
+            return 0
+        for row in rows:
+            print("\t".join([row.get("work", ""), row.get("status", ""), row.get("owner", ""), row.get("next action", "")]))
+        return 0
+
+    existing = {row.get("work", ""): row for row in rows}
+    work_id = args.id
+    if args.action == "add" and not work_id:
+        work_id = f"W-{len(rows) + 1:02d}"
+    if not work_id:
+        print("ERROR: work update requires --id", file=sys.stderr)
+        return 2
+    if args.action == "update" and rows and work_id not in existing:
+        print(f"ERROR: unknown work id: {work_id}", file=sys.stderr)
+        return 2
+
+    current = existing.get(work_id, {})
+    import datetime as _dt
+    merged = {
+        "work": work_id,
+        "outcome": args.outcome or current.get("outcome"),
+        "owner": args.owner or current.get("owner"),
+        "status": args.status or current.get("status") or "open",
+        "next action": args.next_action or current.get("next action"),
+        "depends on": args.depends_on or current.get("depends on"),
+        "evidence": args.evidence or current.get("evidence"),
+        "change": args.change or current.get("change"),
+        "updated": args.updated or _dt.date.today().isoformat(),
+    }
+    for key in ("outcome", "owner"):
+        if not merged[key] or merged[key] == "-":
+            print(f"ERROR: work {work_id} requires --{key}", file=sys.stderr)
+            return 2
+    if merged["status"] in ("open", "blocked", "waiting-human") and (
+        not merged["next action"] or merged["next action"] == "-"
+    ):
+        print(f"ERROR: work {work_id} is {merged['status']} and requires --next-action", file=sys.stderr)
+        return 2
+    try:
+        cells = [ledger_cell(merged[column]) for column in LEDGER_COLUMNS]
+    except ValueError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 2
+    row = "| " + " | ".join(cells) + " |"
+
+    text = ensure_ledger_section(read_text(file_path))
+    # The helper returns (text, updated, created) - updated means an existing row
+    # was replaced, created means the row was appended.
+    new_text, row_updated, row_created = upsert_markdown_table_row_after_heading(
+        text, "Derived Work", LEDGER_COLUMNS, row, lambda cells: bool(cells) and cells[0] == work_id
+    )
+    if not row_created and not row_updated:
+        print(f"{file_path}\tunchanged")
+        return 0
+    write_text(file_path, new_text)
+    print(f"{file_path}\t{'created' if row_created else 'updated'}\t{work_id}")
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root")
@@ -1417,6 +1533,21 @@ def build_parser():
     relation_parser.add_argument("--type", required=True)
     relation_parser.add_argument("--reason", required=True)
     relation_parser.set_defaults(func=command_relation)
+
+    work_parser = subparsers.add_parser("work")
+    work_parser.add_argument("action", choices=["add", "update", "list"])
+    work_parser.add_argument("task")
+    work_parser.add_argument("--id")
+    work_parser.add_argument("--outcome")
+    work_parser.add_argument("--owner")
+    work_parser.add_argument("--status")
+    work_parser.add_argument("--next-action")
+    work_parser.add_argument("--depends-on")
+    work_parser.add_argument("--evidence")
+    work_parser.add_argument("--change")
+    work_parser.add_argument("--updated")
+    work_parser.add_argument("--json", action="store_true")
+    work_parser.set_defaults(func=command_work)
 
     list_parser = subparsers.add_parser("list")
     list_parser.add_argument("task")

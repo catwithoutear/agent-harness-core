@@ -163,7 +163,10 @@ settle an upstream decision or authorize execution.
    dependencies, non-conflicting ownership, validation coverage, unresolved
    upstream decisions, the outcome boundary in
    `rules/loop-contract.md:One Reviewable Outcome Per Change`, and declared
-   relations for coupled or stacked work before implementation dispatch.
+   relations for coupled or stacked work before implementation dispatch. When
+   this change implements an objective's derived work item, declare a
+   `spawned-from` relation to that objective and name this change in the item's
+   `change` cell; `harness-change-validate` checks both directions.
 10. Run `harness-change-validate --state-root <state-root> --change <id>` or the
    repository equivalent. Add `--worktrees` when an execution map participates
    in the plan. Treat warnings as decisions to resolve or explicitly accept

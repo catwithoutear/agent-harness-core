@@ -79,11 +79,43 @@
       "depends-on",
       "relates-to",
       "supersedes",
-      "blocks"
+      "blocks",
+      "spawned-from"
     ],
     "cycle_edge_types": [
       "depends-on"
     ]
+  },
+  "derived_work": {
+    "marker": "v1",
+    "artifact": "requirements.md",
+    "heading": "Derived Work",
+    "id_pattern": "^W-[0-9]{2,3}$",
+    "columns": [
+      "work",
+      "outcome",
+      "owner",
+      "status",
+      "next action",
+      "depends on",
+      "evidence",
+      "change",
+      "updated"
+    ],
+    "allowed_statuses": [
+      "open",
+      "blocked",
+      "waiting-human",
+      "done",
+      "dropped"
+    ],
+    "active_statuses": [
+      "open",
+      "blocked",
+      "waiting-human"
+    ],
+    "done_requires_evidence_or_change": true,
+    "stale_after_days": 14
   },
   "structured_proposal": {
     "required_files": [
