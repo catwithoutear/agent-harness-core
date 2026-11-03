@@ -193,10 +193,23 @@ COMMANDS = {
     "memory_index": "harness-change-doc memory-index --json",
     "add_implementation_design": "harness-change-doc add-implementation-design",
     "add_review": "harness-change-doc add-review",
+    "relation": 'harness-change-doc relation <change> --target <change-id> --type <type> --reason "..."',
     "init_review_run": "harness-change-doc init-review-run <change> --run-id <request-id> --json",
     "migrate": "harness-change-doc migrate --dry-run",
     "memory_retrofit": "harness-change-doc memory-retrofit --dry-run",
 }
+
+# Short instruction block that accompanies the `## Change Relations` table. The
+# change index template and the `relation` command must render the same text;
+# tests compare it against `templates/changes/README.md`.
+RELATION_SECTION_INSTRUCTION = "\n".join(
+    [
+        "Record dependencies, conflicts, and ordering constraints with other changes.",
+        "Write rows with `harness-change-doc relation`; allowed types and validation are",
+        "defined in `schemas/change-workspace.schema.json`. Leave the table empty for a",
+        "standalone change.",
+    ]
+)
 
 
 def artifact(name: str) -> ArtifactPolicy | None:

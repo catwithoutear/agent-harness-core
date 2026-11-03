@@ -21,6 +21,10 @@ export async function run(test) {
     assert.equal(policy.commands.assign_slice, "harness-change-doc assign-slice <change> --slice <slice>");
     assert.equal(policy.commands.init, "harness-change-doc init <change> --json");
     assert.equal(policy.commands.add_implementation_design, "harness-change-doc add-implementation-design");
+    assert.equal(
+      policy.commands.relation,
+      'harness-change-doc relation <change> --target <change-id> --type <type> --reason "..."'
+    );
     assert.equal(policy.commands.migrate, "harness-change-doc migrate <change> --dry-run | --apply");
     assert.doesNotMatch(result.stdout, /dbackup-change-/i);
     assert.doesNotMatch(result.stdout, /quick-project/i);
@@ -33,6 +37,10 @@ export async function run(test) {
     assert.equal(pyPolicy.commands.execution_map, "harness-change-doc execution-map <change> --json");
     assert.equal(pyPolicy.commands.assign_slice, "harness-change-doc assign-slice <change> --slice <slice>");
     assert.equal(pyPolicy.commands.init, "harness-change-doc init <change> --json");
+    assert.equal(
+      pyPolicy.commands.relation,
+      'harness-change-doc relation <change> --target <change-id> --type <type> --reason "..."'
+    );
     assert.equal(pyPolicy.commands.migrate, "harness-change-doc migrate <change> --dry-run | --apply");
   });
 
@@ -925,6 +933,23 @@ export async function run(test) {
           assert.equal(fs.existsSync(path.join(change, expected)), true, `${expected} missing`);
         }
 
+        const requirements = fs.readFileSync(path.join(change, "requirements.md"), "utf8");
+        for (const heading of [
+          "## Motivation",
+          "## Problem",
+          "## Success Signals",
+          "## Goal",
+          "## Constraints",
+          "## Non-goals",
+          "## Open Questions"
+        ]) {
+          assert.match(requirements, new RegExp(`^${heading}$`, "m"), `requirements.md missing ${heading}`);
+        }
+        const readme = fs.readFileSync(path.join(change, "README.md"), "utf8");
+        assert.match(readme, /^## Change Relations$/m);
+        assert.match(readme, /^\| change \| type \| reason \|$/m);
+        assert.match(readme, /harness-change-doc relation/);
+
         const validate = capture(() => runChangeValidate([
           "--state-root",
           repo,
@@ -953,6 +978,420 @@ export async function run(test) {
         assert.match(result.stderr, /invalid change id/);
         assert.equal(fs.existsSync(path.join(repo, "escape")), false);
       });
+    }
+  });
+
+  await test("relation command writes, updates, and preserves Change Relations rows", () => {
+    for (const client of [
+      (args) => capture(() => runChangeDoc(args)),
+      (args) => runPythonChangeDoc(args)
+    ]) {
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["relation-owner", "relation-target", "relation-other"]);
+        const readme = path.join(repo, ".changes", "relation-owner", "README.md");
+        const relation = (target, type, reason) =>
+          client([
+            "--state-root",
+            repo,
+            "relation",
+            "relation-owner",
+            "--target",
+            target,
+            "--type",
+            type,
+            "--reason",
+            reason
+          ]);
+
+        let result = relation("relation-target", "depends-on", "Target lands first.");
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        let payload = JSON.parse(result.stdout);
+        assert.equal(payload.change_id, "relation-owner");
+        assert.equal(payload.target, "relation-target");
+        assert.equal(payload.type, "depends-on");
+        assert.equal(payload.reason, "Target lands first.");
+        assert.equal(payload.target_state, "active");
+        assert.equal(payload.path, ".changes/relation-owner/README.md");
+        assert.equal(payload.created, true);
+        assert.equal(payload.updated, false);
+        assert.match(fs.readFileSync(readme, "utf8"), /\| `relation-target` \| depends-on \| Target lands first\. \|/);
+
+        result = relation("relation-other", "relates-to", "Same requirement chain.");
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.equal(JSON.parse(result.stdout).created, true);
+        let text = fs.readFileSync(readme, "utf8");
+        assert.match(text, /\| `relation-target` \| depends-on \| Target lands first\. \|/);
+        assert.match(text, /\| `relation-other` \| relates-to \| Same requirement chain\. \|/);
+
+        result = relation("relation-other", "supersedes", "Other change is absorbed.");
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        payload = JSON.parse(result.stdout);
+        assert.equal(payload.created, false);
+        assert.equal(payload.updated, true);
+        text = fs.readFileSync(readme, "utf8");
+        assert.equal((text.match(/\| `relation-other` \|/g) ?? []).length, 1);
+        assert.match(text, /\| `relation-other` \| supersedes \| Other change is absorbed\. \|/);
+        assert.match(text, /\| `relation-target` \| depends-on \| Target lands first\. \|/);
+
+        const repeated = relation("relation-other", "supersedes", "Other change is absorbed.");
+        assert.equal(repeated.status, 0, repeated.stdout + repeated.stderr);
+        payload = JSON.parse(repeated.stdout);
+        assert.equal(payload.created, false);
+        assert.equal(payload.updated, false);
+
+        for (const [args, pattern] of [
+          [["relation-owner", "--target", "relation-owner", "--type", "depends-on", "--reason", "self"], /must not be the change itself/],
+          [["relation-owner", "--target", "relation-target", "--type", "likes", "--reason", "bad type"], /unknown relation type/],
+          [["relation-owner", "--target", "missing-change", "--type", "depends-on", "--reason", "missing"], /not found/],
+          [["relation-owner", "--target", "relation-target", "--type", "depends-on", "--reason", "pipe | reason"], /must not contain/]
+        ]) {
+          const invalid = client(["--state-root", repo, "relation", ...args]);
+          assert.equal(invalid.status, 2, invalid.stdout + invalid.stderr);
+          assert.match(invalid.stderr, pattern);
+        }
+        const missingFlags = client([
+          "--state-root",
+          repo,
+          "relation",
+          "relation-owner",
+          "--target",
+          "relation-target"
+        ]);
+        assert.equal(missingFlags.status, 2, missingFlags.stdout + missingFlags.stderr);
+        assert.match(missingFlags.stderr, /requires --target|arguments are required/);
+        assert.equal((fs.readFileSync(readme, "utf8").match(/\| `relation-other` \|/g) ?? []).length, 1);
+
+        fs.mkdirSync(path.join(repo, ".changes", "archive"), { recursive: true });
+        fs.renameSync(
+          path.join(repo, ".changes", "relation-target"),
+          path.join(repo, ".changes", "archive", "relation-target")
+        );
+        const archived = relation("relation-target", "relates-to", "Target closed after delivery.");
+        assert.equal(archived.status, 0, archived.stdout + archived.stderr);
+        assert.equal(JSON.parse(archived.stdout).target_state, "archived");
+      });
+    }
+  });
+
+  await test("validator validates Change Relations targets and reports archived targets as warnings", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["relation-edge", "edge-target"]);
+        const relation = writeRelation(repo, "relation-edge", "edge-target", "depends-on", "Target lands first.");
+        assert.equal(relation.status, 0, relation.stdout + relation.stderr);
+
+        const active = client(["--state-root", repo, "--change", "relation-edge"]);
+        assert.equal(active.status, 0, active.stdout + active.stderr);
+        assert.match(active.stdout, /errors=0 warnings=0/);
+
+        fs.mkdirSync(path.join(repo, ".changes", "archive"), { recursive: true });
+        fs.renameSync(
+          path.join(repo, ".changes", "edge-target"),
+          path.join(repo, ".changes", "archive", "edge-target")
+        );
+        const archived = client(["--state-root", repo, "--change", "relation-edge"]);
+        assert.equal(archived.status, 0, archived.stdout + archived.stderr);
+        assert.match(archived.stdout, /relation target archived: edge-target/);
+        assert.match(archived.stdout, /errors=0 warnings=1/);
+      });
+
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["relation-edge"]);
+        seedRelationRows(repo, "relation-edge", [
+          "| `missing-change` | relates-to | Dangling target. |",
+          "| `missing-change` | blocks | Duplicate target. |",
+          "| `relation-edge` | relates-to | Self reference. |",
+          "| `edge-target` | likes | Unknown type. |",
+          "| `edge-target` | belongs-to |"
+        ]);
+        const result = client(["--state-root", repo, "--change", "relation-edge"]);
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.match(result.stdout, /relation target not found: missing-change/);
+        assert.match(result.stdout, /duplicate relation target: missing-change/);
+        assert.match(result.stdout, /relation must not reference the change itself: relation-edge/);
+        assert.match(result.stdout, /unknown relation type likes/);
+        assert.match(result.stdout, /malformed Change Relations row/);
+      });
+    }
+  });
+
+  await test("validator rejects depends-on cycles across active change workspaces", () => {
+    for (const client of [
+      (args) => capture(() => runChangeValidate(args)),
+      (args) => runPythonChangeValidate(args)
+    ]) {
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["cycle-a", "cycle-b"]);
+        for (const [owner, target, reason] of [
+          ["cycle-a", "cycle-b", "B first."],
+          ["cycle-b", "cycle-a", "A first."]
+        ]) {
+          const relation = writeRelation(repo, owner, target, "depends-on", reason);
+          assert.equal(relation.status, 0, relation.stdout + relation.stderr);
+        }
+        const a = client(["--state-root", repo, "--change", "cycle-a"]);
+        assert.equal(a.status, 1, a.stdout + a.stderr);
+        assert.match(a.stdout, /depends-on cycle: cycle-a -> cycle-b -> cycle-a/);
+        const b = client(["--state-root", repo, "--change", "cycle-b"]);
+        assert.equal(b.status, 1, b.stdout + b.stderr);
+        assert.match(b.stdout, /depends-on cycle: cycle-b -> cycle-a -> cycle-b/);
+      });
+
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["pair-a", "pair-b"]);
+        for (const [owner, target, type] of [
+          ["pair-a", "pair-b", "relates-to"],
+          ["pair-b", "pair-a", "blocks"]
+        ]) {
+          const relation = writeRelation(repo, owner, target, type, "Declared relation.");
+          assert.equal(relation.status, 0, relation.stdout + relation.stderr);
+        }
+        const pair = client(["--state-root", repo, "--change", "pair-a"]);
+        assert.equal(pair.status, 0, pair.stdout + pair.stderr);
+        assert.match(pair.stdout, /errors=0 warnings=0/);
+      });
+    }
+  });
+
+  await test("index and list expose Change Relations with resolution state", () => {
+    for (const client of [
+      (args) => capture(() => runChangeDoc(args)),
+      (args) => runPythonChangeDoc(args)
+    ]) {
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["index-owner", "index-target"]);
+        const relation = writeRelation(repo, "index-owner", "index-target", "depends-on", "Target lands first.");
+        assert.equal(relation.status, 0, relation.stdout + relation.stderr);
+        seedRelationRows(repo, "index-owner", ["| `missing-change` | relates-to | Dangling target. |"]);
+
+        for (const command of ["index", "list"]) {
+          const result = client(["--state-root", repo, command, "index-owner", "--json"]);
+          assert.equal(result.status, 0, result.stdout + result.stderr);
+          assert.deepEqual(JSON.parse(result.stdout).relations, [
+            {
+              change: "index-target",
+              type: "depends-on",
+              reason: "Target lands first.",
+              resolved: "active"
+            },
+            {
+              change: "missing-change",
+              type: "relates-to",
+              reason: "Dangling target.",
+              resolved: "missing"
+            }
+          ]);
+        }
+        const humanList = client(["--state-root", repo, "list", "index-owner"]);
+        assert.equal(humanList.status, 0, humanList.stdout + humanList.stderr);
+        assert.match(humanList.stdout, /relation\tindex-target\tdepends-on\tactive/);
+        assert.match(humanList.stdout, /relation\tmissing-change\trelates-to\tmissing/);
+      });
+    }
+  });
+
+  await test("relation schema keys drive allowed types and validation", () => {
+    withTempRepo((repo) => {
+      initChangeWorkspaces(repo, ["schema-owner", "schema-target"]);
+      writeRepoSchema(repo, (schema) => {
+        schema.relations.allowed_types = ["relates-to"];
+      });
+      const rejected = writeRelation(repo, "schema-owner", "schema-target", "depends-on", "Not allowed.");
+      assert.equal(rejected.status, 2, rejected.stdout + rejected.stderr);
+      assert.match(rejected.stderr, /unknown relation type depends-on; allowed: relates-to/);
+
+      const accepted = writeRelation(repo, "schema-owner", "schema-target", "relates-to", "Allowed.");
+      assert.equal(accepted.status, 0, accepted.stdout + accepted.stderr);
+      seedRelationRows(repo, "schema-owner", ["| `schema-target` | depends-on | Schema rejects this. |"]);
+      const validate = capture(() => runChangeValidate(["--state-root", repo, "--change", "schema-owner"]));
+      assert.equal(validate.status, 1, validate.stdout + validate.stderr);
+      assert.match(validate.stdout, /unknown relation type depends-on/);
+    });
+  });
+
+  await test("relation appends the Change Relations section to a legacy workspace idempotently", () => {
+    const template = fs.readFileSync(path.join(packageRoot, "templates", "changes", "README.md"), "utf8");
+    const templateInstruction = template
+      .split("## Change Relations")[1]
+      .split("## Current Phase")[0]
+      .split("\n")
+      .filter((line) => line.trim() && !line.trim().startsWith("|"))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const compact = (text) => text.replace(/\s+/g, " ").trim();
+    const appended = {};
+
+    for (const [name, client, validateClient] of [
+      ["js", (args) => capture(() => runChangeDoc(args)), (args) => capture(() => runChangeValidate(args))],
+      ["python", (args) => runPythonChangeDoc(args), (args) => runPythonChangeValidate(args)]
+    ]) {
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["legacy-owner", "legacy-target"]);
+        removeRelationSection(repo, "legacy-owner");
+        const readme = path.join(repo, ".changes", "legacy-owner", "README.md");
+        assert.doesNotMatch(fs.readFileSync(readme, "utf8"), /## Change Relations/);
+
+        // A workspace without the table stays valid: absence means no relations.
+        const legacyValid = validateClient(["--state-root", repo, "--change", "legacy-owner"]);
+        assert.equal(legacyValid.status, 0, legacyValid.stdout + legacyValid.stderr);
+        assert.match(legacyValid.stdout, /errors=0 warnings=0/);
+
+        const first = client([
+          "--state-root",
+          repo,
+          "relation",
+          "legacy-owner",
+          "--target",
+          "legacy-target",
+          "--type",
+          "depends-on",
+          "--reason",
+          "Legacy workspace backfill."
+        ]);
+        assert.equal(first.status, 0, first.stdout + first.stderr);
+        const firstPayload = JSON.parse(first.stdout);
+        assert.equal(firstPayload.created, true);
+
+        const text = fs.readFileSync(readme, "utf8");
+        assert.match(text, /^## Change Relations$/m);
+        assert.match(text, /^\| change \| type \| reason \|$/m);
+        assert.match(text, /\| `legacy-target` \| depends-on \| Legacy workspace backfill\. \|/);
+        assert(
+          compact(text).includes(templateInstruction),
+          `${name} appended Change Relations section is missing the template instruction block`
+        );
+        assert(
+          text.indexOf("## Change Relations") < text.indexOf("## Current Phase"),
+          `${name} inserted Change Relations after the phase section`
+        );
+
+        const snapshot = fs.readFileSync(readme, "utf8");
+        const repeated = client([
+          "--state-root",
+          repo,
+          "relation",
+          "legacy-owner",
+          "--target",
+          "legacy-target",
+          "--type",
+          "depends-on",
+          "--reason",
+          "Legacy workspace backfill."
+        ]);
+        assert.equal(repeated.status, 0, repeated.stdout + repeated.stderr);
+        const repeatedPayload = JSON.parse(repeated.stdout);
+        assert.equal(repeatedPayload.created, false);
+        assert.equal(repeatedPayload.updated, false);
+        assert.equal(fs.readFileSync(readme, "utf8"), snapshot, `${name} legacy append is not idempotent`);
+        appended[name] = fs.readFileSync(readme, "utf8");
+      });
+    }
+    assert.equal(appended.js, appended.python, "JS and Python legacy append output diverged");
+  });
+
+  await test("overlay without relations falls back to the package relations policy", () => {
+    for (const [name, client] of [
+      ["js", (args) => capture(() => runChangeValidate(args))],
+      ["python", (args) => runPythonChangeValidate(args)]
+    ]) {
+      withTempRepo((repo) => {
+        initChangeWorkspaces(repo, ["overlay-owner", "overlay-target"]);
+        writeRepoSchema(repo, (schema) => {
+          delete schema.relations;
+        });
+        const relation = writeRelation(repo, "overlay-owner", "overlay-target", "depends-on", "Target lands first.");
+        assert.equal(relation.status, 0, relation.stdout + relation.stderr);
+
+        const valid = client(["--state-root", repo, "--change", "overlay-owner"]);
+        assert.equal(valid.status, 0, valid.stdout + valid.stderr);
+        assert.match(valid.stdout, /errors=0 warnings=0/);
+
+        seedRelationRows(repo, "overlay-owner", [
+          "| `missing-change` | relates-to | Dangling target. |",
+          "| `../../../../tmp/evil` | blocks | Traversal target. |"
+        ]);
+        const invalid = client(["--state-root", repo, "--change", "overlay-owner"]);
+        assert.equal(invalid.status, 1, invalid.stdout + invalid.stderr);
+        assert.match(invalid.stdout, /relation target not found: missing-change/);
+        assert.match(invalid.stdout, /invalid relation target: \.\.\/\.\.\/\.\.\/\.\.\/tmp\/evil/);
+      });
+    }
+  });
+
+  await test("relation requires full change-id matches and never writes outside the state root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "harness-relation-traversal-"));
+    try {
+      for (const [name, fn] of [
+        ["js", (args) => capture(() => runChangeDoc(args))],
+        ["python", (args) => runPythonChangeDoc(args)]
+      ]) {
+        const base = path.join(root, name);
+        const repo = path.join(base, "repo");
+        const outside = path.join(base, "outside-change");
+        const outsideReadme = path.join(outside, "README.md");
+        fs.mkdirSync(repo, { recursive: true });
+        fs.mkdirSync(outside, { recursive: true });
+        // A legacy-style outside README already carries the relation table; an
+        // unanchored id match used to let `relation` append a row there.
+        fs.writeFileSync(
+          outsideReadme,
+          ["# Outside", "", "## Change Relations", "", "| change | type | reason |", "|---|---|---|", ""].join("\n")
+        );
+        const outsideSnapshot = fs.readFileSync(outsideReadme, "utf8");
+        initChangeWorkspaces(repo, ["valid-owner", "traversal-target"]);
+        // An unanchored overlay template must not turn a relative path into a partial match.
+        writeRepoSchema(repo, (schema) => {
+          schema.change_id.pattern = "[a-z0-9-]+";
+        });
+
+        const traversalChange = fn([
+          "--state-root",
+          repo,
+          "relation",
+          "../../outside-change",
+          "--target",
+          "traversal-target",
+          "--type",
+          "depends-on",
+          "--reason",
+          "Traversal."
+        ]);
+        assert.equal(traversalChange.status, 2, `${name}: ${traversalChange.stdout}${traversalChange.stderr}`);
+        assert.match(traversalChange.stderr, /invalid change id/i);
+        assert.equal(fs.readFileSync(outsideReadme, "utf8"), outsideSnapshot, `${name} wrote outside the state root`);
+
+        const ownerReadme = path.join(repo, ".changes", "valid-owner", "README.md");
+        const ownerSnapshot = fs.readFileSync(ownerReadme, "utf8");
+        const traversalTarget = fn([
+          "--state-root",
+          repo,
+          "relation",
+          "valid-owner",
+          "--target",
+          "../../outside-change",
+          "--type",
+          "depends-on",
+          "--reason",
+          "Traversal."
+        ]);
+        assert.equal(traversalTarget.status, 2, `${name}: ${traversalTarget.stdout}${traversalTarget.stderr}`);
+        assert.match(traversalTarget.stderr, /invalid relation target/i);
+        assert.equal(fs.readFileSync(ownerReadme, "utf8"), ownerSnapshot);
+        assert.equal(fs.readFileSync(outsideReadme, "utf8"), outsideSnapshot);
+
+        seedRelationRows(repo, "valid-owner", ["| `../../outside-change` | relates-to | Traversal target. |"]);
+        const validation = name === "js"
+          ? capture(() => runChangeValidate(["--state-root", repo, "--change", "valid-owner"]))
+          : runPythonChangeValidate(["--state-root", repo, "--change", "valid-owner"]);
+        assert.equal(validation.status, 1, `${name}: ${validation.stdout}${validation.stderr}`);
+        assert.match(validation.stdout, /invalid relation target/);
+      }
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
     }
   });
 
@@ -1712,6 +2151,61 @@ function assertTaskSliceFields(text) {
   ]) {
     assert.match(text, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+}
+
+function initChangeWorkspaces(repo, changeIds) {
+  for (const changeId of changeIds) {
+    const result = capture(() => runChangeDoc(["--state-root", repo, "init", changeId, "--json"]));
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+  }
+}
+
+function writeRelation(repo, changeId, targetId, type, reason) {
+  return capture(() =>
+    runChangeDoc([
+      "--state-root",
+      repo,
+      "relation",
+      changeId,
+      "--target",
+      targetId,
+      "--type",
+      type,
+      "--reason",
+      reason
+    ])
+  );
+}
+
+function seedRelationRows(repo, changeId, rows) {
+  const readme = path.join(repo, ".changes", changeId, "README.md");
+  const lines = fs.readFileSync(readme, "utf8").split("\n");
+  const headingIndex = lines.findIndex((line) => line.trim() === "## Change Relations");
+  assert.notEqual(headingIndex, -1, `${readme}: Change Relations heading missing`);
+  let tableEnd = headingIndex + 1;
+  while (tableEnd < lines.length && !lines[tableEnd].trim().startsWith("|")) {
+    tableEnd += 1;
+  }
+  while (tableEnd < lines.length && lines[tableEnd].trim().startsWith("|")) {
+    tableEnd += 1;
+  }
+  assert.notEqual(tableEnd, headingIndex + 1, `${readme}: Change Relations table missing`);
+  lines.splice(tableEnd, 0, ...rows);
+  fs.writeFileSync(readme, lines.join("\n"));
+}
+
+function removeRelationSection(repo, changeId) {
+  const readme = path.join(repo, ".changes", changeId, "README.md");
+  const lines = fs.readFileSync(readme, "utf8").split("\n");
+  const headingIndex = lines.findIndex((line) => line.trim() === "## Change Relations");
+  assert.notEqual(headingIndex, -1, `${readme}: Change Relations heading missing`);
+  let sectionEnd = headingIndex + 1;
+  while (sectionEnd < lines.length && lines[sectionEnd].trim() !== "## Current Phase") {
+    sectionEnd += 1;
+  }
+  assert(sectionEnd < lines.length, `${readme}: Current Phase heading missing`);
+  lines.splice(headingIndex, sectionEnd - headingIndex);
+  fs.writeFileSync(readme, lines.join("\n"));
 }
 
 function withTempRepo(fn) {

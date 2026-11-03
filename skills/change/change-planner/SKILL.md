@@ -47,6 +47,7 @@ Start with a compact context packet:
   is blocked;
 - current change phase and freeze state;
 - source artifacts to derive from, with any known gaps;
+- the change index `## Change Relations` rows and whether each target resolves;
 - current `execution-map.md` state when the change uses multiple worktrees or
   slice assignment is already underway;
 - evidence produced by `architecture-scout`, `diagnose`, `prototype-spike`, or
@@ -123,7 +124,9 @@ settle an upstream decision or authorize execution.
    `requirements.md`, `proposal.md`, `terminology.md`, `design.md`, `specs/`,
    the latest relevant solution-design review, `implementation-design/`, its
    latest relevant review, existing `tasks/`, `execution-map.md`, other
-   `reviews/`, and recent `timeline/` entries.
+   `reviews/`, and recent `timeline/` entries. Read the change index
+   `## Change Relations` rows before slicing and carry unresolved dependencies
+   into the task order.
    Treat architecture scout notes, diagnosis records, spike results, and
    validation plans as source evidence, not as tasks by themselves.
 3. Classify the planning mode:
@@ -153,12 +156,24 @@ settle an upstream decision or authorize execution.
    creation path. For this harness, use `harness-change-doc add-task-slice`
    before hand-editing task content.
 9. Review the complete task set for index coverage, satisfiable and acyclic
-   dependencies, non-conflicting ownership, validation coverage, and unresolved
-   upstream decisions before implementation dispatch.
+   dependencies, non-conflicting ownership, validation coverage, unresolved
+   upstream decisions, the outcome boundary in
+   `rules/loop-contract.md:One Reviewable Outcome Per Change`, and declared
+   relations for coupled or stacked work before implementation dispatch.
 10. Run `harness-change-validate --state-root <state-root> --change <id>` or the
    repository equivalent. Add `--worktrees` when an execution map participates
    in the plan. Treat warnings as decisions to resolve or explicitly accept
    before freeze.
+
+## Outcome Boundary
+
+The boundary rule lives only in
+`rules/loop-contract.md:One Reviewable Outcome Per Change`; apply it while
+slicing. When slicing exposes a second outcome, create a separate change
+workspace instead of widening this task set. When the split work cannot land
+first, record `depends-on` with `harness-change-doc relation`, keep the task
+order dependency-ordered, and leave git stack operations to
+`stacked-branch-workflow`.
 
 ## Slice Rules
 
@@ -236,7 +251,8 @@ End with exactly one gate decision:
 - `NOT_READY`: tasks are missing core behavior, traceability, validation, or
   dependency ordering. Also use `NOT_READY` when implementation depends on a
   detailed design that lacks code topology, file/class mapping, runtime/failure
-  flow, or coding constraints.
+  flow, or coding constraints, or when the task set breaks the outcome boundary
+  in `rules/loop-contract.md:One Reviewable Outcome Per Change`.
 - `NEEDS_USER_DECISION`: implementation depends on a user/owner choice that the
   artifacts do not answer.
 

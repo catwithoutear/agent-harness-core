@@ -6,13 +6,20 @@ import { measureCoreSkillPromptSurface } from "../lib/core-skill-prompt-surface.
 // the review-run routing pointer in the owning skill (default-loaded class), the
 // routing reference's one-line authority note (package class), and the 420
 // characters that the enforcement baseline adds to ask-harness for branch
-// protection routing (this branch is stacked on that change). A core skill's
-// prompt surface may grow only when the same change updates the matching
-// baseline and records why. Never round a measurement down to fit a baseline.
+// protection routing (this branch is stacked on that change). It also includes
+// the 3104 characters that requirement intake, change relations, and the design
+// review intake check add across four SKILL.md files (this branch is stacked on
+// the prompt single-source change): workflow-control (+1217), change-planner
+// (+900), change-workspace-operator (+154), and multi-lens-design-review (+833).
+// Those edits add intake before solution design, declared relations for coupled
+// or stacked work, and a pointer to the one-outcome rule rather than a second
+// copy of it. A core skill's prompt surface may grow only when the same change
+// updates the matching baseline and records why. Never round a measurement down
+// to fit a baseline.
 const BASELINES = Object.freeze({
   alwaysOnCoreSkillDescriptionChars: 5306,
-  defaultLoadedCoreSkillChars: 215221,
-  coreSkillPackageChars: 640792
+  defaultLoadedCoreSkillChars: 218325,
+  coreSkillPackageChars: 643896
 });
 
 const LOAD_CLASSES = Object.freeze({

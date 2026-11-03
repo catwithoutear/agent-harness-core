@@ -14,6 +14,7 @@ import root_resolution
 
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+_PACKAGE_SCHEMA = None
 LEGACY_TOP_LEVEL_CHANGE_FILES = {
     "review-log.md": "reviews/",
     "timeline.md": "timeline/",
@@ -52,6 +53,36 @@ def read_text(path: Path) -> str:
 def load_json(path: Path):
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def package_schema() -> dict:
+    global _PACKAGE_SCHEMA
+    if _PACKAGE_SCHEMA is None:
+        _PACKAGE_SCHEMA = load_json(PACKAGE_ROOT / "schemas" / "change-workspace.schema.json")
+    return _PACKAGE_SCHEMA
+
+
+def relation_policy_for(schema: dict):
+    return schema.get("relations") or package_schema().get("relations")
+
+
+def change_id_pattern(schema: dict) -> str:
+    return (schema.get("change_id") or {}).get("pattern") or package_schema()["change_id"]["pattern"]
+
+
+def full_match(pattern: str, value: str) -> bool:
+    try:
+        return re.fullmatch(pattern, value) is not None
+    except re.error:
+        return False
+
+
+def valid_change_id(pattern: str, value: str) -> bool:
+    if not isinstance(value, str) or not value or value in {".", ".."}:
+        return False
+    if "/" in value or "\\" in value:
+        return False
+    return full_match(pattern, value)
 
 
 def parse_scalar(value: str):
@@ -927,8 +958,7 @@ def validate_review_run_evidence(change_dir: Path, errors: list):
 
 
 def validate_change_id(change_dir: Path, schema: dict, errors: list):
-    pattern = re.compile(schema["change_id"]["pattern"])
-    if not pattern.match(change_dir.name):
+    if not valid_change_id(change_id_pattern(schema), change_dir.name):
         errors.append(f"{change_dir}: invalid change id")
 
 
@@ -1207,7 +1237,171 @@ def validate_layout(change_dir: Path, schema: dict, mode: str, errors: list, war
     validate_layout_limits(change_dir, schema, mode, errors, warns, strict_layout)
 
 
-def validate_change(change_dir: Path, schema: dict, strict_layout: bool = False, worktrees: bool = False):
+def validate_relations(change_dir: Path, repo_root, schema: dict, errors: list, warns: list):
+    relations_policy = relation_policy_for(schema)
+    if repo_root is None:
+        return
+    readme = change_dir / "README.md"
+    if not readme.exists():
+        return
+    text = read_text(readme)
+    heading = relations_policy["heading"] if relations_policy else "Change Relations"
+    heading_line = f"## {heading}"
+    if not any(line.strip() == heading_line for line in text.splitlines()):
+        return
+    if not relations_policy:
+        errors.append(
+            f"{readme}: {heading} requires a relations policy; define relations in the repository schema overlay or fall back to the package schema"
+        )
+        return
+    table_lines = markdown_table_lines_after_heading(text, relations_policy["heading"])
+    if len(table_lines) < 2:
+        columns_text = ", ".join(relations_policy["columns"])
+        errors.append(f"{readme}: {relations_policy['heading']} heading requires a table with columns {columns_text}")
+        return
+    columns = split_table_row(table_lines[0])
+    if list(columns) != list(relations_policy["columns"]):
+        columns_text = ", ".join(relations_policy["columns"])
+        errors.append(f"{readme}: {relations_policy['heading']} table must have columns {columns_text}")
+        return
+    divider_cells = split_table_row(table_lines[1])
+    if len(divider_cells) != len(relations_policy["columns"]) or any(
+        not re.fullmatch(r":?-{3,}:?", cell) for cell in divider_cells
+    ):
+        errors.append(f"{readme}: malformed {relations_policy['heading']} table divider")
+    change_id = change_dir.name
+    seen_targets = set()
+    for line in table_lines[2:]:
+        cells = split_table_row(line)
+        if len(cells) != len(relations_policy["columns"]):
+            errors.append(f"{readme}: malformed {relations_policy['heading']} row: {line}")
+            continue
+        target, relation_type, reason = cells
+        if not target or not relation_type or not reason:
+            errors.append(f"{readme}: {relations_policy['heading']} row requires change, type, and reason: {line}")
+            continue
+        if not valid_change_id(change_id_pattern(schema), target):
+            errors.append(f"{readme}: invalid relation target: {target}")
+            continue
+        if relation_type not in relations_policy["allowed_types"]:
+            errors.append(f"{readme}: unknown relation type {relation_type}")
+            continue
+        if target == change_id:
+            errors.append(f"{readme}: relation must not reference the change itself: {target}")
+            continue
+        if target in seen_targets:
+            errors.append(f"{readme}: duplicate relation target: {target}")
+            continue
+        seen_targets.add(target)
+        target_state = resolve_relation_target(repo_root, schema, target)
+        if target_state == "archived":
+            warns.append(f"{readme}: relation target archived: {target}")
+        elif target_state == "missing":
+            errors.append(f"{readme}: relation target not found: {target}")
+    cycle = find_depends_on_cycle(change_id, repo_root, schema)
+    if cycle:
+        errors.append(f"{readme}: depends-on cycle: {' -> '.join(cycle)}")
+
+
+def resolve_relation_target(repo_root, schema: dict, target_id: str) -> str:
+    changes_dir = Path(repo_root) / schema["paths"]["changes_dir"]
+    ignored_names = set(schema["paths"].get("ignored_change_dirs", []))
+    if target_id not in ignored_names and is_real_directory(changes_dir / target_id):
+        return "active"
+    archive_dir = Path(repo_root) / schema["paths"].get(
+        "archive_dir", f"{schema['paths']['changes_dir']}/archive"
+    )
+    if is_real_directory(archive_dir / target_id):
+        return "archived"
+    prefix = schema.get("archive", {}).get("directory_prefix_pattern")
+    if prefix and archive_dir.is_dir():
+        for entry in archive_dir.iterdir():
+            if entry.is_dir() and re.match(prefix, entry.name) and re.sub(prefix, "", entry.name) == target_id:
+                return "archived"
+    return "missing"
+
+
+def is_real_directory(candidate: Path) -> bool:
+    return candidate.is_dir() and not candidate.is_symlink()
+
+
+def active_change_ids(repo_root, schema: dict):
+    changes_dir = Path(repo_root) / schema["paths"]["changes_dir"]
+    ignored_names = set(schema["paths"].get("ignored_change_dirs", []))
+    if not changes_dir.is_dir():
+        return []
+    return [
+        entry.name
+        for entry in changes_dir.iterdir()
+        if entry.is_dir() and not entry.is_symlink() and entry.name not in ignored_names
+    ]
+
+
+def depends_on_targets(change_id: str, repo_root, schema: dict):
+    relations_policy = relation_policy_for(schema)
+    if not relations_policy:
+        return []
+    readme = Path(repo_root) / schema["paths"]["changes_dir"] / change_id / "README.md"
+    if not readme.exists():
+        return []
+    table_lines = markdown_table_lines_after_heading(read_text(readme), relations_policy["heading"])
+    if len(table_lines) < 2:
+        return []
+    columns = split_table_row(table_lines[0])
+    if list(columns) != list(relations_policy["columns"]):
+        return []
+    targets = []
+    for line in table_lines[2:]:
+        cells = split_table_row(line)
+        if len(cells) != len(relations_policy["columns"]):
+            continue
+        target, relation_type, reason = cells
+        if not target or not relation_type or not reason or target == change_id:
+            continue
+        if relation_type not in relations_policy["cycle_edge_types"]:
+            continue
+        targets.append(target)
+    return targets
+
+
+def find_depends_on_cycle(start_id: str, repo_root, schema: dict):
+    active_ids = set(active_change_ids(repo_root, schema))
+    if start_id not in active_ids:
+        return None
+    path_stack = []
+    on_path = set()
+    cycle = None
+
+    def visit(change_id):
+        nonlocal cycle
+        path_stack.append(change_id)
+        on_path.add(change_id)
+        for next_id in depends_on_targets(change_id, repo_root, schema):
+            if next_id not in active_ids or next_id == change_id:
+                continue
+            if next_id == start_id:
+                cycle = [*path_stack, start_id]
+                break
+            if next_id in on_path:
+                continue
+            visit(next_id)
+            if cycle:
+                break
+        if not cycle:
+            path_stack.pop()
+            on_path.discard(change_id)
+
+    visit(start_id)
+    return cycle
+
+
+def validate_change(
+    change_dir: Path,
+    schema: dict,
+    strict_layout: bool = False,
+    worktrees: bool = False,
+    repo_root=None,
+):
     errors = []
     warns = []
     mode = detect_mode(change_dir)
@@ -1234,6 +1428,7 @@ def validate_change(change_dir: Path, schema: dict, strict_layout: bool = False,
     validate_v2_workspace(change_dir, errors, warns)
     validate_review_run_evidence(change_dir, errors)
     validate_legacy_top_level_artifacts(change_dir, errors, warns, strict_layout)
+    validate_relations(change_dir, repo_root, schema, errors, warns)
     validate_layout(change_dir, schema, mode, errors, warns, strict_layout)
     if worktrees:
         worktree_errors, worktree_warnings = execution_map.validate_execution_map_worktrees(change_dir)
@@ -1302,7 +1497,13 @@ def build_status_report(
     all_warns = []
 
     for target in targets:
-        mode, errors, warns = validate_change(target, schema, strict_layout=strict_layout, worktrees=worktrees)
+        mode, errors, warns = validate_change(
+            target,
+            schema,
+            strict_layout=strict_layout,
+            worktrees=worktrees,
+            repo_root=repo_root,
+        )
         artifacts = status_artifacts(target, schema, mode)
         missing_required = [
             artifact["path"]
@@ -1682,7 +1883,13 @@ def main():
     all_warns = []
 
     for target in targets:
-        mode, errors, warns = validate_change(target, schema, strict_layout=args.strict_layout, worktrees=args.worktrees)
+        mode, errors, warns = validate_change(
+            target,
+            schema,
+            strict_layout=args.strict_layout,
+            worktrees=args.worktrees,
+            repo_root=repo_root,
+        )
         all_errors.extend(errors)
         all_warns.extend(warns)
         action = next_action(errors, warns)

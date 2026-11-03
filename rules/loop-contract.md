@@ -34,6 +34,18 @@ If a downstream discovery changes the accepted solution, return to solution
 design and revisit dependent implementation design and tasks. Do not repair a
 changed design inside a downstream artifact.
 
+## One Reviewable Outcome Per Change
+
+A change workspace contains one reviewable outcome. Split independent outcomes,
+or outcomes with different risk tiers, into separate changes; do not hide a
+second outcome behind a later task slice. When a change can only land after
+another change, declare a `depends-on` relation in its change index and deliver
+the work as a stack.
+
+Independence and risk-tier judgment belongs to task-set review; validator
+tooling does not decide it. Allowed relation types and their validation are
+owned by `schemas/change-workspace.schema.json`.
+
 ## Continuous Convergence
 
 For execution requests, continue authorized work until the overall objective

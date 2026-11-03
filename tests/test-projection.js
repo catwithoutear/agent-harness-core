@@ -1176,6 +1176,9 @@ export async function run(test) {
       assert.equal(project.status, 0, project.stdout + project.stderr);
       assert.equal(fs.existsSync(path.join(target, ".changes", "templates", "README.md")), true);
       assert.equal(fs.existsSync(path.join(target, ".changes", "change-workspace-readme", "README.md")), false);
+      const changeTemplate = fs.readFileSync(path.join(target, ".changes", "templates", "README.md"), "utf8");
+      assert.match(changeTemplate, /^## Change Relations$/m);
+      assert.match(changeTemplate, /^\| change \| type \| reason \|$/m);
       const templatePath = path.join(target, ".changes", "templates", "implementation-design", "README.md");
       assert.equal(fs.existsSync(templatePath), true);
       const templateText = fs.readFileSync(templatePath, "utf8");

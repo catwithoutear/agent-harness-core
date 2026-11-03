@@ -108,6 +108,80 @@ def change_dir(repo_root: Path, change_id: str) -> Path:
     return repo_root / ".changes" / change_id
 
 
+_PACKAGE_SCHEMA = None
+
+
+def package_schema() -> dict:
+    global _PACKAGE_SCHEMA
+    if _PACKAGE_SCHEMA is None:
+        _PACKAGE_SCHEMA = json.loads(read_text(PACKAGE_ROOT / "schemas" / "change-workspace.schema.json"))
+    return _PACKAGE_SCHEMA
+
+
+def change_schema(root: Path) -> dict:
+    overlay = root / ".rules" / "change-doc-schema.json"
+    schema_path = overlay if overlay.exists() else PACKAGE_ROOT / "schemas" / "change-workspace.schema.json"
+    return json.loads(read_text(schema_path))
+
+
+def change_id_pattern(schema: dict) -> str:
+    return (schema.get("change_id") or {}).get("pattern") or package_schema()["change_id"]["pattern"]
+
+
+def full_match(pattern: str, value: str) -> bool:
+    try:
+        return re.fullmatch(pattern, value) is not None
+    except re.error:
+        return False
+
+
+def is_valid_change_id(root: Path, change_id: str) -> bool:
+    if not isinstance(change_id, str) or not change_id or change_id in {".", ".."}:
+        return False
+    if "/" in change_id or "\\" in change_id:
+        return False
+    return full_match(change_id_pattern(change_schema(root)), change_id)
+
+
+def relation_policy_for(root: Path):
+    schema = change_schema(root)
+    return schema, schema.get("relations") or package_schema().get("relations")
+
+
+def is_real_directory(candidate: Path) -> bool:
+    return candidate.is_dir() and not candidate.is_symlink()
+
+
+def resolve_relation_target(root: Path, schema: dict, target_id: str) -> str:
+    changes_dir = root / schema["paths"]["changes_dir"]
+    ignored_names = set(schema["paths"].get("ignored_change_dirs", []))
+    if target_id not in ignored_names and is_real_directory(changes_dir / target_id):
+        return "active"
+    archive_dir = root / schema["paths"].get("archive_dir", f"{schema['paths']['changes_dir']}/archive")
+    if is_real_directory(archive_dir / target_id):
+        return "archived"
+    prefix = schema.get("archive", {}).get("directory_prefix_pattern")
+    if prefix and archive_dir.is_dir():
+        for entry in archive_dir.iterdir():
+            if entry.is_dir() and re.match(prefix, entry.name) and re.sub(prefix, "", entry.name) == target_id:
+                return "archived"
+    return "missing"
+
+
+def read_relations(readme_path: Path, relations_policy: dict):
+    if not readme_path.exists() or not relations_policy:
+        return []
+    rows = markdown_table_after_heading(read_text(readme_path), relations_policy["heading"])
+    return [
+        {
+            "change": row.get("change", ""),
+            "type": row.get("type", ""),
+            "reason": row.get("reason", ""),
+        }
+        for row in rows
+    ]
+
+
 def front_matter(artifact: str, status: str, tags, description: str) -> str:
     tag_list = ", ".join(tags)
     return "\n".join(
@@ -179,8 +253,7 @@ def append_child_index(index_path: Path, directory: str, rel_path: str, artifact
         write_text(index_path, updated)
 
 
-def insert_markdown_table_row_after_heading(text: str, heading: str, expected_columns, row: str) -> str:
-    lines = text.split("\n")
+def markdown_table_region(lines, heading: str, expected_columns):
     heading_text = f"## {heading}"
     heading_indexes = [index for index, line in enumerate(lines) if line.strip() == heading_text]
 
@@ -209,10 +282,65 @@ def insert_markdown_table_row_after_heading(text: str, heading: str, expected_co
     table_end = divider_index + 1
     while table_end < len(lines) and lines[table_end].strip().startswith("|"):
         table_end += 1
+    return divider_index, table_end
+
+
+def markdown_heading_present(text: str, heading: str) -> bool:
+    target = f"## {heading}"
+    return any(line.strip() == target for line in text.split("\n"))
+
+
+def insert_markdown_table_section(text, heading, expected_columns, instruction, anchor_heading="Current Phase"):
+    if markdown_heading_present(text, heading):
+        return text
+    section_lines = [
+        f"## {heading}",
+        "",
+        "| " + " | ".join(expected_columns) + " |",
+        "|" + "|".join("---" for _ in expected_columns) + "|",
+        "",
+    ]
+    if instruction:
+        section_lines.extend(instruction.split("\n"))
+        section_lines.append("")
+    lines = text.split("\n")
+    anchor = f"## {anchor_heading}"
+    anchor_index = next((index for index, line in enumerate(lines) if line.strip() == anchor), None)
+    if anchor_index is not None:
+        lines[anchor_index:anchor_index] = section_lines
+        return "\n".join(lines)
+    while lines and lines[-1] == "":
+        lines.pop()
+    lines.extend(["", *section_lines])
+    return "\n".join(lines)
+
+
+def insert_markdown_table_row_after_heading(text: str, heading: str, expected_columns, row: str) -> str:
+    lines = text.split("\n")
+    divider_index, table_end = markdown_table_region(lines, heading, expected_columns)
     if any(candidate.strip() == row.strip() for candidate in lines[divider_index + 1 : table_end]):
         return text
     lines.insert(table_end, row)
     return "\n".join(lines)
+
+
+def upsert_markdown_table_row_after_heading(text: str, heading: str, expected_columns, row: str, matches_row):
+    lines = text.split("\n")
+    divider_index, table_end = markdown_table_region(lines, heading, expected_columns)
+    match_index = None
+    for index in range(divider_index + 1, table_end):
+        if matches_row(split_table_row(lines[index])):
+            match_index = index
+            break
+    if match_index is None:
+        if any(candidate.strip() == row.strip() for candidate in lines[divider_index + 1 : table_end]):
+            return text, False, False
+        lines.insert(table_end, row)
+        return "\n".join(lines), False, True
+    if lines[match_index].strip() == row.strip():
+        return text, False, False
+    lines[match_index] = row
+    return "\n".join(lines), True, False
 
 
 def next_number(directory_path: Path, pattern: str) -> int:
@@ -243,7 +371,11 @@ def resolve_root_or_error(args, task: str | None = None):
     if context.get("unresolved_reason"):
         print(root_resolution.error_text(context), file=sys.stderr)
         return None, context
-    return Path(context["state_root"]), context
+    root = Path(context["state_root"])
+    if task is not None and not is_valid_change_id(root, task):
+        print(f"ERROR: invalid change id: {task}", file=sys.stderr)
+        return None, context
+    return root, context
 
 
 def ensure_change_exists(root: Path, task: str):
@@ -351,9 +483,15 @@ def build_index(root: Path, task: str):
                 "indexed": is_indexed_child(target, rel_path),
             }
         )
+    schema, relations_policy = relation_policy_for(root)
+    relations = [
+        {**relation, "resolved": resolve_relation_target(root, schema, relation["change"])}
+        for relation in read_relations(target / "README.md", relations_policy)
+    ]
     return {
         "change_id": task,
         "task_tags": task_tags,
+        "relations": relations,
         "artifacts": artifacts,
         "diagnostics": [],
     }
@@ -382,6 +520,80 @@ def is_indexed_child(target: Path, rel_path: str) -> bool:
         return False
     rows = markdown_table_after_heading(read_text(index_path), "Child Index")
     return any(row.get("path", "").strip("`") == child for row in rows)
+
+
+def command_relation(args) -> int:
+    root, _context = resolve_root_or_error(args, args.task)
+    if root is None:
+        return 2
+    target_id = args.target
+    relation_type = args.type
+    reason = (args.reason or "").strip()
+    if not target_id or not relation_type or not reason:
+        print("ERROR: relation requires --target, --type, and --reason", file=sys.stderr)
+        return 2
+    schema, relations_policy = relation_policy_for(root)
+    if not relations_policy:
+        print("ERROR: relations policy is not available in the repository or package schema", file=sys.stderr)
+        return 1
+    if not full_match(change_id_pattern(schema), target_id):
+        print(f"ERROR: invalid relation target: {target_id}", file=sys.stderr)
+        return 2
+    if target_id == args.task:
+        print(f"ERROR: relation target must not be the change itself: {target_id}", file=sys.stderr)
+        return 2
+    if relation_type not in relations_policy["allowed_types"]:
+        allowed = ", ".join(relations_policy["allowed_types"])
+        print(f"ERROR: unknown relation type {relation_type}; allowed: {allowed}", file=sys.stderr)
+        return 2
+    if re.search(r"[|\r\n]", reason):
+        print("ERROR: relation reason must be one line and must not contain '|'", file=sys.stderr)
+        return 2
+    target_state = resolve_relation_target(root, schema, target_id)
+    if target_state == "missing":
+        print(f"ERROR: relation target not found (active or archived): {target_id}", file=sys.stderr)
+        return 2
+    readme = change_dir(root, args.task) / "README.md"
+    if not readme.exists():
+        print(f"ERROR: change index not found: {readme}", file=sys.stderr)
+        return 1
+    row = f"| `{target_id}` | {relation_type} | {reason} |"
+    try:
+        text = insert_markdown_table_section(
+            read_text(readme),
+            relations_policy["heading"],
+            relations_policy["columns"],
+            policy.RELATION_SECTION_INSTRUCTION,
+        )
+        updated_text, updated, created = upsert_markdown_table_row_after_heading(
+            text,
+            relations_policy["heading"],
+            relations_policy["columns"],
+            row,
+            lambda cells: (cells[0] if cells else "") == target_id,
+        )
+        if updated_text != text:
+            write_text(readme, updated_text)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    print(
+        json.dumps(
+            {
+                "change_id": args.task,
+                "target": target_id,
+                "type": relation_type,
+                "reason": reason,
+                "target_state": target_state,
+                "path": readme.relative_to(root).as_posix(),
+                "created": created,
+                "updated": updated,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
 
 
 def command_add_review(args) -> int:
@@ -663,6 +875,8 @@ def command_list(args) -> int:
     else:
         for artifact in index["artifacts"]:
             print(f"{artifact['path']}\t{artifact.get('artifact') or '-'}\t{artifact.get('status') or '-'}")
+        for relation in index["relations"]:
+            print(f"relation\t{relation['change']}\t{relation['type']}\t{relation['resolved']}")
     return 0
 
 
@@ -1175,6 +1389,13 @@ def build_parser():
     index_parser.add_argument("task")
     index_parser.add_argument("--json", action="store_true", required=True)
     index_parser.set_defaults(func=command_index)
+
+    relation_parser = subparsers.add_parser("relation")
+    relation_parser.add_argument("task")
+    relation_parser.add_argument("--target", required=True)
+    relation_parser.add_argument("--type", required=True)
+    relation_parser.add_argument("--reason", required=True)
+    relation_parser.set_defaults(func=command_relation)
 
     list_parser = subparsers.add_parser("list")
     list_parser.add_argument("task")
