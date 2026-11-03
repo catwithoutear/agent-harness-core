@@ -85,20 +85,77 @@ export async function run(test) {
     assert.equal(fs.existsSync(path.join(packageRoot, "lib", "dsh")), false, "lib/dsh was not deleted");
   });
 
-  await test("role contracts stay out of the always-on surface", () => {
-    // The contracts are reference-only: no SKILL.md may inline a role body.
-    for (const agent of manifest.assets.agents) {
-      const body = stripFrontMatter(fs.readFileSync(path.join(packageRoot, agent.source), "utf8"));
-      const probe = body.split("\n").filter((line) => line.trim().length > 60)[0];
-      if (!probe) continue;
-      for (const entry of fs.readdirSync(path.join(packageRoot, "skills"), { recursive: true })) {
-        if (typeof entry !== "string" || !entry.endsWith("SKILL.md")) continue;
-        const text = fs.readFileSync(path.join(packageRoot, "skills", entry), "utf8");
-        assert(
-          !text.includes(probe),
-          `${entry} inlines the ${agent.runtimeName} contract; link to it instead of copying it`
-        );
+  await test("no prompt-bearing file duplicates a role contract body", () => {
+    const contracts = manifest.assets.agents.map((agent) => ({
+      slug: agent.runtimeName,
+      file: path.join(packageRoot, agent.source),
+      text: fs.readFileSync(path.join(packageRoot, agent.source), "utf8")
+    }));
+    // A signature is the longest line unique to one contract: copying a body
+    // without copying that line would not reproduce the role.
+    const signatures = [];
+    for (const contract of contracts) {
+      const candidates = contract.text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 70)
+        .sort((a, b) => b.length - a.length);
+      for (const line of candidates) {
+        const owners = contracts.filter((other) => other.text.includes(line));
+        if (owners.length === 1) {
+          signatures.push({ slug: contract.slug, line });
+          break;
+        }
       }
+      assert(
+        signatures.some((entry) => entry.slug === contract.slug),
+        `contract ${contract.slug} has no line unique enough to guard against copying`
+      );
+    }
+
+    const violations = scanForDuplicates(packageRoot, signatures);
+    assert.deepEqual(violations, [], `role text copied into prompt-bearing files: ${violations.map((v) => `${v.slug} -> ${v.file}`).join(", ")}`);
+
+    // The guard must be able to fail: plant a copy and expect it to be found.
+    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "role-dup-"));
+    try {
+      fs.mkdirSync(path.join(fixture, "skills", "sample"), { recursive: true });
+      fs.writeFileSync(path.join(fixture, "skills", "sample", "SKILL.md"), `# Sample\n\n${signatures[0].line}\n`);
+      const planted = scanForDuplicates(fixture, signatures);
+      assert.equal(planted.length, 1, "the duplication scan did not detect a planted copy");
+      assert.equal(planted[0].slug, signatures[0].slug);
+    } finally {
+      fs.rmSync(fixture, { recursive: true, force: true });
     }
   });
+}
+
+const PROMPT_ROOTS = ["skills", "rules", "commands", "templates"];
+const PROMPT_FILES = ["AGENTS.md", "README.md", "README_CN.md"];
+
+function scanForDuplicates(root, signatures) {
+  const files = [];
+  for (const directory of PROMPT_ROOTS) {
+    const absolute = path.join(root, directory);
+    if (!fs.existsSync(absolute)) continue;
+    for (const entry of fs.readdirSync(absolute, { recursive: true })) {
+      if (typeof entry !== "string" || !entry.endsWith(".md")) continue;
+      if (entry.includes(`${path.sep}role-contracts${path.sep}`)) continue;
+      files.push(path.join(absolute, entry));
+    }
+  }
+  for (const name of PROMPT_FILES) {
+    const absolute = path.join(root, name);
+    if (fs.existsSync(absolute)) files.push(absolute);
+  }
+  const violations = [];
+  for (const file of files) {
+    const text = fs.readFileSync(file, "utf8");
+    for (const signature of signatures) {
+      if (text.includes(signature.line)) {
+        violations.push({ slug: signature.slug, file: path.relative(root, file) });
+      }
+    }
+  }
+  return violations;
 }

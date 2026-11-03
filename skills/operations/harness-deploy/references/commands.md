@@ -42,7 +42,7 @@ that is an actual shipped capability.
 ## Existing Native Roles
 
 ZCode uses `harness-native-roles` outside the generic projector's client list.
-DSH uses the optional Core host bundle described by `integrations.dsh`.
+DSH has no host bundle; see [DSH Delegation](#dsh-delegation) below.
 Confirm the installed loader consumes the shared skill root before projecting
 skills through Codex. Do not invent `--clients zcode`, `--clients dsh`, or a
 `.dsh/agents` directory.

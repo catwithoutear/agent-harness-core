@@ -19,7 +19,6 @@
     "node": ">=20"
   },
   "files": [
-    "agents/",
     "bin/",
     "harness.manifest.json",
     "commands/",

@@ -11,3 +11,7 @@
 !commands/
 !commands/harness/
 !commands/harness/plan.md
+
+# Python bytecode from the mirrored helpers.
+__pycache__/
+*.pyc

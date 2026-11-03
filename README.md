@@ -194,7 +194,7 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
-## Existing ZCode and DSH Roles
+## Existing ZCode Roles and DSH Delegation
 
 Use the `harness-deploy` skill to choose the smallest authorized installation,
 resolve loaded roots, preserve external backups and verify that skills and roles
@@ -226,8 +226,10 @@ completion criteria; the host supplies the process. Clients that need static
 agent files (Codex, Claude, OpenCode, OMP, ZCode) still receive generated files
 from the same contract through `harness-project`.
 
-Migration from the removed bundle: drop the `harness-roles` entry and its
-dependency from the profile, then upgrade Core. Removing the profile entry first
+Migration from the removed bundle: remove the `harness-roles` entry and the
+`@catwithoutear/agent-harness-core` bundle dependency from the profile package
+manifest (or uninstall it with `dsh plugin --profile <profile-name> remove`), then
+upgrade Core. Removing the profile entry first
 avoids a bundle that points at deleted entry points. Verify with
 `dsh --profile <profile-name> --dump-config` that no role tools remain.
 

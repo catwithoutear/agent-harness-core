@@ -165,7 +165,7 @@ is acceptable, run the same command without --dry-run. Then verify by replacing
 --dry-run --json with --verify --json.
 ```
 
-## 已有 ZCode 与 DSH 角色
+## 现有 ZCode 角色与 DSH 委派
 
 使用 `harness-deploy` 技能选择最小授权部署范围、核对实际加载目录、保留外部备份并检查技能和角色是否重复。技能复用现有 projector 或所属 overlay 的部署工具。
 
