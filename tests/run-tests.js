@@ -16,6 +16,11 @@ async function run(name, fn) {
   }
 }
 
+if (all || requested.has("--workflow")) {
+  const module = await import("./test-workflow.js");
+  await module.run(run);
+}
+
 if (all || requested.has("--manifest")) {
   const module = await import("./test-manifest.js");
   await module.run(run);

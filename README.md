@@ -412,9 +412,36 @@ Recommended pre-handoff checks after changing source assets:
 ```bash
 npm test
 node bin/harness.js manifest --json
-node bin/harness-project.js --target . --clients codex --content rules,templates,skills,subagents,hooks --verify --json
+PROJECTION_TARGET="$(mktemp -d)"
+node bin/harness-project.js --target "$PROJECTION_TARGET" --clients codex --content rules,templates,skills,subagents,hooks --conflict overwrite --json
+node bin/harness-project.js --target "$PROJECTION_TARGET" --clients codex --content rules,templates,skills,subagents,hooks --verify --json
+rm -rf "$PROJECTION_TARGET"
+STATE_ROOT="$(git rev-parse --path-format=absolute --git-common-dir)/.."
+node bin/harness-change-validate.js --state-root "$STATE_ROOT" --change <change-id> --schema "$PWD/schemas/change-workspace.schema.json"
 git diff --check
 ```
+
+A clean checkout has no projection to verify, so materialize one first. Validate
+the change you are handing off with an explicit canonical state root and change
+id: `$(git rev-parse --path-format=absolute --git-common-dir)/..` resolves the
+shared checkout from the main checkout or from a linked worktree. `--all-active`
+is a clean-checkout/CI check only: it scans every active workspace under the
+state root, which is ambiguous in a linked worktree and includes unrelated local
+workspaces that may already be red.
+
+### Continuous integration
+
+`.github/workflows/verify.yml` runs the verification jobs on every pull request
+and uses `--all-active` against the clean checkout; the local sequence above also
+runs `git diff --check` and validates the change explicitly. The required checks
+are the workflow job names (`test`, `manifest`, `projection`, `change-schema`). Protect
+the integration branch with `node bin/harness-branch-protection.js` (dry run),
+`--apply` (owner action), or `--check` (drift). `--apply` needs an authenticated
+`gh` with admin rights; classic protection is the default and `--mode ruleset`
+manages a ruleset instead. A classic `--apply` replaces the full protection
+settings object, so review the dry-run plan first. The workflow cannot protect
+its own definition: changes to `.github/`, `tests/`, `schemas/`, or `bin/` still
+need owner review.
 
 ## Ownership Rules
 

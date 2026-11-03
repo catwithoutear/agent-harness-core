@@ -242,12 +242,29 @@ export async function run(test) {
     }
   });
 
+  await test("command registry entries resolve to package binaries", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8")
+    );
+    const packageJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+    assert.equal(manifest.commands.branchProtection, "harness-branch-protection");
+    for (const [entry, binary] of Object.entries(manifest.commands)) {
+      const target = packageJson.bin?.[binary];
+      assert.equal(typeof target, "string", `${entry} -> ${binary} is missing from package.json bin`);
+      assert.equal(
+        fs.existsSync(path.join(packageRoot, target)),
+        true,
+        `${entry} -> ${binary} target ${target} is missing`
+      );
+    }
+  });
+
   await test("install documentation includes templates in full projection", () => {
     const required = "--content rules,templates,skills,subagents,hooks";
     const readme = fs.readFileSync(path.join(packageRoot, "README.md"), "utf8");
     const agents = fs.readFileSync(path.join(packageRoot, "AGENTS.md"), "utf8");
-    assert.equal(occurrences(readme, required), 7);
-    assert.equal(occurrences(agents, required), 3);
+    assert.equal(occurrences(readme, required), 8);
+    assert.equal(occurrences(agents, required), 4);
   });
 }
 

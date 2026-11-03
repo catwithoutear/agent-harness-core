@@ -74,8 +74,12 @@ that lower-level skill explicitly in the recommendation.
 | "Review this project-domain MR." | Use the overlay MR review skill and the overlay domain skill named by the manifest; do not route to a generic core review skill as a replacement. |
 | "Improve a core skill and its projections." | Use `skill-authoring-governance`, then `subagent-projection-review` if client-visible role or projection behavior changes. |
 | "Deploy or update Harness with no duplicate skills or roles." | Use `harness-deploy` for scope, existing discovery roots, backups and verification; it routes to the existing projector or project deployer. |
+| "Protect the integration branch or check protection drift?" | Use `harness-branch-protection` dry run first, then `--apply` as an owner action; `--check` is read-only drift detection. |
 
-For existing ZCode Desktop roles, use `commands.nativeRoles`
+For integration-branch protection, use `commands.branchProtection`
+(`harness-branch-protection`): dry run is the default, `--apply` is an owner
+action that needs an authenticated `gh` with admin rights, and `--check` reports
+drift. For existing ZCode Desktop roles, use `commands.nativeRoles`
 (`harness-native-roles`) for dry-run/verify and reviewed `--from-plan` refresh.
 For DSH roles, use `integrations.dsh`: Core's optional host bundle, installed
 through DSH's native `plugin` manager into the explicitly selected profile.
