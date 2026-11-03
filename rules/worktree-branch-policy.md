@@ -140,11 +140,12 @@ node bin/harness-branch-protection.js --check      # read-only drift check
 
 - `--repo owner/name` defaults to the `origin` remote; pass it explicitly when
   `origin` is missing or is not GitHub.
-- Required checks come from the workflow. The applied baseline enforces the same
-  rules for administrators (`enforce_admins`) and configures no bypass actors.
+- Required checks come from the workflow. The applied baseline binds
+  administrators as well: classic protection sets `enforce_admins`, and a ruleset
+  configures no bypass actors.
 - The dry run prints the repository, branch, required checks, and every `gh api`
   request it would make. It changes no remote state.
-- Classic protection is the default. `--apply` reads the current protection
+- Classic protection remains available. `--apply` reads the current protection
   first and replaces the complete settings object. It aborts when existing
   approvals, restrictions, or other stronger settings would be weakened; pass
   `--force` only after reviewing exactly what will be dropped.
@@ -156,6 +157,87 @@ node bin/harness-branch-protection.js --check      # read-only drift check
   on errors. Stale required contexts are drift because they block every pull
   request. A stronger setting that `--apply` will not erase without `--force`
   also reports as drift: either accept the drift or replace it explicitly.
+
+### Required checks are the workflow job names
+
+The ruleset and the workflow are coupled through one string per check: the
+`required_status_checks` contexts in the ruleset must equal the job keys under
+`jobs:` in `.github/workflows/verify.yml`. GitHub reports a check run under the
+job key, so a context that no job reports can never turn green, and every pull
+request stays blocked at `Expected — Waiting for status to be reported`.
+
+`bin/harness-branch-protection.js` derives the contexts from that workflow
+instead of hard-coding them, which is why the workflow stays the single source
+of truth. Four consequences follow:
+
+| Change to the workflow | Effect without a ruleset update |
+|---|---|
+| Rename a job | The old context is never reported; every pull request blocks |
+| Delete a job | Same hard block; the rule keeps waiting for a context that is gone |
+| Add a job | No block and no extra protection: the new job is not required |
+| Rename or move the workflow file | The tool derives nothing, and `--apply`/`--check` report drift or errors |
+
+`.github/` is itself part of the protected repository: job names, the ruleset and
+this runbook change together, and that change is an owner review item because CI
+cannot verify its own definition.
+
+### Rename a job without blocking merges
+
+One pull request cannot rename a required job and update the ruleset in the same
+step: until the ruleset changes, the old context is still required, so the pull
+request carrying both edits is itself blocked. Use two phases.
+
+1. **Phase 1 - add the new name alongside the old one.** Add the renamed job, or
+   keep a small alias job that reports the old context, run
+   `--apply --mode ruleset` so both contexts are required, and merge that pull
+   request normally.
+2. **Phase 2 - drop the old name.** Delete the alias or the old job, run
+   `--apply --mode ruleset` again, and merge. `--check` reports no drift once the
+   workflow jobs and the ruleset contexts agree.
+
+Never leave the ruleset naming a context that no job reports. That blocks every
+pull request, including the one that would fix it, and the only escape is an
+owner ruleset update.
+
+### Verify the coupling
+
+```bash
+# Job names the workflow reports
+python3 -c "import re;print(re.findall(r'^  ([a-z][a-z0-9-]*):$', open('.github/workflows/verify.yml').read(), re.M))"
+
+# Contexts the live ruleset requires, then the drift verdict
+gh api repos/<owner>/<repo>/rulesets --jq '.[] | {id, name}'
+gh api repos/<owner>/<repo>/rulesets/<id> \
+  --jq '.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context'
+node bin/harness-branch-protection.js --mode ruleset --check --json
+```
+
+`--check` exits 0 only when the live ruleset matches the workflow jobs and the
+baseline settings. Treat a non-zero exit as a merge blocker, not as noise.
+
+### Applied baseline for this repository
+
+`main` in `catwithoutear/agent-harness-core` is protected by a ruleset rather
+than classic protection: name `agent-harness-core integration branch`,
+`enforcement: active`, scoped to `refs/heads/main`, with `deletion`,
+`non_fast_forward`, `pull_request` (zero required approvals) and strict
+`required_status_checks` for `test`, `manifest`, `projection` and
+`change-schema`. It configures no bypass actors, so administrators are bound by
+it too. The ruleset identifier is an implementation detail; discover it with the
+API call above instead of recording it in source.
+
+The ruleset API rejects an explicit `parameters` object on the `pull_request`
+rule (`Invalid property /rules/N: data matches no possible input`, HTTP 422), so
+the tool sends the bare rule and lets GitHub apply its defaults: zero approvals,
+no stale-review dismissal, no code-owner or last-push requirement. `--check`
+compares the effective values GitHub returns, so a change of those defaults is
+still reported as drift.
+
+If a merged pull request leaves a required context unreportable (a job deleted
+while its context stayed required), every pull request blocks. Recover by
+updating the ruleset to match the workflow in place, not by pushing to `main`:
+that is an owner action, and it must be followed by the intended check, not by
+dropping the required-checks rule.
 
 CI protects against accidental omissions. It cannot protect its own definition:
 a pull request that edits `.github/`, `tests/`, `schemas/`, or `bin/` must still
