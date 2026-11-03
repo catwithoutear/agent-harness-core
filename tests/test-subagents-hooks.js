@@ -7,6 +7,7 @@ import { parseFrontMatter } from "../lib/change/markdown.js";
 import { runHarnessProject } from "../lib/project/projector.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROLE_CONTRACTS_DIR = path.join("skills", "workflow", "workflow-control", "references", "role-contracts");
 
 export async function run(test) {
   await test("Codex role refresh retains model overrides and verifies the refreshed body", () => {
@@ -184,7 +185,7 @@ export async function run(test) {
     };
 
     for (const [roleName, required] of Object.entries(requiredContracts)) {
-      const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", `${roleName}.md`), "utf8");
+      const role = fs.readFileSync(path.join(packageRoot, ROLE_CONTRACTS_DIR, `${roleName}.md`), "utf8");
       for (const text of required) {
         assert.match(
           role,
@@ -196,7 +197,7 @@ export async function run(test) {
   });
 
   await test("review verifier is read-only and isolated from reviewer findings during inventory", () => {
-    const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "review-verifier.md"), "utf8");
+    const role = fs.readFileSync(path.join(packageRoot, ROLE_CONTRACTS_DIR, "review-verifier.md"), "utf8");
     for (const required of [
       "Read only",
       "inventory",
@@ -218,7 +219,7 @@ export async function run(test) {
   });
 
   await test("planning reviewer covers implementation design readiness without edit authority", () => {
-    const role = fs.readFileSync(path.join(packageRoot, "agents", "roles", "planning-reviewer.md"), "utf8");
+    const role = fs.readFileSync(path.join(packageRoot, ROLE_CONTRACTS_DIR, "planning-reviewer.md"), "utf8");
     assert.match(role, /## Review Principles/);
     assert.match(role, /every reviewed code change point, design\s+decision, and implementation approach/);
     assert.match(role, /smallest design/);

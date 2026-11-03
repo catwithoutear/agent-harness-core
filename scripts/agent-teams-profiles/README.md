@@ -2,7 +2,7 @@
 
 Generate [dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) named
 profiles (squad rosters) from this repo's canonical role definitions in
-`agents/roles/*.md`.
+`skills/workflow/workflow-control/references/role-contracts/*.md`.
 
 - **Source of truth:** the role markdown bodies — emitted verbatim as
   `members[].role` persona text. The same text the local `liangshen-roles` dsh
@@ -39,9 +39,9 @@ pairing, and fails loudly instead of emitting a broken profile.
 
 ## Current drift note (2026-09-07)
 
-Whitespace-normalized comparison of `agents/roles/*.md` against the personas
+Whitespace-normalized comparison of `skills/workflow/workflow-control/references/role-contracts/*.md` against the personas
 embedded in `liangshen-roles/agent.cordis.yml`: 6 roles identical, 5 roles
 (code-simplifier, harness-orchestrator, planning-reviewer, review-verifier,
 reviewer) have **newer content upstream** — the preset embeddings are stale.
-Generating from `agents/roles/*.md` therefore picks up the maintained text.
+Generating from `skills/workflow/workflow-control/references/role-contracts/*.md` therefore picks up the maintained text.
 Consider refreshing the preset embeddings from upstream separately.

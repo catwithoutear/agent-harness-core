@@ -2223,7 +2223,7 @@
       {
         "id": "harness-orchestrator",
         "kind": "coordinator",
-        "source": "agents/roles/harness-orchestrator.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/harness-orchestrator.md",
         "runtimeName": "harness-orchestrator",
         "description": "Use when artifact-driven work needs multi-phase coordination across evidence, change artifacts, specialists, review gates, verification, and handoff.",
         "clients": [
@@ -2237,7 +2237,7 @@
       {
         "id": "repo-mapper",
         "kind": "specialist",
-        "source": "agents/roles/repo-mapper.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/repo-mapper.md",
         "runtimeName": "repo-mapper",
         "description": "Use when ownership, entry points, execution flow, dependencies, or repository precedents must be mapped before planning or implementation.",
         "clients": [
@@ -2251,7 +2251,7 @@
       {
         "id": "design-alternatives",
         "kind": "specialist",
-        "source": "agents/roles/design-alternatives.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/design-alternatives.md",
         "runtimeName": "design-alternatives",
         "description": "Use when an unsettled feature or refactor needs three repository-grounded, genuinely orthogonal design options and explicit tradeoffs.",
         "clients": [
@@ -2265,7 +2265,7 @@
       {
         "id": "solution-designer",
         "kind": "specialist",
-        "source": "agents/roles/solution-designer.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/solution-designer.md",
         "runtimeName": "solution-designer",
         "description": "Use after a direction is selected to produce a repository-grounded solution design before implementation planning begins.",
         "clients": [
@@ -2279,7 +2279,7 @@
       {
         "id": "planning-reviewer",
         "kind": "specialist",
-        "source": "agents/roles/planning-reviewer.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/planning-reviewer.md",
         "runtimeName": "planning-reviewer",
         "description": "Review planning artifacts, design readiness, and task executable quality without editing them.",
         "clients": [
@@ -2293,7 +2293,7 @@
       {
         "id": "implementation-planner",
         "kind": "specialist",
-        "source": "agents/roles/implementation-planner.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/implementation-planner.md",
         "runtimeName": "implementation-planner",
         "description": "Use when frozen requirements and design artifacts must become ordered, reviewable implementation slices with validation and rollback gates.",
         "clients": [
@@ -2307,7 +2307,7 @@
       {
         "id": "code-worker",
         "kind": "specialist",
-        "source": "agents/roles/code-worker.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/code-worker.md",
         "runtimeName": "code-worker",
         "description": "Use when an approved context packet assigns one bounded implementation slice with explicit scope and validation.",
         "clients": [
@@ -2321,7 +2321,7 @@
       {
         "id": "reviewer",
         "kind": "specialist",
-        "source": "agents/roles/reviewer.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/reviewer.md",
         "runtimeName": "reviewer",
         "description": "Use when an implementation diff, commit range, or changed behavior needs read-only, evidence-first correctness review with risk-ordered findings.",
         "clients": [
@@ -2335,7 +2335,7 @@
       {
         "id": "review-verifier",
         "kind": "specialist",
-        "source": "agents/roles/review-verifier.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/review-verifier.md",
         "runtimeName": "review-verifier",
         "description": "Independently inventory and compare review coverage without editing or owning overall readiness.",
         "clients": [
@@ -2349,7 +2349,7 @@
       {
         "id": "council-synthesizer",
         "kind": "specialist",
-        "source": "agents/roles/council-synthesizer.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/council-synthesizer.md",
         "runtimeName": "council-synthesizer",
         "description": "Use when multiple independent positions need one evidence-weighted synthesis without voting or overriding the decision owner.",
         "clients": [
@@ -2363,7 +2363,7 @@
       {
         "id": "code-simplifier",
         "kind": "specialist",
-        "source": "agents/roles/code-simplifier.md",
+        "source": "skills/workflow/workflow-control/references/role-contracts/code-simplifier.md",
         "runtimeName": "code-simplifier",
         "description": "Use when a simplification Scope Packet asks for apply or opportunities across the complete resolved task scope.",
         "clients": [
@@ -2611,13 +2611,5 @@
       }
     ],
     "tools": []
-  },
-  "integrations": {
-    "dsh": {
-      "kind": "host-plugin",
-      "entry": "lib/dsh/index.js",
-      "bundle": "lib/dsh/cordis.patch.yml",
-      "enabledByDefault": false
-    }
   }
 }

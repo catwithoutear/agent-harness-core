@@ -7,7 +7,7 @@ project-agnostic and reusable across target repositories.
 
 - Treat `harness.manifest.json` as the installable asset index and client
   capability contract.
-- Treat `skills/`, `agents/roles/`, `rules/`, `hooks/intents/`, `commands/`,
+- Treat `skills/`, `skills/workflow/workflow-control/references/role-contracts/`, `rules/`, `hooks/intents/`, `commands/`,
   `templates/`, `lib/`, and `schemas/` as source.
 - Treat `.agents/`, `.codex/`, `.changes/templates/`, `.rules/`, and
   `.harness/` as projected runtime output when they exist. Do not hand-edit

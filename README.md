@@ -20,7 +20,7 @@ target repository, not in this package.
 | `harness` | Package helper command, including `harness manifest`. |
 | `harness.manifest.json` | Source of truth for installable assets, client targets, and capabilities. |
 | `skills/` | Categorized source skills; runtime skill directories are projected flat. |
-| `agents/roles/` | Canonical source subagent roles; client files are rendered from these sources. |
+| `skills/workflow/workflow-control/references/role-contracts/` | Canonical role contracts; client agent files are rendered from these sources and loaded on demand. |
 | `rules/` | Stable workflow contracts. |
 | `hooks/intents/` | Hook intent descriptions rendered into client-specific hook payloads. |
 | `commands/harness/` | Slash command prompt sources for clients with command projection support. |
@@ -213,33 +213,23 @@ Inspect the plan and existing bodies, and resolve ZCode's actual Desktop storage
 before applying. The tool preserves metadata except canonical name/description,
 rejects stale plans and reports partial writes with backup mappings.
 
-DSH uses an optional host plugin shipped in this package. Install into the
-explicitly selected profile with DSH's native plugin manager:
+DSH delegates through native subagents. Core no longer ships a DSH host plugin:
+as of 2.0.0 the `harness-roles` bundle, its `subagent_<role>` tools and the
+`lib/dsh` entry points are removed, because delegating from the role contract
+through the host's native subagent facility needs no registration.
 
-```bash
-dsh plugin --profile <profile-name> add <core-path-or-tarball>
-```
+When a task plainly matches a role, open
+`skills/workflow/workflow-control/references/role-contracts/<role>.md` and pass
+that contract to the host's subagent or teammate facility. The contract carries
+the objective, inputs, evidence duties, authority boundaries, output contract and
+completion criteria; the host supplies the process. Clients that need static
+agent files (Codex, Claude, OpenCode, OMP, ZCode) still receive generated files
+from the same contract through `harness-project`.
 
-The bundle inserts one `harness-roles` instance. It reads manifest-declared role
-files from the installed Core package at activation and exposes `subagent_<role>`
-tools to every preset and teammate. The profile must provide `tools`,
-`systemPrompt`, `subagents` and a provider supporting persona, tool filtering and
-depth limits. The default subagent provider is `spawn`, with `maxDepth: 2`.
-Omitted `agentOptions` inherit the parent model route; Core chooses no model.
-Profile overrides of `harness-roles.config` may supply `agentOptions`, an absolute
-`rolesDir`, provider, depth, additional `readOnlyDeny` names or `policy: false`.
-Read-only roles always deny write/edit; shell access remains, so this is not a
-sandbox. Role children deny inherited delegation/team controls and role tools.
-
-When migrating, preserve the selected profile and model settings, remove the
-old embedded Harness role rows and `@local/dsh-harness-roles` bundle/dependency,
-and install the Core bundle. Do not leave two integrations registering the same
-tool names. Retain any linked local plugin directory until the profile no longer
-references it. `harness-native-roles --client dsh` has been removed. Verify the
-effective tree with `dsh --profile <profile-name> --dump-config`, then check role
-tool visibility and dispatch in a fresh or explicitly reloaded session. Source
-or package checks do not prove that a running Web instance reloaded. Core's
-native refresh command never restarts services.
+Migration from the removed bundle: drop the `harness-roles` entry and its
+dependency from the profile, then upgrade Core. Removing the profile entry first
+avoids a bundle that points at deleted entry points. Verify with
+`dsh --profile <profile-name> --dump-config` that no role tools remain.
 
 `--conflict backup` stores generic projection snapshots under
 `~/backup/agent-harness-core/`, outside discovery roots. Each private snapshot

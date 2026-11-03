@@ -41,13 +41,13 @@ if (all || requested.has("--native-roles")) {
   await module.run(run);
 }
 
-if (all || requested.has("--dsh-roles")) {
-  const module = await import("./test-dsh-roles.js");
+if (all || requested.has("--skills")) {
+  const module = await import("./test-skills.js");
   await module.run(run);
 }
 
-if (all || requested.has("--skills")) {
-  const module = await import("./test-skills.js");
+if (all || requested.has("--role-contracts")) {
+  const module = await import("./test-role-contracts.js");
   await module.run(run);
 }
 

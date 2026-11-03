@@ -37,19 +37,39 @@ export async function run(test) {
     );
   });
 
-  await test("DSH integration validates optional package entry, bundle and path ownership", () => {
-    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json")));
-    for (const integration of [null, [], { dsh: null },
-      { dsh: { ...source.integrations.dsh, kind: "preset" } },
-      { dsh: { ...source.integrations.dsh, enabledByDefault: true } },
-      { dsh: { ...source.integrations.dsh, entry: "../outside.js" } },
-      { dsh: { ...source.integrations.dsh, entry: "/outside.js" } },
-      { dsh: { ...source.integrations.dsh, entry: "lib/missing.js" } },
-      { dsh: { ...source.integrations.dsh, bundle: "lib/project/native-roles.js" } },
-    ]) {
-      const manifest = { ...source, integrations: integration };
-      const result = validateManifest(manifest, { packageRoot });
-      assert.equal(result.ok, false); assert(result.errors.some((error) => /integrations|DSH/.test(error)), JSON.stringify(result.errors));
+  await test("the DSH host plugin integration is removed", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    assert.equal(manifest.integrations, undefined, "integrations.dsh must not survive the plugin removal");
+    const pkg = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+    assert.equal(pkg.main, undefined, "package main entry pointed at the removed plugin");
+    assert.equal(pkg.dsh, undefined, "package dsh bundle wiring pointed at the removed plugin");
+    assert.equal(fs.existsSync(path.join(packageRoot, "lib", "dsh")), false, "lib/dsh must be deleted");
+  });
+
+  await test("an integrations block is still validated when a package declares one", () => {
+    const source = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
+    const valid = { ...source, integrations: { dsh: { kind: "host-plugin", entry: "lib/project/native-roles.js", bundle: "lib/project/native-roles.js", enabledByDefault: false } } };
+    const pkgPath = path.join(packageRoot, "package.json");
+    const original = fs.readFileSync(pkgPath, "utf8");
+    try {
+      const pkg = JSON.parse(original);
+      pkg.main = "./lib/project/native-roles.js";
+      pkg.dsh = { bundle: { patch: "./lib/project/native-roles.js" } };
+      fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+      const ok = validateManifest(valid, { packageRoot });
+      assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+      for (const broken of [
+        { dsh: null },
+        { dsh: { ...valid.integrations.dsh, kind: "preset" } },
+        { dsh: { ...valid.integrations.dsh, enabledByDefault: true } },
+        { dsh: { ...valid.integrations.dsh, entry: "../outside.js" } },
+        { dsh: { ...valid.integrations.dsh, entry: "lib/missing.js" } }
+      ]) {
+        const result = validateManifest({ ...valid, integrations: broken }, { packageRoot });
+        assert.equal(result.ok, false, JSON.stringify(broken));
+      }
+    } finally {
+      fs.writeFileSync(pkgPath, original);
     }
   });
 

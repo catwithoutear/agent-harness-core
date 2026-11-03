@@ -1,6 +1,6 @@
 {
   "name": "@catwithoutear/agent-harness-core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Generic multi-client agent harness core.",
   "license": "MIT",
   "type": "module",
@@ -30,11 +30,5 @@
     "skills/",
     "templates/",
     "locale/"
-  ],
-  "main": "./lib/dsh/index.js",
-  "dsh": {
-    "bundle": {
-      "patch": "./lib/dsh/cordis.patch.yml"
-    }
-  }
+  ]
 }
