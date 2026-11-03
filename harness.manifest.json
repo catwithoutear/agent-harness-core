@@ -2484,6 +2484,20 @@
         ]
       },
       {
+        "id": "change-decision-record",
+        "kind": "change",
+        "source": "templates/changes/decisions/decision-record.md",
+        "target": ".changes/templates/decisions/decision-record.md",
+        "description": "Decision record with options, criteria, evidence, and revisit trigger.",
+        "clients": [
+          "codex",
+          "claude",
+          "opencode",
+          "omp",
+          "zcode"
+        ]
+      },
+      {
         "id": "implementation-design-readme",
         "kind": "change",
         "source": "templates/changes/implementation-design/README.md",

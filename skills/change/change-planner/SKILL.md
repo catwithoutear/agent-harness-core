@@ -94,6 +94,10 @@ Use `design-to-tasks` only when:
 - any required implementation-design pack is populated and reviewed ready;
 - no unresolved decision would change task ownership, ordering, or validation.
 
+An open solution choice must be recorded with the comparison in
+`rules/loop-contract.md:Solution Decision Record` before admission; do not slice
+tasks around an unrecorded choice.
+
 If a downstream discovery changes the accepted solution, return to solution
 design. Do not settle architecture or compatibility inside task slices.
 

@@ -63,6 +63,18 @@ accepting the solution design. Require inferred motivation to be labeled as
 inferred and carried into open questions instead of presented as a stated
 requirement. This is a review judgment, not a validator field check.
 
+## Solution Decision Check
+
+Before accepting a solution design, check the comparison that
+`rules/loop-contract.md:Solution Decision Record` requires for each open design
+choice. Report a finding when the design has no recorded comparison, when the
+criteria or per-option evidence are missing, when a rejected option names no
+criterion or no reason, when the assumptions are missing, or when the record has
+no revisit trigger. Apply the rule's own single-option justification and compact
+exception; do not restate or re-decide either. Judge whether the comparison is
+present and substantiated. This is a review judgment, not a validator field
+check.
+
 ## Design Lenses
 
 Authoritative design-review dimension families; check each:

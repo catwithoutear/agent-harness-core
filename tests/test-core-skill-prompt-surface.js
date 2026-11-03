@@ -17,13 +17,24 @@ import { measureCoreSkillPromptSurface } from "../lib/core-skill-prompt-surface.
 // guidance in change-planner (+1260) and review-packet-gate (+232): the planner
 // owns the capability-template shape and the exact declaration checks, and the
 // review text points at that owner for the check list while keeping the
-// review-side judgment of whether the evidence proves the behavior. A core
-// skill's prompt surface may grow only when the same change updates the matching
-// baseline and records why. Never round a measurement down to fit a baseline.
+// review-side judgment of whether the evidence proves the behavior. This branch
+// adds 1004 characters (+1004 default-loaded and +1004 package) for the
+// solution-decision rule surface: a pointer from workflow-control's required
+// materials, a pointer from change-planner's planning admission, and the
+// design-review comparison check in multi-lens-design-review. The normative
+// rule itself lives in rules/loop-contract.md and is outside this skill metric.
+// Review fixes add 37 characters (+37 default-loaded and +37 package net): a
+// 76-character pointer from change-workspace-operator to the owning rule, offset
+// by a 39-character reduction in multi-lens-design-review that replaces the
+// paraphrased trigger and single-option exception with pointer wording while
+// adding the rejected-option criterion and missing-assumptions findings.
+// A core skill's prompt surface may grow only when the same change updates the
+// matching baseline and records why. Never round a measurement down to fit a
+// baseline.
 const BASELINES = Object.freeze({
   alwaysOnCoreSkillDescriptionChars: 5306,
-  defaultLoadedCoreSkillChars: 219817,
-  coreSkillPackageChars: 645388
+  defaultLoadedCoreSkillChars: 220858,
+  coreSkillPackageChars: 646429
 });
 
 const LOAD_CLASSES = Object.freeze({

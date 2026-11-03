@@ -1144,9 +1144,10 @@ export async function run(test) {
       assert.equal(dryRun.status, 0, dryRun.stderr);
       const dryRunPayload = JSON.parse(dryRun.stdout);
       const targets = dryRunPayload.records.map((record) => record.target);
-      assert.equal(dryRunPayload.summary.templates, 10);
+      assert.equal(dryRunPayload.summary.templates, 11);
       assert(targets.some((entry) => entry.endsWith(".changes/templates/README.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/specs/capability-template.md")));
+      assert(targets.some((entry) => entry.endsWith(".changes/templates/decisions/decision-record.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/README.md")));
       assert(targets.some((entry) => entry.endsWith(".changes/templates/implementation-design/07-constraints.md")));
       assert(!targets.some((entry) => entry.endsWith(".memory/INDEX.md")));
@@ -1193,6 +1194,26 @@ export async function run(test) {
       assert.match(capabilityTemplate, /^## Traceability$/m);
       assert.match(capabilityTemplate, /^#### Scenario: ACC-001 /m);
       assert.match(capabilityTemplate, /^- Evidence: /m);
+      const decisionTemplatePath = path.join(
+        target,
+        ".changes",
+        "templates",
+        "decisions",
+        "decision-record.md"
+      );
+      assert.equal(fs.existsSync(decisionTemplatePath), true);
+      const decisionTemplate = fs.readFileSync(decisionTemplatePath, "utf8");
+      assert.match(decisionTemplate, /^artifact: decision-record$/m);
+      for (const heading of ["## Context", "## Decision", "## Alternatives Considered", "## Consequences"]) {
+        assert.match(decisionTemplate, new RegExp(`^${heading}$`, "m"));
+      }
+      assert.match(decisionTemplate, /Criteria/);
+      assert.match(decisionTemplate, /Evidence/);
+      assert.match(decisionTemplate, /Rejected criterion/);
+      assert.match(decisionTemplate, /Rejected reason/);
+      assert.match(decisionTemplate, /Assumptions/);
+      assert.match(decisionTemplate, /Revisit trigger/);
+      assert.match(decisionTemplate, /`add-decision` creates only the section skeleton/);
       const templatePath = path.join(target, ".changes", "templates", "implementation-design", "README.md");
       assert.equal(fs.existsSync(templatePath), true);
       const templateText = fs.readFileSync(templatePath, "utf8");

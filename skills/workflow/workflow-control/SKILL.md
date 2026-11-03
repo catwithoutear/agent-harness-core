@@ -95,9 +95,11 @@ mode. These conditions never reduce review scope or dimension coverage:
   Review that lightweight plan when the risk warrants it.
 - When material behavior, compatibility, ownership, lifecycle, migration, or
   dependency decisions remain unresolved after bounded source inspection,
-  challenge a proposal and review solution design. Apply the pack trigger after
-  solution-design review, then review the required pack and complete task set
-  before implementation.
+  challenge a proposal and review solution design. Record each still-open design
+  choice with the comparison in
+  `rules/loop-contract.md:Solution Decision Record` before that review. Apply
+  the pack trigger after solution-design review, then review the required pack
+  and complete task set before implementation.
 
 ## Requirement Intake And Change Relations
 

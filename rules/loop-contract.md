@@ -14,7 +14,8 @@ Use a small evidence loop for non-trivial agent work:
 4. Apply `workflow-control:Required Materials` within the common loop; material
    requirements follow the work, not a selected mode.
 5. When solution decisions are unresolved, draft and challenge the proposal,
-   then write and review the solution design.
+   record each still-open design choice with the comparison required by
+   `Solution Decision Record`, then write and review the solution design.
 6. After solution-design review, assess whether `implementation-design` is
    required.
 7. When the trigger applies, create and review the implementation-design pack
@@ -45,6 +46,28 @@ the work as a stack.
 Independence and risk-tier judgment belongs to task-set review; validator
 tooling does not decide it. Allowed relation types and their validation are
 owned by `schemas/change-workspace.schema.json`.
+
+## Solution Decision Record
+
+When a meaningful design choice remains open after the proposal is challenged,
+record the comparison before the solution-design review:
+
+- at least two options, or one option with a written justification;
+- the criteria drawn from the accepted requirements or design constraints;
+- the evidence for each option;
+- the selected option and, for each rejected option, the criterion and the
+  reason it was rejected;
+- the assumptions the choice depends on, and the trigger that reopens the
+  decision.
+
+Low-risk work with a settled direction may record a one-line justification
+instead. `add-decision` writes only the section skeleton; fill every comparison
+field above before the solution-design review. Write the record in the change
+workspace as `decisions/DR-<nnn>-<kebab-slug>.md`, using the projected
+decision-record template
+(`.changes/templates/decisions/decision-record.md`; source
+`templates/changes/decisions/decision-record.md`). This is a review judgment: no
+validator infers that a choice was meaningful.
 
 ## Continuous Convergence
 
