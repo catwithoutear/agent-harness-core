@@ -1,6 +1,6 @@
 ---
 name: redmine
-description: "Use when querying or updating Redmine issues, wiki pages, time entries, custom fields, relations, attachments, or project trackers."
+description: "Use when querying or updating Redmine issues, wiki pages, time entries, custom fields, relations, attachments, or project trackers. Also triggers on 工单、缺陷、任务、bug、ticket、tracker, or issue."
 ---
 # Redmine Management
 
