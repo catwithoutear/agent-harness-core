@@ -42,6 +42,16 @@ export async function run(test) {
     }
   });
 
+  await test("redmine client tries the raw upload body before multipart", () => {
+    const result = spawnSync("python3", ["-m", "unittest", "test_redmine_upload", "-q"], {
+      cwd: path.join(packageRoot, "tests"),
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
+      encoding: "utf8",
+      timeout: 120000
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  });
+
   await test("archify bundle is self-contained and vendored with its runtime", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "harness.manifest.json"), "utf8"));
     const archify = manifest.assets.skills.find((skill) => skill.id === "archify");
