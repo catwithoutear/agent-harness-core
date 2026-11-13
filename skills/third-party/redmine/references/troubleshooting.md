@@ -100,6 +100,10 @@ for issue_data in bulk_issues:
 - Verify file size is within Redmine limits
 - Ensure proper file permissions
 - Check disk space
+- `HTTP 406 Not Acceptable` on `POST /uploads.json` means the instance rejects
+  `multipart/form-data`. `upload_file()` sends the raw body with
+  `Content-Type: application/octet-stream` first and only falls back to
+  multipart, so use it instead of hand-written multipart requests.
 
 ```bash
 # Test with small file

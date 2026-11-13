@@ -131,9 +131,12 @@ class RedmineClient:
         self.base_url = self.base_url.rstrip('/') + '/'
 
         self.session = requests.Session()
+        # Content-Type is set per request: JSON bodies by ``json=`` and uploads
+        # by the upload strategy. Forcing it on the session breaks multipart
+        # requests because requests only fills in the boundary when the header
+        # is absent.
         self.session.headers.update({
             "X-Redmine-API-Key": self.api_key,
-            "Content-Type": "application/json"
         })
 
         logger.debug(f"RedmineClient initialized: {self.base_url}")
@@ -569,6 +572,10 @@ class RedmineClient:
         """
         Upload a file and get attachment token.
 
+        Tries the raw ``application/octet-stream`` body first, then the
+        standard ``multipart/form-data`` form. Some Redmine instances reject
+        multipart uploads with HTTP 406 and only accept the raw body.
+
         Args:
             file_path: Path to file to upload
             description: Optional file description
@@ -580,29 +587,46 @@ class RedmineClient:
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        data = {}
-        if description:
-            data["description"] = description
+        payload = path.read_bytes()
+        form = {"description": description} if description else {}
+        attempts = (
+            (
+                "raw",
+                {
+                    "params": {"filename": path.name},
+                    "data": payload,
+                    "headers": {"Content-Type": "application/octet-stream"},
+                },
+            ),
+            (
+                "multipart",
+                {"data": form, "files": {"file": (path.name, payload)}},
+            ),
+        )
 
-        with open(path, "rb") as file_handle:
-            files = {"file": (path.name, file_handle)}
-
+        errors = []
+        for mode, request_kwargs in attempts:
+            headers = {"X-Redmine-API-Key": self.api_key}
+            headers.update(request_kwargs.get("headers") or {})
+            body = {k: v for k, v in request_kwargs.items() if k != "headers"}
             try:
                 result = self.session.post(
                     urljoin(self.base_url, "uploads.json"),
-                    headers={"X-Redmine-API-Key": self.api_key},
-                    data=data,
-                    files=files,
+                    headers=headers,
                     verify=self.verify_ssl,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    **body
                 )
                 result.raise_for_status()
                 return result.json()
             except requests.exceptions.RequestException as e:
-                error_msg = f"Failed to upload file {file_path}: {str(e)}"
-                if hasattr(e, 'response') and e.response is not None:
-                    error_msg += f"\nResponse: {e.response.text}"
-                raise Exception(error_msg) from e
+                response = getattr(e, "response", None)
+                response_text = getattr(response, "text", "") if response is not None else ""
+                errors.append(f"{mode}: {e} {response_text[:200]}".strip())
+
+        raise Exception(
+            f"Failed to upload file {file_path}: " + "; ".join(errors)
+        )
 
     def download_file(
         self,
@@ -951,7 +975,7 @@ class RedmineClient:
         Returns:
             Created relation details
         """
-        valid_types = ["relates", "duplicates", "duplicated", "blocks",
+        valid_types = ["relates", "duplicates", "duplicated", "blocks", 
                       "blocked", "precedes", "follows", "copied_to", "copied_from"]
         if relation_type not in valid_types:
             raise ValueError(f"Invalid relation_type: {relation_type}. "
@@ -965,7 +989,7 @@ class RedmineClient:
         if delay is not None:
             relation_data["delay"] = delay
 
-        return self._request("POST", f"/issues/{issue_id}/relations.json",
+        return self._request("POST", f"/issues/{issue_id}/relations.json", 
                            data={"relation": relation_data})
 
     def delete_issue_relation(self, relation_id: int) -> Dict[str, Any]:
