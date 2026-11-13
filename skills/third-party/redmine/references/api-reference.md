@@ -211,7 +211,7 @@ Get user details.
 #### POST /uploads.json
 Upload file.
 
-**Request:** multipart/form-data with `file` field
+**Request:** raw body with `Content-Type: application/octet-stream` and an optional `filename` query parameter. Some instances reject `multipart/form-data` with HTTP 406, so the settings above are tried first and multipart with a `file` field is used as a fallback.
 
 **Response:**
 ```json
